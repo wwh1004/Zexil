@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.29920.165
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Zexil.DotNet.ControlFlow", "Zexil.DotNet.ControlFlow\Zexil.DotNet.ControlFlow.csproj", "{2CA9271D-D7B2-4A95-816F-EFFCC717AD79}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{2CA9271D-D7B2-4A95-816F-EFFCC717AD79}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2CA9271D-D7B2-4A95-816F-EFFCC717AD79}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2CA9271D-D7B2-4A95-816F-EFFCC717AD79}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2CA9271D-D7B2-4A95-816F-EFFCC717AD79}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {1E8213FE-46A9-4243-8DF2-E7E7D0DFCABC}
+	EndGlobalSection
+EndGlobal
