@@ -6,11 +6,37 @@ using dnlib.DotNet.Emit;
 namespace Zexil.DotNet.ControlFlow {
 	internal static class CodeGenerator {
 		public static void Generate(MethodBlock methodBlock, out IList<Instruction> instructions, out IList<ExceptionHandler> exceptionHandlers, out IList<Local> locals) {
-			var basicBlocks = Layouter.Layout(methodBlock);
+			var basicBlocks = Layout(methodBlock);
 			instructions = GenerateInstructions(basicBlocks);
 			exceptionHandlers = GenerateExceptionHandlers(basicBlocks);
 			locals = GenerateLocals((List<Instruction>)instructions);
-			Layouter.Cleanup(basicBlocks);
+			Cleanup(basicBlocks);
+		}
+
+		private static List<BasicBlock> Layout(MethodBlock methodBlock) {
+			var basicBlocks = new List<BasicBlock>();
+			var lastTryBlocks = new List<TryBlock>();
+			int index = 0;
+
+			BlockVisitor.Visit(methodBlock, onBlockEnter: block => {
+				if (block is BasicBlock basicBlock) {
+					basicBlock.Contexts.Add(new BlockContext(index, basicBlock.BranchOpcode, lastTryBlocks));
+					basicBlocks.Add(basicBlock);
+					lastTryBlocks.Clear();
+					index++;
+				}
+				else if (block is TryBlock tryBlock) {
+					lastTryBlocks.Add(tryBlock);
+				}
+				return false;
+			});
+
+			return basicBlocks;
+		}
+
+		private static void Cleanup(List<BasicBlock> basicBlocks) {
+			foreach (var basicBlock in basicBlocks)
+				basicBlock.Contexts.Remove<BlockContext>();
 		}
 
 		private static List<Instruction> GenerateInstructions(List<BasicBlock> basicBlocks) {
@@ -183,39 +209,6 @@ namespace Zexil.DotNet.ControlFlow {
 #if DEBUG
 				BranchInstruction.Offset = 0xF000 | (uint)index;
 #endif
-			}
-		}
-
-		private sealed class Layouter : BlockVisitor {
-			private readonly List<BasicBlock> _basicBlocks;
-			private readonly List<TryBlock> _lastTryBlocks;
-			private int _index;
-
-			private Layouter(List<BasicBlock> basicBlocks) {
-				_basicBlocks = basicBlocks;
-				_lastTryBlocks = new List<TryBlock>();
-			}
-
-			public static List<BasicBlock> Layout(MethodBlock methodBlock) {
-				var basicBlocks = new List<BasicBlock>();
-				new Layouter(basicBlocks).Visit(methodBlock);
-				return basicBlocks;
-			}
-
-			public static void Cleanup(List<BasicBlock> basicBlocks) {
-				foreach (var basicBlock in basicBlocks)
-					basicBlock.Contexts.Remove<BlockContext>();
-			}
-
-			protected override void OnBasicBlock(BasicBlock basicBlock) {
-				basicBlock.Contexts.Add(new BlockContext(_index, basicBlock.BranchOpcode, _lastTryBlocks));
-				_basicBlocks.Add(basicBlock);
-				_lastTryBlocks.Clear();
-				_index++;
-			}
-
-			protected override void OnTryBlockEnter(TryBlock tryBlock) {
-				_lastTryBlocks.Add(tryBlock);
 			}
 		}
 	}
