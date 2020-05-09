@@ -4,24 +4,42 @@ using System.Diagnostics;
 using dnlib.DotNet.Emit;
 
 namespace Zexil.DotNet.ControlFlow {
-	internal static class CodeGenerator {
-		public static void Generate(MethodBlock methodBlock, out IList<Instruction> instructions, out IList<ExceptionHandler> exceptionHandlers, out IList<Local> locals) {
-			var basicBlocks = Layout(methodBlock);
-			instructions = GenerateInstructions(basicBlocks);
-			exceptionHandlers = GenerateExceptionHandlers(basicBlocks);
-			locals = GenerateLocals((List<Instruction>)instructions);
-			Cleanup(basicBlocks);
+	/// <summary>
+	/// Blocks to instructions converter
+	/// </summary>
+	public sealed class CodeGenerator {
+		private List<BasicBlock> _basicBlocks;
+
+#pragma warning disable CS8618 // Non-nullable field is uninitialized. Consider declaring as nullable.
+		private CodeGenerator() {
+#pragma warning restore CS8618 // Non-nullable field is uninitialized. Consider declaring as nullable.
 		}
 
-		private static List<BasicBlock> Layout(MethodBlock methodBlock) {
-			var basicBlocks = new List<BasicBlock>();
+		/// <summary>
+		/// Converts a method block into instructions
+		/// </summary>
+		/// <param name="methodBlock"></param>
+		/// <param name="instructions"></param>
+		/// <param name="exceptionHandlers"></param>
+		/// <param name="locals"></param>
+		public static void Generate(MethodBlock methodBlock, out IList<Instruction> instructions, out IList<ExceptionHandler> exceptionHandlers, out IList<Local> locals) {
+			var generator = new CodeGenerator();
+			generator.Layout(methodBlock);
+			instructions = generator.GenerateInstructions();
+			exceptionHandlers = generator.GenerateExceptionHandlers();
+			locals = GenerateLocals((List<Instruction>)instructions);
+			generator.Cleanup();
+		}
+
+		private void Layout(MethodBlock methodBlock) {
 			var lastTryBlocks = new List<TryBlock>();
 			int index = 0;
+			_basicBlocks = new List<BasicBlock>();
 
-			BlockVisitor.Visit(methodBlock, onBlockEnter: block => {
+			BlockVisitor.VisitAll(methodBlock, onBlockEnter: block => {
 				if (block is BasicBlock basicBlock) {
-					basicBlock.Contexts.Add(new BlockContext(index, basicBlock.BranchOpcode, lastTryBlocks));
-					basicBlocks.Add(basicBlock);
+					basicBlock.Contexts.Set(this, new BlockContext(index, basicBlock.BranchOpcode, lastTryBlocks));
+					_basicBlocks.Add(basicBlock);
 					lastTryBlocks.Clear();
 					index++;
 				}
@@ -30,19 +48,17 @@ namespace Zexil.DotNet.ControlFlow {
 				}
 				return false;
 			});
-
-			return basicBlocks;
 		}
 
-		private static void Cleanup(List<BasicBlock> basicBlocks) {
-			foreach (var basicBlock in basicBlocks)
-				basicBlock.Contexts.Remove<BlockContext>();
+		private void Cleanup() {
+			foreach (var basicBlock in _basicBlocks)
+				basicBlock.Contexts.Remove<BlockContext>(this);
 		}
 
-		private static List<Instruction> GenerateInstructions(List<BasicBlock> basicBlocks) {
+		private List<Instruction> GenerateInstructions() {
 			int instructionCount = 0;
-			foreach (var basicBlock in basicBlocks) {
-				var blockContext = basicBlock.Contexts.Peek<BlockContext>();
+			foreach (var basicBlock in _basicBlocks) {
+				var blockContext = basicBlock.Contexts.Get<BlockContext>(this);
 				var branchInstruction = blockContext.BranchInstruction;
 				instructionCount += basicBlock.Instructions.Count;
 				instructionCount++;
@@ -87,7 +103,7 @@ namespace Zexil.DotNet.ControlFlow {
 						throw new InvalidOperationException();
 					}
 					// Sets conditional branch
-					if (!IsNextBasicBlock(basicBlocks, fallThroughTarget, blockContext.Index)) {
+					if (!IsNextBasicBlock(fallThroughTarget, blockContext.Index)) {
 						blockContext.FixupInstruction = OpCodes.Br.ToInstruction(GetFirstInstruction(fallThroughTarget));
 						instructionCount++;
 					}
@@ -97,13 +113,13 @@ namespace Zexil.DotNet.ControlFlow {
 			}
 
 			var instructions = new List<Instruction>(instructionCount);
-			for (int i = 0; i < basicBlocks.Count; i++) {
-				var basicBlock = basicBlocks[i];
-				var blockContext = basicBlock.Contexts.Peek<BlockContext>();
+			for (int i = 0; i < _basicBlocks.Count; i++) {
+				var basicBlock = _basicBlocks[i];
+				var blockContext = basicBlock.Contexts.Get<BlockContext>(this);
 
 				instructions.AddRange(basicBlock.Instructions);
 				if (basicBlock.IsEmpty || basicBlock.BranchOpcode.Code != Code.Br
-					|| !IsNextBasicBlock(basicBlocks, basicBlock.FallThroughTarget ?? throw new InvalidOperationException(), blockContext.Index))
+					|| !IsNextBasicBlock(basicBlock.FallThroughTarget ?? throw new InvalidOperationException(), blockContext.Index))
 					instructions.Add(blockContext.BranchInstruction);
 				if (!(blockContext.FixupInstruction is null))
 					instructions.Add(blockContext.FixupInstruction);
@@ -116,30 +132,30 @@ namespace Zexil.DotNet.ControlFlow {
 			return instructions;
 		}
 
-		private static List<ExceptionHandler> GenerateExceptionHandlers(List<BasicBlock> basicBlocks) {
+		private List<ExceptionHandler> GenerateExceptionHandlers() {
 			var exceptionHandlers = new List<ExceptionHandler>();
-			for (int i = basicBlocks.Count - 1; i >= 0; i--) {
+			for (int i = _basicBlocks.Count - 1; i >= 0; i--) {
 				// The innermost exception block should be declared first. (error: 0x801318A4)
-				var basicBlock = basicBlocks[i];
-				var tryBlocks = basicBlock.Contexts.Peek<BlockContext>().TryBlocks;
+				var basicBlock = _basicBlocks[i];
+				var tryBlocks = basicBlock.Contexts.Get<BlockContext>(this).TryBlocks;
 				if (tryBlocks is null || tryBlocks.Count == 0)
 					continue;
 
 				for (int j = tryBlocks.Count - 1; j >= 0; j--) {
 					var tryBlock = tryBlocks[j];
 					foreach (var handlerBlock in tryBlock.Handlers)
-						exceptionHandlers.Add(GetExceptionHandler(basicBlocks, tryBlock, handlerBlock));
+						exceptionHandlers.Add(GetExceptionHandler(tryBlock, handlerBlock));
 				}
 			}
 			return exceptionHandlers;
 		}
 
-		private static ExceptionHandler GetExceptionHandler(List<BasicBlock> basicBlocks, TryBlock tryBlock, HandlerBlock handlerBlock) {
+		private ExceptionHandler GetExceptionHandler(TryBlock tryBlock, HandlerBlock handlerBlock) {
 			var tryStart = tryBlock.FirstBlock.GetFirstBasicBlock();
-			var tryEnd = GetNextBasicBlock(basicBlocks, tryBlock.LastBlock.GetLastBasicBlock()) ?? throw new InvalidOperationException();
+			var tryEnd = GetNextBasicBlock(tryBlock.LastBlock.GetLastBasicBlock()) ?? throw new InvalidOperationException();
 			var filterStart = handlerBlock.Filter?.FirstBlock.GetFirstBasicBlock();
 			var handlerStart = handlerBlock.FirstBlock.GetFirstBasicBlock();
-			var handlerEnd = GetNextBasicBlock(basicBlocks, handlerBlock.LastBlock.GetLastBasicBlock());
+			var handlerEnd = GetNextBasicBlock(handlerBlock.LastBlock.GetLastBasicBlock());
 
 			return new ExceptionHandler() {
 				TryStart = GetFirstInstruction(tryStart),
@@ -171,18 +187,18 @@ namespace Zexil.DotNet.ControlFlow {
 			return locals;
 		}
 
-		private static bool IsNextBasicBlock(List<BasicBlock> basicBlocks, BasicBlock basicBlock, int index) {
+		private bool IsNextBasicBlock(BasicBlock basicBlock, int index) {
 			index += 1;
-			return index != basicBlocks.Count ? basicBlocks[index] == basicBlock : false;
+			return index != _basicBlocks.Count ? _basicBlocks[index] == basicBlock : false;
 		}
 
-		private static BasicBlock? GetNextBasicBlock(List<BasicBlock> basicBlocks, BasicBlock basicBlock) {
-			int i = basicBlock.Contexts.Peek<BlockContext>().Index + 1;
-			return i != basicBlocks.Count ? basicBlocks[i] : null;
+		private BasicBlock? GetNextBasicBlock(BasicBlock basicBlock) {
+			int i = basicBlock.Contexts.Get<BlockContext>(this).Index + 1;
+			return i != _basicBlocks.Count ? _basicBlocks[i] : null;
 		}
 
-		private static Instruction GetFirstInstruction(BasicBlock basicBlock) {
-			return !basicBlock.IsEmpty ? basicBlock.Instructions[0] : basicBlock.Contexts.Peek<BlockContext>().BranchInstruction;
+		private Instruction GetFirstInstruction(BasicBlock basicBlock) {
+			return !basicBlock.IsEmpty ? basicBlock.Instructions[0] : basicBlock.Contexts.Get<BlockContext>(this).BranchInstruction;
 		}
 
 		private static ExceptionHandlerType GetHandlerType(HandlerBlock handlerBlock) {

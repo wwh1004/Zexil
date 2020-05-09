@@ -19,7 +19,7 @@ namespace Zexil.DotNet.ControlFlow {
 				throw new ArgumentNullException(nameof(methodDef));
 
 			methodDef.Body.SimplifyMacros(methodDef.Parameters);
-			return BlockConverter.ToMethodBlock(methodDef.Body.Instructions, methodDef.Body.ExceptionHandlers);
+			return CodeParser.Parse(methodDef.Body.Instructions, methodDef.Body.ExceptionHandlers);
 		}
 
 		/// <summary>
@@ -36,20 +36,20 @@ namespace Zexil.DotNet.ControlFlow {
 			var body = methodDef.Body;
 			if (body is null)
 				throw new InvalidOperationException();
-			BlockConverter.ToInstructions(methodBlock, out var instructions, out var exceptionHandlers, out var locals);
+			CodeGenerator.Generate(methodBlock, out var instructions, out var exceptionHandlers, out var locals);
 			ReplaceList(instructions, body.Instructions);
 			ReplaceList(exceptionHandlers, body.ExceptionHandlers);
 			ReplaceList(locals, body.Variables);
-		}
 
-		private static void ReplaceList<T>(IList<T> source, IList<T> destination) {
-			destination.Clear();
-			if (destination is List<T> destination2) {
-				destination2.AddRange(source);
-			}
-			else {
-				foreach (var item in source)
-					destination.Add(item);
+			static void ReplaceList<T>(IList<T> source, IList<T> destination) {
+				destination.Clear();
+				if (destination is List<T> destination2) {
+					destination2.AddRange(source);
+				}
+				else {
+					foreach (var item in source)
+						destination.Add(item);
+				}
 			}
 		}
 

@@ -5,7 +5,10 @@ using dnlib.DotNet;
 using dnlib.DotNet.Emit;
 
 namespace Zexil.DotNet.ControlFlow {
-	internal sealed class CodeParser {
+	/// <summary>
+	/// Instructions to blocks converter
+	/// </summary>
+	public sealed class CodeParser {
 		private readonly IList<Instruction> _instructions;
 		private readonly Dictionary<Instruction, int> _instructionMap;
 		private readonly IList<ExceptionHandler> _exceptionHandlers;
@@ -20,6 +23,12 @@ namespace Zexil.DotNet.ControlFlow {
 			_indexRemap = Array.Empty<int>();
 		}
 
+		/// <summary>
+		/// Converts instructions into a method block
+		/// </summary>
+		/// <param name="instructions"></param>
+		/// <param name="exceptionHandlers"></param>
+		/// <returns></returns>
 		public static MethodBlock Parse(IList<Instruction> instructions, IList<ExceptionHandler> exceptionHandlers) {
 			if (instructions is null)
 				throw new ArgumentNullException(nameof(instructions));
@@ -155,7 +164,7 @@ namespace Zexil.DotNet.ControlFlow {
 						else if (lastInstruction.OpCode.OperandType == OperandType.InlineSwitch) {
 							// switch
 							var switchTargets = (Instruction[])lastInstruction.Operand;
-							basicBlock.SwitchTargets = new List<BasicBlock>(switchTargets.Length);
+							basicBlock.SwitchTargets = new SwitchTargetList(switchTargets.Length);
 							for (int j = 0; j < switchTargets.Length; j++)
 								basicBlock.SwitchTargets.Add(basicBlocks[indexRemap[_instructionMap[switchTargets[j]]]]);
 						}
