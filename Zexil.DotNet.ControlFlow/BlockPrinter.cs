@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using dnlib.DotNet.Emit;
@@ -11,11 +12,14 @@ namespace Zexil.DotNet.ControlFlow {
 		private static readonly object _syncRoot = new object();
 
 		private readonly StringBuilder _buffer;
+		private readonly Dictionary<BasicBlock, int> _blockIds;
+		private int _currentBlockId;
 		private int _indent;
 		private bool _newLine;
 
 		private BlockPrinter() {
 			_buffer = new StringBuilder();
+			_blockIds = new Dictionary<BasicBlock, int>();
 		}
 
 		/// <summary>
@@ -41,27 +45,9 @@ namespace Zexil.DotNet.ControlFlow {
 				throw new ArgumentNullException(nameof(block));
 
 			var printer = new BlockPrinter();
-			printer.SetContexts(block);
+			BlockVisitor.VisitAll(block, onBlockEnter: printer.OnBlockEnter_SetBlockId);
 			BlockVisitor.VisitAll(block, printer.OnBlockEnter, printer.OnBlockLeave);
-			printer.RemoveContexts(block);
 			return printer._buffer.ToString();
-		}
-
-		private void SetContexts(Block block) {
-			int id = 0;
-			BlockVisitor.VisitAll(block, onBlockEnter: b => {
-				if (b is BasicBlock basicBlock)
-					basicBlock.Contexts.Set(this, new BlockContext(id++));
-				return false;
-			});
-		}
-
-		private void RemoveContexts(Block block) {
-			BlockVisitor.VisitAll(block, onBlockEnter: b => {
-				if (b is BasicBlock basicBlock)
-					basicBlock.Contexts.Remove<BlockContext>(this);
-				return false;
-			});
 		}
 
 		private bool OnBlockEnter(Block block) {
@@ -168,9 +154,15 @@ namespace Zexil.DotNet.ControlFlow {
 			return false;
 		}
 
+		private bool OnBlockEnter_SetBlockId(Block block) {
+			if (block is BasicBlock basicBlock)
+				_blockIds[basicBlock] = _currentBlockId++;
+			return false;
+		}
+
 		private string FormatBlockId(BasicBlock basicBlock) {
-			if (basicBlock.Contexts.TryGet<BlockContext>(this, out var context))
-				return $"BLK_{context.Id:X4}";
+			if (_blockIds.TryGetValue(basicBlock, out int blockId))
+				return $"BLK_{blockId:X4}";
 			else
 				return "BLK_????";
 		}
@@ -190,16 +182,6 @@ namespace Zexil.DotNet.ControlFlow {
 		private void AppendLine(string value) {
 			_buffer.Append(' ', _indent);
 			_buffer.AppendLine(value);
-		}
-
-		private sealed class BlockContext : IBlockContext {
-			private readonly int _id;
-
-			public int Id => _id;
-
-			public BlockContext(int id) {
-				_id = id;
-			}
 		}
 	}
 }

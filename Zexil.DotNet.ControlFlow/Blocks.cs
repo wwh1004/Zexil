@@ -82,13 +82,7 @@ namespace Zexil.DotNet.ControlFlow {
 		/// Trampoline, used for a scope block that has multiple entries
 		/// Target(s): <see cref="BasicBlock"/>
 		/// </summary>
-		Trampoline = 1 << 2,
-
-		/// <summary>
-		/// The entry of a scope block is unique and is the first basic block
-		/// Target(s): <see cref="ScopeBlock"/>
-		/// </summary>
-		FixedEntry = 1 << 3
+		Trampoline = 1 << 2
 	}
 
 	/// <summary>
@@ -124,7 +118,7 @@ namespace Zexil.DotNet.ControlFlow {
 		/// </summary>
 		public Block? Scope {
 			get => _scope;
-			set => _scope = value;
+			internal set => _scope = value;
 		}
 
 		/// <summary>
@@ -291,6 +285,10 @@ namespace Zexil.DotNet.ControlFlow {
 		protected List<Block> _blocks;
 		/// <summary />
 		protected BlockType _type;
+		/// <summary />
+		protected readonly Dictionary<BasicBlock, int> _entries;
+		/// <summary />
+		protected readonly Dictionary<BasicBlock, int> _exits;
 
 		/// <summary>
 		/// Child blocks
@@ -319,6 +317,16 @@ namespace Zexil.DotNet.ControlFlow {
 		public override BlockType Type => _type;
 
 		/// <summary>
+		/// Returns entries of current scope block
+		/// </summary>
+		public IDictionary<BasicBlock, int> Entries => _entries;
+
+		/// <summary>
+		/// Returns exits of current scope block
+		/// </summary>
+		public IDictionary<BasicBlock, int> Exits => _exits;
+
+		/// <summary>
 		/// Constructor
 		/// </summary>
 		/// <param name="blocks">Child blocks</param>
@@ -329,6 +337,8 @@ namespace Zexil.DotNet.ControlFlow {
 
 			_blocks = new List<Block>(blocks);
 			_type = type;
+			_entries = new Dictionary<BasicBlock, int>();
+			_exits = new Dictionary<BasicBlock, int>();
 		}
 
 		private sealed class DebugView {
