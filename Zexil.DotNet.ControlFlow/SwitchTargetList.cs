@@ -38,10 +38,7 @@ namespace Zexil.DotNet.ControlFlow {
 		/// </summary>
 		/// <param name="targets">Targets</param>
 		public SwitchTargetList(IEnumerable<BasicBlock> targets) {
-			if (targets is null)
-				throw new ArgumentNullException(nameof(targets));
-
-			_targets = new List<BasicBlock>(targets);
+			_targets = new List<BasicBlock>(targets ?? throw new ArgumentNullException(nameof(targets)));
 		}
 
 		private void UpdateReferences(BasicBlock? oldValue, BasicBlock? newValue) {

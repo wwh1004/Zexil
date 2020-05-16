@@ -230,13 +230,8 @@ namespace Zexil.DotNet.ControlFlow {
 		/// <param name="instructions">Instructions in current basic block excluding branch instruction</param>
 		/// <param name="branchOpcode">Branch opcode of current basic block</param>
 		public BasicBlock(IEnumerable<Instruction> instructions, OpCode branchOpcode) {
-			if (instructions is null)
-				throw new ArgumentNullException(nameof(instructions));
-			if (branchOpcode is null)
-				throw new ArgumentNullException(nameof(branchOpcode));
-
-			_instructions = new List<Instruction>(instructions);
-			_branchOpcode = branchOpcode;
+			_instructions = new List<Instruction>(instructions ?? throw new ArgumentNullException(nameof(instructions)));
+			_branchOpcode = branchOpcode ?? throw new ArgumentNullException(nameof(branchOpcode));
 			_predecessors = new Dictionary<BasicBlock, int>();
 			_successors = new Dictionary<BasicBlock, int>();
 #if DEBUG
