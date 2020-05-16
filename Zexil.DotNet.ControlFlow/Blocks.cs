@@ -245,8 +245,8 @@ namespace Zexil.DotNet.ControlFlow {
 		}
 
 		internal BasicBlock? UpdateReferences(BasicBlock? oldValue, BasicBlock? newValue) {
-			UpdateReferencesCore(_successors, oldValue, newValue);
 			if (oldValue != newValue) {
+				UpdateReferencesCore(_successors, oldValue, newValue);
 				if (!(oldValue is null))
 					UpdateReferencesCore(oldValue._predecessors, this, null);
 				if (!(newValue is null))
