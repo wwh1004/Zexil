@@ -60,15 +60,15 @@ namespace Zexil.DotNet.ControlFlow {
 				throw new ArgumentNullException(nameof(methodBlock));
 
 			var isVisiteds = new HashSet<Block>();
-			VisitAllSuccessors(methodBlock.GetFirstBasicBlock());
+			VisitAllSuccessors(methodBlock.First());
 			BlockVisitor.VisitAll(methodBlock, onBlockEnter: b => {
 				if (!(b is TryBlock tryBlock) || !isVisiteds.Contains(tryBlock))
 					return false;
 
 				foreach (var handlerBlock in tryBlock.Handlers) {
 					if (!(handlerBlock.Filter is null))
-						VisitAllSuccessors(handlerBlock.Filter.GetFirstBasicBlock());
-					VisitAllSuccessors(handlerBlock.GetFirstBasicBlock());
+						VisitAllSuccessors(handlerBlock.Filter.First());
+					VisitAllSuccessors(handlerBlock.First());
 				}
 				return false;
 			});
@@ -95,21 +95,25 @@ namespace Zexil.DotNet.ControlFlow {
 			void VisitAllSuccessors(BasicBlock basicBlock) {
 				if (!isVisiteds.Add(basicBlock))
 					return;
-				VisitAllSuccessors2(basicBlock);
+				VisitAllSuccessorsCore(basicBlock);
 			}
 
-			void VisitAllSuccessors2(BasicBlock basicBlock) {
-				var scope = basicBlock.Scope;
-				while (!(scope is null)) {
-					if (!isVisiteds.Add(scope))
-						break;
-					scope = scope.Scope;
-				}
+			void VisitAllSuccessorsCore(BasicBlock basicBlock) {
+				EnsureScopeVisited(basicBlock);
 				foreach (var successor in basicBlock.Successors) {
 					if (!isVisiteds.Add(successor.Key))
 						continue;
-					VisitAllSuccessors2(successor.Key);
+					VisitAllSuccessorsCore(successor.Key);
 				}
+			}
+
+			void EnsureScopeVisited(Block block) {
+				if (block is MethodBlock)
+					return;
+				var scope = block.Scope;
+				if (!isVisiteds.Add(scope))
+					return;
+				EnsureScopeVisited(scope);
 			}
 		}
 	}

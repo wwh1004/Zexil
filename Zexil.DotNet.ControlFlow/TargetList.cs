@@ -6,7 +6,7 @@ namespace Zexil.DotNet.ControlFlow {
 	/// <summary>
 	/// Switch target list
 	/// </summary>
-	public sealed class SwitchTargetList : IList<BasicBlock> {
+	public sealed class TargetList : IList<BasicBlock> {
 		private BasicBlock? _owner;
 		private readonly List<BasicBlock> _targets;
 
@@ -21,7 +21,7 @@ namespace Zexil.DotNet.ControlFlow {
 		/// <summary>
 		/// Constructor
 		/// </summary>
-		public SwitchTargetList() {
+		public TargetList() {
 			_targets = new List<BasicBlock>();
 		}
 
@@ -29,7 +29,7 @@ namespace Zexil.DotNet.ControlFlow {
 		/// Constructor
 		/// </summary>
 		/// <param name="capacity">Initial capacity</param>
-		public SwitchTargetList(int capacity) {
+		public TargetList(int capacity) {
 			_targets = new List<BasicBlock>(capacity);
 		}
 
@@ -37,7 +37,7 @@ namespace Zexil.DotNet.ControlFlow {
 		/// Constructor
 		/// </summary>
 		/// <param name="targets">Targets</param>
-		public SwitchTargetList(IEnumerable<BasicBlock> targets) {
+		public TargetList(IEnumerable<BasicBlock> targets) {
 			_targets = new List<BasicBlock>(targets ?? throw new ArgumentNullException(nameof(targets)));
 		}
 

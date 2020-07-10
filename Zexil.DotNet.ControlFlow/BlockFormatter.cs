@@ -6,9 +6,9 @@ using dnlib.DotNet.Emit;
 
 namespace Zexil.DotNet.ControlFlow {
 	/// <summary>
-	/// Block printer
+	/// Block formatter
 	/// </summary>
-	public sealed class BlockPrinter {
+	public sealed class BlockFormatter {
 		private static readonly object _syncRoot = new object();
 
 		private readonly StringBuilder _buffer;
@@ -17,37 +17,39 @@ namespace Zexil.DotNet.ControlFlow {
 		private int _indent;
 		private bool _newLine;
 
-		private BlockPrinter() {
+		private BlockFormatter() {
 			_buffer = new StringBuilder();
 			_blockIds = new Dictionary<BasicBlock, int>();
 		}
 
 		/// <summary>
-		/// Thread safe version of <see cref="ToString(Block)"/>
+		/// Thread safe version of <see cref="Format_NoLock(Block)"/>
 		/// </summary>
 		/// <param name="block"></param>
 		/// <returns></returns>
-		public static string ToString_ThreadSafe(Block block) {
+		public static string Format(Block block) {
 			if (block is null)
 				throw new ArgumentNullException(nameof(block));
 
 			lock (_syncRoot)
-				return ToString(block);
+				return Format_NoLock(block);
 		}
 
 		/// <summary>
-		/// Converts a block to a string
+		/// Formats a block
 		/// </summary>
 		/// <param name="block"></param>
 		/// <returns></returns>
-		public static string ToString(Block block) {
+		public static string Format_NoLock(Block block) {
 			if (block is null)
 				throw new ArgumentNullException(nameof(block));
 
-			var printer = new BlockPrinter();
-			BlockVisitor.VisitAll(block, onBlockEnter: printer.OnBlockEnter_SetBlockId);
-			BlockVisitor.VisitAll(block, printer.OnBlockEnter, printer.OnBlockLeave);
-			return printer._buffer.ToString();
+			var formatter = new BlockFormatter();
+#if !DEBUG
+			BlockVisitor.VisitAll(block, onBlockEnter: formatter.OnBlockEnter_SetBlockId);
+#endif
+			BlockVisitor.VisitAll(block, formatter.OnBlockEnter, formatter.OnBlockLeave);
+			return formatter._buffer.ToString();
 		}
 
 		private bool OnBlockEnter(Block block) {
@@ -68,26 +70,18 @@ namespace Zexil.DotNet.ControlFlow {
 				var branchInfo = new StringBuilder();
 				branchInfo.Append("// opcode:" + basicBlock.BranchOpcode.ToString());
 				if (basicBlock.BranchOpcode.FlowControl == FlowControl.Branch) {
-					if (basicBlock.FallThroughTarget is null)
-						throw new InvalidOperationException();
-					branchInfo.Append(" | fallthrough:" + FormatBlockId(basicBlock.FallThroughTarget));
+					branchInfo.Append(" | fall-through:" + FormatBlockId(basicBlock.FallThrough));
 				}
 				else if (basicBlock.BranchOpcode.FlowControl == FlowControl.Cond_Branch) {
-					if (basicBlock.FallThroughTarget is null)
-						throw new InvalidOperationException();
-					branchInfo.Append(" | fallthrough:" + FormatBlockId(basicBlock.FallThroughTarget));
+					branchInfo.Append(" | fall-through:" + FormatBlockId(basicBlock.FallThrough));
 					if (basicBlock.BranchOpcode.Code == Code.Switch) {
-						if (basicBlock.SwitchTargets is null)
-							throw new InvalidOperationException();
-						branchInfo.Append(" | switchtarget:{");
-						foreach (var target in basicBlock.SwitchTargets)
-							branchInfo.Append(FormatBlockId(target) + " ");
+						branchInfo.Append(" | switch-targets:{");
+						foreach (var switchTarget in basicBlock.SwitchTargets)
+							branchInfo.Append(FormatBlockId(switchTarget) + " ");
 						branchInfo[^1] = '}';
 					}
 					else {
-						if (basicBlock.ConditionalTarget is null)
-							throw new InvalidOperationException();
-						branchInfo.Append(" | condtarget:" + FormatBlockId(basicBlock.ConditionalTarget));
+						branchInfo.Append(" | cond-target:" + FormatBlockId(basicBlock.CondTarget));
 					}
 				}
 
@@ -110,24 +104,24 @@ namespace Zexil.DotNet.ControlFlow {
 			}
 			else if (block is HandlerBlock handlerBlock) {
 				switch (handlerBlock.Type) {
-					case BlockType.Catch: {
-						if (handlerBlock.CatchType is null)
-							AppendLine("catch");
-						else
-							AppendLine($"catch {handlerBlock.CatchType}");
-						break;
-					}
-					case BlockType.Finally: {
-						AppendLine("finally");
-						break;
-					}
-					case BlockType.Fault: {
-						AppendLine("fault");
-						break;
-					}
-					default: {
-						throw new InvalidOperationException();
-					}
+				case BlockType.Catch: {
+					if (handlerBlock.CatchType is null)
+						AppendLine("catch");
+					else
+						AppendLine($"catch {handlerBlock.CatchType}");
+					break;
+				}
+				case BlockType.Finally: {
+					AppendLine("finally");
+					break;
+				}
+				case BlockType.Fault: {
+					AppendLine("fault");
+					break;
+				}
+				default: {
+					throw new InvalidOperationException();
+				}
 				}
 				AppendLine("{");
 				_indent += 2;
@@ -161,10 +155,11 @@ namespace Zexil.DotNet.ControlFlow {
 		}
 
 		private string FormatBlockId(BasicBlock basicBlock) {
-			if (_blockIds.TryGetValue(basicBlock, out int blockId))
-				return $"BLK_{blockId:X4}";
-			else
-				return "BLK_????";
+#if DEBUG
+			return $"BLK_{basicBlock._originalOffset:X4}";
+#else
+			return _blockIds.TryGetValue(basicBlock, out int blockId) ? $"BLK_{blockId:X4}" : "BLK_????";
+#endif
 		}
 
 		private string FormatPredecessors(BasicBlock basicBlock) {

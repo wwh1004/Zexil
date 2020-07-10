@@ -10,7 +10,7 @@ namespace Zexil.DotNet.ControlFlow {
 	public static class Extensions {
 		/// <summary>
 		/// Creates method block from methodDef.
-		/// IMPORTANTLY: <see cref="CilBody.SimplifyMacros"/> will be called!!!
+		/// NOTICE: <see cref="CilBody.SimplifyMacros"/> will be called!!!
 		/// </summary>
 		/// <param name="methodDef"></param>
 		/// <returns></returns>
@@ -54,11 +54,11 @@ namespace Zexil.DotNet.ControlFlow {
 		}
 
 		/// <summary>
-		/// Get the first basic block
+		/// Gets the first basic block
 		/// </summary>
 		/// <param name="block"></param>
 		/// <returns></returns>
-		public static BasicBlock GetFirstBasicBlock(this Block block) {
+		public static BasicBlock First(this Block block) {
 			if (block is null)
 				throw new ArgumentNullException(nameof(block));
 
@@ -73,11 +73,11 @@ namespace Zexil.DotNet.ControlFlow {
 		}
 
 		/// <summary>
-		/// Get the last basic block
+		/// Gets the last basic block
 		/// </summary>
 		/// <param name="block"></param>
 		/// <returns></returns>
-		public static BasicBlock GetLastBasicBlock(this Block block) {
+		public static BasicBlock Last(this Block block) {
 			if (block is null)
 				throw new ArgumentNullException(nameof(block));
 
@@ -88,6 +88,44 @@ namespace Zexil.DotNet.ControlFlow {
 					return b;
 				else
 					return Impl(((ScopeBlock)b).LastBlock);
+			}
+		}
+
+		/// <summary>
+		/// Gets block's root of which scope is <paramref name="scope"/>
+		/// </summary>
+		/// <param name="block"></param>
+		/// <param name="scope"></param>
+		/// <returns></returns>
+		public static Block GetRoot(this Block block, ScopeBlock scope) {
+			if (block is null)
+				throw new ArgumentNullException(nameof(block));
+			if (scope is null)
+				throw new ArgumentNullException(nameof(scope));
+
+			var root = block;
+			while (root.Scope != scope)
+				root = root.Scope;
+			return root;
+		}
+
+		/// <summary>
+		/// Adds instructions to a list
+		/// </summary>
+		/// <param name="instructions"></param>
+		/// <param name="collection"></param>
+		public static void AddRange(this IList<Instruction> instructions, IEnumerable<Instruction> collection) {
+			if (instructions is null)
+				throw new ArgumentNullException(nameof(instructions));
+			if (collection is null)
+				throw new ArgumentNullException(nameof(collection));
+
+			if (instructions is List<Instruction> list) {
+				list.AddRange(collection);
+			}
+			else {
+				foreach (var instruction in collection)
+					instructions.Add(instruction);
 			}
 		}
 	}

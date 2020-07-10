@@ -64,29 +64,29 @@ namespace Zexil.DotNet.ControlFlow {
 			for (int i = 0; i < _instructions.Count; i++) {
 				var instruction = _instructions[i];
 				switch (instruction.OpCode.FlowControl) {
-					case FlowControl.Branch:
-					case FlowControl.Cond_Branch:
-					case FlowControl.Return:
-					case FlowControl.Throw: {
-						if (i + 1 != _instructions.Count) {
-							// If current instruction is not the last, then next instruction is a new entry
-							indexRemap[i + 1] = 1;
-						}
-						if (instruction.OpCode.OperandType == OperandType.InlineBrTarget) {
-							// branch
-							indexRemap[_instructionMap[(Instruction)instruction.Operand]] = 1;
-						}
-						else if (instruction.OpCode.OperandType == OperandType.InlineSwitch) {
-							// switch
-							foreach (var target in (IEnumerable<Instruction>)instruction.Operand)
-								indexRemap[_instructionMap[target]] = 1;
-						}
-						break;
+				case FlowControl.Branch:
+				case FlowControl.Cond_Branch:
+				case FlowControl.Return:
+				case FlowControl.Throw: {
+					if (i + 1 != _instructions.Count) {
+						// If current instruction is not the last, then next instruction is a new entry
+						indexRemap[i + 1] = 1;
 					}
+					if (instruction.OpCode.OperandType == OperandType.InlineBrTarget) {
+						// branch
+						indexRemap[_instructionMap[(Instruction)instruction.Operand]] = 1;
+					}
+					else if (instruction.OpCode.OperandType == OperandType.InlineSwitch) {
+						// switch
+						foreach (var target in (IEnumerable<Instruction>)instruction.Operand)
+							indexRemap[_instructionMap[target]] = 1;
+					}
+					break;
+				}
 				}
 			}
 
-			foreach (var ehInfo in _ehInfos) {
+			foreach (var ehInfo in ehInfos) {
 				indexRemap[ehInfo.TryStart] = 1;
 				if (ehInfo.TryEnd != _instructions.Count)
 					indexRemap[ehInfo.TryEnd] = 1;
@@ -116,7 +116,6 @@ namespace Zexil.DotNet.ControlFlow {
 
 		private BasicBlock[] CreateBasicBlocks(int entryCount) {
 			int[] indexRemap = _indexRemap;
-
 			int[] blockLengths = new int[entryCount];
 			int blockLength = 0;
 			for (int i = indexRemap.Length - 1; i >= 0; i--) {
@@ -146,48 +145,48 @@ namespace Zexil.DotNet.ControlFlow {
 				int lastInstructionIndex = instructions.Count - 1;
 				var lastInstruction = instructions[lastInstructionIndex];
 				switch (lastInstruction.OpCode.FlowControl) {
-					case FlowControl.Branch: {
-						basicBlock.BranchOpcode = lastInstruction.OpCode;
-						basicBlock.FallThroughTarget = basicBlocks[indexRemap[_instructionMap[(Instruction)lastInstruction.Operand]]];
-						instructions.RemoveAt(lastInstructionIndex);
-						break;
+				case FlowControl.Branch: {
+					basicBlock.BranchOpcode = lastInstruction.OpCode;
+					basicBlock.FallThroughNoThrow = basicBlocks[indexRemap[_instructionMap[(Instruction)lastInstruction.Operand]]];
+					instructions.RemoveAt(lastInstructionIndex);
+					break;
+				}
+				case FlowControl.Cond_Branch: {
+					basicBlock.BranchOpcode = lastInstruction.OpCode;
+					if (reIndex + 1 == basicBlocks.Length)
+						throw new InvalidMethodException();
+					basicBlock.FallThroughNoThrow = basicBlocks[reIndex + 1];
+					if (lastInstruction.OpCode.OperandType == OperandType.InlineBrTarget) {
+						// branch
+						basicBlock.CondTargetNoThrow = basicBlocks[indexRemap[_instructionMap[(Instruction)lastInstruction.Operand]]];
 					}
-					case FlowControl.Cond_Branch: {
-						basicBlock.BranchOpcode = lastInstruction.OpCode;
-						if (reIndex + 1 == basicBlocks.Length)
-							throw new InvalidMethodException();
-						basicBlock.FallThroughTarget = basicBlocks[reIndex + 1];
-						if (lastInstruction.OpCode.OperandType == OperandType.InlineBrTarget) {
-							// branch
-							basicBlock.ConditionalTarget = basicBlocks[indexRemap[_instructionMap[(Instruction)lastInstruction.Operand]]];
-						}
-						else if (lastInstruction.OpCode.OperandType == OperandType.InlineSwitch) {
-							// switch
-							var switchTargets = (Instruction[])lastInstruction.Operand;
-							basicBlock.SwitchTargets = new SwitchTargetList(switchTargets.Length);
-							for (int j = 0; j < switchTargets.Length; j++)
-								basicBlock.SwitchTargets.Add(basicBlocks[indexRemap[_instructionMap[switchTargets[j]]]]);
-						}
-						else {
-							throw new InvalidOperationException();
-						}
-						instructions.RemoveAt(lastInstructionIndex);
-						break;
+					else if (lastInstruction.OpCode.OperandType == OperandType.InlineSwitch) {
+						// switch
+						var switchTargets = (Instruction[])lastInstruction.Operand;
+						basicBlock.SwitchTargetsNoThrow = new TargetList(switchTargets.Length);
+						for (int j = 0; j < switchTargets.Length; j++)
+							basicBlock.SwitchTargetsNoThrow.Add(basicBlocks[indexRemap[_instructionMap[switchTargets[j]]]]);
 					}
-					case FlowControl.Call:
-					case FlowControl.Next: {
-						basicBlock.BranchOpcode = OpCodes.Br;
-						if (reIndex + 1 == basicBlocks.Length)
-							throw new InvalidMethodException();
-						basicBlock.FallThroughTarget = basicBlocks[reIndex + 1];
-						break;
+					else {
+						throw new InvalidOperationException();
 					}
-					case FlowControl.Return:
-					case FlowControl.Throw: {
-						basicBlock.BranchOpcode = lastInstruction.OpCode;
-						instructions.RemoveAt(lastInstructionIndex);
-						break;
-					}
+					instructions.RemoveAt(lastInstructionIndex);
+					break;
+				}
+				case FlowControl.Call:
+				case FlowControl.Next: {
+					basicBlock.BranchOpcode = OpCodes.Br;
+					if (reIndex + 1 == basicBlocks.Length)
+						throw new InvalidMethodException();
+					basicBlock.FallThroughNoThrow = basicBlocks[reIndex + 1];
+					break;
+				}
+				case FlowControl.Return:
+				case FlowControl.Throw: {
+					basicBlock.BranchOpcode = lastInstruction.OpCode;
+					instructions.RemoveAt(lastInstructionIndex);
+					break;
+				}
 				}
 			}
 
@@ -200,17 +199,18 @@ namespace Zexil.DotNet.ControlFlow {
 		}
 
 		private MethodBlock CreateMethodBlock(BasicBlock[] basicBlocks) {
-			if (_ehInfos.Length == 0) {
+			var ehInfos = _ehInfos;
+			if (ehInfos.Length == 0) {
 				var methodBlock = new MethodBlock(basicBlocks);
 				foreach (var basicBlock in basicBlocks)
-					basicBlock.Scope = methodBlock;
+					basicBlock.ScopeNoThrow = methodBlock;
 				return methodBlock;
 			}
 			else {
 				var blocks = new Block[basicBlocks.Length];
 				Array.Copy(basicBlocks, blocks, blocks.Length);
 
-				foreach (var ehInfo in _ehInfos) {
+				foreach (var ehInfo in ehInfos) {
 					ehInfo.TryStart = _indexRemap[ehInfo.TryStart];
 					ehInfo.TryEnd = _indexRemap[ehInfo.TryEnd];
 					if (ehInfo.FilterStart != -1)
@@ -218,7 +218,7 @@ namespace Zexil.DotNet.ControlFlow {
 					ehInfo.HandlerStart = _indexRemap[ehInfo.HandlerStart];
 					ehInfo.HandlerEnd = ehInfo.HandlerEnd != _instructions.Count ? _indexRemap[ehInfo.HandlerEnd] : basicBlocks.Length;
 				}
-				var ehNodes = CreateEHNodes(_ehInfos);
+				var ehNodes = CreateEHNodes(ehInfos);
 				FoldEHBlocks(blocks, ehNodes);
 
 				var methodBlock = new MethodBlock(EnumerateNonNullBlocks(blocks, 0, blocks.Length));
@@ -312,23 +312,23 @@ namespace Zexil.DotNet.ControlFlow {
 			}
 		}
 
-		private static void SetBlockScope(IEnumerable<Block> blocks, Block parent) {
+		private static void SetBlockScope(IEnumerable<Block> blocks, ScopeBlock parent) {
 			foreach (var block in blocks) {
 				if (block is BasicBlock) {
-					block.Scope = parent;
+					block.ScopeNoThrow = parent;
 				}
 				else if (block is TryBlock tryBlock) {
-					tryBlock.Scope = parent;
+					tryBlock.ScopeNoThrow = parent;
 					SetBlockScope(tryBlock.Blocks, tryBlock);
 					SetBlockScope(tryBlock.Handlers, tryBlock);
 				}
 				else if (block is HandlerBlock handlerBlock) {
-					handlerBlock.Scope = parent;
+					handlerBlock.ScopeNoThrow = parent;
 					SetBlockScope(handlerBlock.Blocks, handlerBlock);
 
 					var filterBlock = handlerBlock.Filter;
 					if (!(filterBlock is null)) {
-						filterBlock.Scope = handlerBlock;
+						filterBlock.ScopeNoThrow = handlerBlock;
 						SetBlockScope(filterBlock.Blocks, handlerBlock);
 					}
 				}

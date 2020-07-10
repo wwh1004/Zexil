@@ -64,36 +64,26 @@ namespace Zexil.DotNet.ControlFlow {
 				instructionCount++;
 
 				switch (branchInstruction.OpCode.FlowControl) {
-					case FlowControl.Branch:
-					case FlowControl.Cond_Branch: break;
-					case FlowControl.Return:
-					case FlowControl.Throw: continue;
-					default: throw new ArgumentOutOfRangeException(nameof(OpCode.FlowControl));
+				case FlowControl.Branch:
+				case FlowControl.Cond_Branch: break;
+				case FlowControl.Return:
+				case FlowControl.Throw: continue;
+				default: throw new ArgumentOutOfRangeException(nameof(OpCode.FlowControl));
 				}
 
-				var fallThroughTarget = basicBlock.FallThroughTarget;
-				if (fallThroughTarget is null)
-					throw new InvalidOperationException();
-
+				var fallThrough = basicBlock.FallThrough;
 				if (branchInstruction.OpCode.FlowControl == FlowControl.Branch) {
-					branchInstruction.Operand = GetFirstInstruction(fallThroughTarget);
+					branchInstruction.Operand = GetFirstInstruction(fallThrough);
 					continue;
 				}
 				// unconditional branch
 
 				if (branchInstruction.OpCode.FlowControl == FlowControl.Cond_Branch) {
 					if (branchInstruction.OpCode.OperandType == OperandType.InlineBrTarget) {
-						var conditionalTarget = basicBlock.ConditionalTarget;
-						if (conditionalTarget is null)
-							throw new InvalidOperationException();
-
-						branchInstruction.Operand = GetFirstInstruction(conditionalTarget);
+						branchInstruction.Operand = GetFirstInstruction(basicBlock.CondTarget);
 					}
 					else if (branchInstruction.OpCode.OperandType == OperandType.InlineSwitch) {
 						var switchTargets = basicBlock.SwitchTargets;
-						if (switchTargets is null)
-							throw new InvalidOperationException();
-
 						var operand = new Instruction[switchTargets.Count];
 						for (int i = 0; i < operand.Length; i++)
 							operand[i] = GetFirstInstruction(switchTargets[i]);
@@ -103,26 +93,28 @@ namespace Zexil.DotNet.ControlFlow {
 						throw new InvalidOperationException();
 					}
 					// Sets conditional branch
-					if (!IsNextBasicBlock(fallThroughTarget, blockContext.Index)) {
-						blockContext.FixupInstruction = OpCodes.Br.ToInstruction(GetFirstInstruction(fallThroughTarget));
+					if (!IsNextBasicBlock(fallThrough, blockContext.Index)) {
+						blockContext.FixupInstruction = OpCodes.Br.ToInstruction(GetFirstInstruction(fallThrough));
 						instructionCount++;
 					}
-					// Checks whether fallthrough fixup should be added.
+					// Checks whether fall through fixup should be added.
 				}
 				// conditional branch
 			}
 
 			var instructions = new List<Instruction>(instructionCount);
-			for (int i = 0; i < _basicBlocks.Count; i++) {
-				var basicBlock = _basicBlocks[i];
+			foreach (var basicBlock in _basicBlocks) {
 				var blockContext = basicBlock.Contexts.Get<BlockContext>(this);
 
 				instructions.AddRange(basicBlock.Instructions);
 				if (basicBlock.IsEmpty || basicBlock.BranchOpcode.Code != Code.Br
-					|| !IsNextBasicBlock(basicBlock.FallThroughTarget ?? throw new InvalidOperationException(), blockContext.Index))
+					|| !IsNextBasicBlock(basicBlock.FallThrough, blockContext.Index))
 					instructions.Add(blockContext.BranchInstruction);
+				// If basic block is empty, we should preserve at least one instruction so we can locate this block.
+				// If branch opcode is br and fall through is next basic block, we can skip writing br instruction.
 				if (!(blockContext.FixupInstruction is null))
 					instructions.Add(blockContext.FixupInstruction);
+				// If it is conditional branch and fall through is not next basic block, we should add a br instruction.
 			}
 
 #if DEBUG
@@ -151,11 +143,11 @@ namespace Zexil.DotNet.ControlFlow {
 		}
 
 		private ExceptionHandler GetExceptionHandler(TryBlock tryBlock, HandlerBlock handlerBlock) {
-			var tryStart = tryBlock.FirstBlock.GetFirstBasicBlock();
-			var tryEnd = GetNextBasicBlock(tryBlock.LastBlock.GetLastBasicBlock()) ?? throw new InvalidOperationException();
-			var filterStart = handlerBlock.Filter?.FirstBlock.GetFirstBasicBlock();
-			var handlerStart = handlerBlock.FirstBlock.GetFirstBasicBlock();
-			var handlerEnd = GetNextBasicBlock(handlerBlock.LastBlock.GetLastBasicBlock());
+			var tryStart = tryBlock.FirstBlock.First();
+			var tryEnd = GetNextBasicBlock(tryBlock.LastBlock.Last()) ?? throw new InvalidOperationException();
+			var filterStart = handlerBlock.Filter?.FirstBlock.First();
+			var handlerStart = handlerBlock.FirstBlock.First();
+			var handlerEnd = GetNextBasicBlock(handlerBlock.LastBlock.Last());
 
 			return new ExceptionHandler() {
 				TryStart = GetFirstInstruction(tryStart),
@@ -172,16 +164,16 @@ namespace Zexil.DotNet.ControlFlow {
 			var locals = new List<Local>();
 			foreach (var instruction in instructions) {
 				switch (instruction.OpCode.Code) {
-					case Code.Ldloc:
-					case Code.Ldloca:
-					case Code.Stloc: {
-						var local = (Local)instruction.Operand;
-						if (local is null)
-							Debug.Assert(false);
-						else if (!locals.Contains(local))
-							locals.Add(local);
-						break;
-					}
+				case Code.Ldloc:
+				case Code.Ldloca:
+				case Code.Stloc: {
+					var local = (Local)instruction.Operand;
+					if (local is null)
+						Debug.Assert(false);
+					else if (!locals.Contains(local))
+						locals.Add(local);
+					break;
+				}
 				}
 			}
 			return locals;
@@ -189,7 +181,7 @@ namespace Zexil.DotNet.ControlFlow {
 
 		private bool IsNextBasicBlock(BasicBlock basicBlock, int index) {
 			index += 1;
-			return index != _basicBlocks.Count ? _basicBlocks[index] == basicBlock : false;
+			return index != _basicBlocks.Count && _basicBlocks[index] == basicBlock;
 		}
 
 		private BasicBlock? GetNextBasicBlock(BasicBlock basicBlock) {

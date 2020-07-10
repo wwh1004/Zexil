@@ -90,7 +90,7 @@ namespace Zexil.DotNet.ControlFlow {
 	/// </summary>
 	public abstract class Block {
 		private BlockFlags _flags;
-		private Block? _scope;
+		private ScopeBlock? _scope;
 		private readonly BlockContexts _contexts;
 
 		/// <summary>
@@ -114,11 +114,16 @@ namespace Zexil.DotNet.ControlFlow {
 		}
 
 		/// <summary>
-		/// Scope block of current block
+		/// Returns scope and throws if null
 		/// </summary>
-		public Block? Scope {
+		public ScopeBlock Scope => ScopeNoThrow ?? throw new ArgumentNullException(nameof(ScopeNoThrow));
+
+		/// <summary>
+		/// Returns scope of current block
+		/// </summary>
+		public ScopeBlock? ScopeNoThrow {
 			get => _scope;
-			internal set => _scope = value;
+			set => _scope = value;
 		}
 
 		/// <summary>
@@ -128,7 +133,7 @@ namespace Zexil.DotNet.ControlFlow {
 
 		/// <inheritdoc />
 		public override string ToString() {
-			return BlockPrinter.ToString_ThreadSafe(this);
+			return BlockFormatter.Format(this);
 		}
 	}
 
@@ -138,9 +143,9 @@ namespace Zexil.DotNet.ControlFlow {
 	public sealed class BasicBlock : Block {
 		private readonly List<Instruction> _instructions;
 		private OpCode _branchOpcode;
-		private BasicBlock? _fallThroughTarget;
-		private BasicBlock? _conditionalTarget;
-		private SwitchTargetList? _switchTargets;
+		private BasicBlock? _fallThrough;
+		private BasicBlock? _condTarget;
+		private TargetList? _switchTargets;
 		private readonly Dictionary<BasicBlock, int> _predecessors;
 		private readonly Dictionary<BasicBlock, int> _successors;
 #if DEBUG
@@ -169,25 +174,40 @@ namespace Zexil.DotNet.ControlFlow {
 		}
 
 		/// <summary>
-		/// Returns fallthrough basic block of current basic block
+		/// Returns fall through and throws if null
 		/// </summary>
-		public BasicBlock? FallThroughTarget {
-			get => _fallThroughTarget;
-			set => _fallThroughTarget = UpdateReferences(_fallThroughTarget, value);
+		public BasicBlock FallThrough => FallThroughNoThrow ?? throw new ArgumentNullException(nameof(FallThroughNoThrow));
+
+		/// <summary>
+		/// Returns fall through of current basic block
+		/// </summary>
+		public BasicBlock? FallThroughNoThrow {
+			get => _fallThrough;
+			set => _fallThrough = UpdateReferences(_fallThrough, value);
 		}
 
 		/// <summary>
-		/// Returns the conditional basic block of current basic block (jumps into it if condition is true)
+		/// Returns conditional target and throws if null
 		/// </summary>
-		public BasicBlock? ConditionalTarget {
-			get => _conditionalTarget;
-			set => _conditionalTarget = UpdateReferences(_conditionalTarget, value);
+		public BasicBlock CondTarget => CondTargetNoThrow ?? throw new ArgumentNullException(nameof(CondTargetNoThrow));
+
+		/// <summary>
+		/// Returns the conditional branch of current basic block (jumps into it if condition is true)
+		/// </summary>
+		public BasicBlock? CondTargetNoThrow {
+			get => _condTarget;
+			set => _condTarget = UpdateReferences(_condTarget, value);
 		}
 
 		/// <summary>
-		/// Returns switch target basic block of current basic block
+		/// Returns switch targets and throws if null
 		/// </summary>
-		public SwitchTargetList? SwitchTargets {
+		public TargetList SwitchTargets => SwitchTargetsNoThrow ?? throw new ArgumentNullException(nameof(SwitchTargetsNoThrow));
+
+		/// <summary>
+		/// Returns switch targets of current basic block
+		/// </summary>
+		public TargetList? SwitchTargetsNoThrow {
 			get => _switchTargets;
 			set {
 				if (value is null) {
@@ -221,7 +241,7 @@ namespace Zexil.DotNet.ControlFlow {
 		/// Constructor
 		/// </summary>
 		/// <param name="instructions">Instructions in current basic block excluding branch instruction</param>
-		public BasicBlock(IEnumerable<Instruction> instructions) : this(instructions, OpCodes.Nop) {
+		public BasicBlock(IEnumerable<Instruction> instructions) : this(instructions, OpCodes.Ret) {
 		}
 
 		/// <summary>
