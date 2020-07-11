@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using dnlib.DotNet.Emit;
 
-namespace Zexil.DotNet.ControlFlow {
+namespace Zexil.DotNet.FlowAnalysis {
 	/// <summary>
 	/// Blocks to instructions converter
 	/// </summary>

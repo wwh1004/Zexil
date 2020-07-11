@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 
-namespace Zexil.DotNet.ControlFlow {
+namespace Zexil.DotNet.FlowAnalysis {
 	/// <summary>
 	/// Represents a block context
 	/// </summary>

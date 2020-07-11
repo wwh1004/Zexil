@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using dnlib.DotNet.Emit;
 
-namespace Zexil.DotNet.ControlFlow {
+namespace Zexil.DotNet.FlowAnalysis {
 	/// <summary>
 	/// Block cleaner
 	/// </summary>

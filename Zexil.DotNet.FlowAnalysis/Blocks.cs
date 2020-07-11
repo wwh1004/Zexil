@@ -4,7 +4,7 @@ using System.Diagnostics;
 using dnlib.DotNet;
 using dnlib.DotNet.Emit;
 
-namespace Zexil.DotNet.ControlFlow {
+namespace Zexil.DotNet.FlowAnalysis {
 	/// <summary>
 	/// Block type
 	/// </summary>

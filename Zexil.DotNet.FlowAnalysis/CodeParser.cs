@@ -4,7 +4,7 @@ using System.Linq;
 using dnlib.DotNet;
 using dnlib.DotNet.Emit;
 
-namespace Zexil.DotNet.ControlFlow {
+namespace Zexil.DotNet.FlowAnalysis {
 	/// <summary>
 	/// Instructions to blocks converter
 	/// </summary>

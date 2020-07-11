@@ -2,7 +2,7 @@ using System;
 using System.Linq;
 using dnlib.DotNet.Emit;
 
-namespace Zexil.DotNet.ControlFlow {
+namespace Zexil.DotNet.FlowAnalysis {
 	/// <summary>
 	/// Block inliner
 	/// </summary>
@@ -19,6 +19,8 @@ namespace Zexil.DotNet.ControlFlow {
 			int count = 0;
 			BlockVisitor.VisitAll(methodBlock, onBlockEnter: b => {
 				if (b is BasicBlock basicBlock) {
+					if ((basicBlock.Flags & BlockFlags.NoInlining) == BlockFlags.NoInlining)
+						return false;
 					if (basicBlock.IsEmpty && basicBlock.BranchOpcode.Code == Code.Br) {
 						// If basic block is empty and branch opcode is br, we can redirect targets.
 						var fallThrough = basicBlock.FallThrough;
@@ -36,11 +38,13 @@ namespace Zexil.DotNet.ControlFlow {
 								}
 							}
 						}
+						basicBlock.BranchOpcode = OpCodes.Ret;
+						basicBlock.FallThroughNoThrow = null;
 						count++;
 						return true;
 					}
 					else {
-						if ((basicBlock.Flags & BlockFlags.NoInlining) == BlockFlags.NoInlining || basicBlock.Predecessors.Count != 1 || basicBlock == basicBlock.Scope.First())
+						if (basicBlock.Predecessors.Count != 1 || basicBlock == basicBlock.Scope.First())
 							return false;
 						// Can't be inlined if has more than one predecessors or has no predecessor (not used basic block) or basic block is the first in current scope
 						var predecessor = basicBlock.Predecessors.Keys.First();

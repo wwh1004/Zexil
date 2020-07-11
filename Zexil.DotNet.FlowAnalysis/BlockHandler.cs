@@ -1,4 +1,4 @@
-namespace Zexil.DotNet.ControlFlow {
+namespace Zexil.DotNet.FlowAnalysis {
 	/// <summary>
 	/// Block handler
 	/// </summary>

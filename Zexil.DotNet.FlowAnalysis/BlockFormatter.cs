@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using dnlib.DotNet.Emit;
 
-namespace Zexil.DotNet.ControlFlow {
+namespace Zexil.DotNet.FlowAnalysis {
 	/// <summary>
 	/// Block formatter
 	/// </summary>
