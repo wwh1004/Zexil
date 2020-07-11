@@ -108,6 +108,9 @@ namespace Zexil.DotNet.FlowAnalysis {
 		}
 
 		private BasicBlock[] CreateBasicBlocks(bool[] isEntrys, int entryCount) {
+#if DEBUG
+			_instructions.UpdateInstructionOffsets();
+#endif
 			var basicBlocks = new BasicBlock[entryCount];
 			int blockLength = 0;
 			for (int i = isEntrys.Length - 1; i >= 0; i--) {

@@ -47,12 +47,7 @@ namespace Zexil.DotNet.FlowAnalysis {
 		/// <summary>
 		/// Method block
 		/// </summary>
-		Method,
-
-		/// <summary>
-		/// Block defined by user
-		/// </summary>
-		User
+		Method
 	}
 
 	/// <summary>
@@ -479,18 +474,6 @@ namespace Zexil.DotNet.FlowAnalysis {
 		/// </summary>
 		/// <param name="blocks">Child blocks</param>
 		public MethodBlock(IEnumerable<Block> blocks) : base(blocks, BlockType.Method) {
-		}
-	}
-
-	/// <summary>
-	/// User block
-	/// </summary>
-	public abstract class UserBlock : ScopeBlock {
-		/// <summary>
-		/// Constructor
-		/// </summary>
-		/// <param name="blocks">Child blocks</param>
-		protected UserBlock(IEnumerable<Block> blocks) : base(blocks, BlockType.User) {
 		}
 	}
 }

@@ -124,6 +124,65 @@ namespace Zexil.DotNet.FlowAnalysis {
 		}
 
 		/// <summary>
+		/// Enumerates blocks by type
+		/// </summary>
+		/// <typeparam name="TBlock"></typeparam>
+		/// <param name="scopeBlock"></param>
+		/// <returns></returns>
+		public static IEnumerable<TBlock> Enumerate<TBlock>(this ScopeBlock scopeBlock) where TBlock : Block {
+			if (scopeBlock is null)
+				throw new ArgumentNullException(nameof(scopeBlock));
+
+			return EnumerateCore<TBlock>(scopeBlock.Blocks);
+		}
+
+		/// <summary>
+		/// Enumerates blocks by type
+		/// </summary>
+		/// <typeparam name="TBlock"></typeparam>
+		/// <param name="blocks"></param>
+		/// <returns></returns>
+		public static IEnumerable<TBlock> Enumerate<TBlock>(this IEnumerable<Block> blocks) where TBlock : Block {
+			if (blocks is null)
+				throw new ArgumentNullException(nameof(blocks));
+
+			return EnumerateCore<TBlock>(blocks);
+		}
+
+		private static IEnumerable<TBlock> EnumerateCore<TBlock>(IEnumerable<Block> blocks) where TBlock : Block {
+			foreach (var block in blocks) {
+				if (block is BasicBlock basicBlock) {
+					if (block is TBlock t1)
+						yield return t1;
+				}
+				else if (block is TryBlock tryBlock) {
+					if (block is TBlock t1)
+						yield return t1;
+					foreach (var t2 in EnumerateCore<TBlock>(tryBlock.Blocks))
+						yield return t2;
+					foreach (var t3 in EnumerateCore<TBlock>(tryBlock.Handlers))
+						yield return t3;
+				}
+				else if (block is HandlerBlock handlerBlock) {
+					if (!(handlerBlock.Filter is null)) {
+						foreach (var t1 in EnumerateCore<TBlock>(handlerBlock.Filter.Blocks))
+							yield return t1;
+					}
+					if (block is TBlock t2)
+						yield return t2;
+					foreach (var t3 in EnumerateCore<TBlock>(handlerBlock.Blocks))
+						yield return t3;
+				}
+				else {
+					if (block is TBlock t1)
+						yield return t1;
+					foreach (var t2 in EnumerateCore<TBlock>(((ScopeBlock)block).Blocks))
+						yield return t2;
+				}
+			}
+		}
+
+		/// <summary>
 		/// Adds items to a list
 		/// </summary>
 		/// <typeparam name="T"></typeparam>

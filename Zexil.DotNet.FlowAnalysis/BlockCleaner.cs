@@ -60,19 +60,7 @@ namespace Zexil.DotNet.FlowAnalysis {
 				throw new ArgumentNullException(nameof(methodBlock));
 
 			var isVisiteds = new HashSet<Block>();
-			VisitAllSuccessors(methodBlock.First());
-			BlockVisitor.VisitAll(methodBlock, onBlockEnter: b => {
-				if (!(b is TryBlock tryBlock) || !isVisiteds.Contains(tryBlock))
-					return false;
-
-				foreach (var handlerBlock in tryBlock.Handlers) {
-					if (!(handlerBlock.Filter is null))
-						VisitAllSuccessors(handlerBlock.Filter.First());
-					VisitAllSuccessors(handlerBlock.First());
-				}
-				return false;
-			});
-
+			VisitSuccessors(methodBlock.First(), isVisiteds);
 			int count = 0;
 			BlockVisitor.VisitAll(methodBlock, onBlockEnter: b => {
 				if (!(b is ScopeBlock scopeBlock))
@@ -92,28 +80,37 @@ namespace Zexil.DotNet.FlowAnalysis {
 			});
 			return count;
 
-			void VisitAllSuccessors(BasicBlock basicBlock) {
+			static void VisitSuccessors(BasicBlock basicBlock, HashSet<Block> isVisiteds) {
 				if (!isVisiteds.Add(basicBlock))
 					return;
-				VisitAllSuccessorsCore(basicBlock);
+				VisitSuccessorsCore(basicBlock, isVisiteds);
 			}
 
-			void VisitAllSuccessorsCore(BasicBlock basicBlock) {
-				EnsureScopeVisited(basicBlock);
+			static void VisitSuccessorsCore(BasicBlock basicBlock, HashSet<Block> isVisiteds) {
+				VisitScope(basicBlock, isVisiteds);
 				foreach (var successor in basicBlock.Successors) {
 					if (!isVisiteds.Add(successor.Key))
 						continue;
-					VisitAllSuccessorsCore(successor.Key);
+					VisitSuccessorsCore(successor.Key, isVisiteds);
 				}
 			}
 
-			void EnsureScopeVisited(Block block) {
-				if (block is MethodBlock)
-					return;
-				var scope = block.Scope;
-				if (!isVisiteds.Add(scope))
-					return;
-				EnsureScopeVisited(scope);
+			static void VisitScope(Block block, HashSet<Block> isVisiteds) {
+				while (true) {
+					if (block is MethodBlock)
+						break;
+					var scope = block.Scope;
+					if (!isVisiteds.Add(scope))
+						break;
+					if (scope is TryBlock tryBlock) {
+						foreach (var handler in tryBlock.Handlers) {
+							if (!(handler.Filter is null))
+								VisitSuccessors(handler.Filter.First(), isVisiteds);
+							VisitSuccessors(handler.First(), isVisiteds);
+						}
+					}
+					block = scope;
+				}
 			}
 		}
 	}

@@ -82,11 +82,6 @@ namespace Zexil.DotNet.FlowAnalysis {
 				VisitAllCore(methodBlock.Blocks);
 				OnBlockLeave(block);
 			}
-			else if (block is UserBlock userBlock) {
-				OnBlockEnter(block);
-				VisitAllCore(userBlock.Blocks);
-				OnBlockLeave(block);
-			}
 			else {
 				throw new InvalidOperationException();
 			}
