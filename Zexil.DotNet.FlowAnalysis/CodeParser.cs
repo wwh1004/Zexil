@@ -25,6 +25,7 @@ namespace Zexil.DotNet.FlowAnalysis {
 
 		/// <summary>
 		/// Converts instructions into a method block
+		/// NOTICE: Please call <see cref="CilBody.SimplifyMacros"/> first!
 		/// </summary>
 		/// <param name="instructions"></param>
 		/// <param name="exceptionHandlers"></param>

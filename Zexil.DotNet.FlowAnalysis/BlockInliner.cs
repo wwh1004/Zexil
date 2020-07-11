@@ -78,11 +78,11 @@ namespace Zexil.DotNet.FlowAnalysis {
 						fallThrough = fallThrough.FallThrough;
 					} while (fallThrough.IsEmpty && fallThrough.BranchOpcode.Code == Code.Br && fallThrough.Scope == scopeBlock);
 					// Gets final target basic block
-					var fallThroughRoot = fallThrough.GetRoot(scopeBlock);
-					// Gets root of which scope is scopeBlock
+					var fallThroughParent = fallThrough.GetParent(scopeBlock);
+					// Gets parent of which scope is scopeBlock
 
-					int index = blocks.IndexOf(fallThroughRoot);
-					blocks[0] = fallThroughRoot;
+					int index = blocks.IndexOf(fallThroughParent);
+					blocks[0] = fallThroughParent;
 					blocks[index] = first;
 					// Exchanges index
 					return true;

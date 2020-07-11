@@ -10,7 +10,7 @@ namespace Zexil.DotNet.FlowAnalysis {
 	public static class Extensions {
 		/// <summary>
 		/// Creates method block from methodDef.
-		/// NOTICE: <see cref="CilBody.SimplifyMacros"/> will be called!!!
+		/// NOTICE: <see cref="CilBody.SimplifyMacros"/> will be called!
 		/// </summary>
 		/// <param name="methodDef"></param>
 		/// <returns></returns>
@@ -37,20 +37,12 @@ namespace Zexil.DotNet.FlowAnalysis {
 			if (body is null)
 				throw new InvalidOperationException();
 			CodeGenerator.Generate(methodBlock, out var instructions, out var exceptionHandlers, out var locals);
-			ReplaceList(instructions, body.Instructions);
-			ReplaceList(exceptionHandlers, body.ExceptionHandlers);
-			ReplaceList(locals, body.Variables);
-
-			static void ReplaceList<T>(IList<T> source, IList<T> destination) {
-				destination.Clear();
-				if (destination is List<T> destination2) {
-					destination2.AddRange(source);
-				}
-				else {
-					foreach (var item in source)
-						destination.Add(item);
-				}
-			}
+			body.Instructions.Clear();
+			body.Instructions.AddRange(instructions);
+			body.ExceptionHandlers.Clear();
+			body.ExceptionHandlers.AddRange(exceptionHandlers);
+			body.Variables.Clear();
+			body.Variables.AddRange(locals);
 		}
 
 		/// <summary>
@@ -92,12 +84,12 @@ namespace Zexil.DotNet.FlowAnalysis {
 		}
 
 		/// <summary>
-		/// Gets block's root of which scope is <paramref name="scope"/>
+		/// Gets block's parent of which scope is <paramref name="scope"/> and throws if null
 		/// </summary>
 		/// <param name="block"></param>
 		/// <param name="scope"></param>
 		/// <returns></returns>
-		public static Block GetRoot(this Block block, ScopeBlock scope) {
+		public static Block GetParent(this Block block, ScopeBlock scope) {
 			if (block is null)
 				throw new ArgumentNullException(nameof(block));
 			if (scope is null)
@@ -110,22 +102,45 @@ namespace Zexil.DotNet.FlowAnalysis {
 		}
 
 		/// <summary>
-		/// Adds instructions to a list
+		/// Gets block's parent of which scope is <paramref name="scope"/>
 		/// </summary>
-		/// <param name="instructions"></param>
+		/// <param name="block"></param>
+		/// <param name="scope"></param>
+		/// <returns></returns>
+		public static Block? GetParentNoThrow(this Block block, ScopeBlock scope) {
+			if (block is null)
+				throw new ArgumentNullException(nameof(block));
+			if (scope is null)
+				throw new ArgumentNullException(nameof(scope));
+
+			var root = block;
+			while (root.ScopeNoThrow != scope) {
+				if (root is MethodBlock)
+					return null;
+				else
+					root = root.Scope;
+			}
+			return root;
+		}
+
+		/// <summary>
+		/// Adds items to a list
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="list"></param>
 		/// <param name="collection"></param>
-		public static void AddRange(this IList<Instruction> instructions, IEnumerable<Instruction> collection) {
-			if (instructions is null)
-				throw new ArgumentNullException(nameof(instructions));
+		public static void AddRange<T>(this IList<T> list, IEnumerable<T> collection) {
+			if (list is null)
+				throw new ArgumentNullException(nameof(list));
 			if (collection is null)
 				throw new ArgumentNullException(nameof(collection));
 
-			if (instructions is List<Instruction> list) {
-				list.AddRange(collection);
+			if (list is List<T> list2) {
+				list2.AddRange(collection);
 			}
 			else {
 				foreach (var instruction in collection)
-					instructions.Add(instruction);
+					list.Add(instruction);
 			}
 		}
 	}
