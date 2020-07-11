@@ -32,10 +32,7 @@ namespace Zexil.DotNet.FlowAnalysis {
 				throw new ArgumentNullException(nameof(block));
 
 			int count = 0;
-			BlockVisitor.VisitAll(block, onBlockEnter: b => {
-				if (!(b is BasicBlock basicBlock))
-					return false;
-
+			foreach (var basicBlock in block.Enumerate<BasicBlock>()) {
 				int c = 0;
 				var instructions = basicBlock.Instructions;
 				for (int i = 0; i < instructions.Count; i++) {
@@ -45,8 +42,7 @@ namespace Zexil.DotNet.FlowAnalysis {
 						instructions[i - c] = instructions[i];
 				}
 				count += c;
-				return false;
-			});
+			}
 			return count;
 		}
 
@@ -62,10 +58,7 @@ namespace Zexil.DotNet.FlowAnalysis {
 			var isVisiteds = new HashSet<Block>();
 			VisitSuccessors(methodBlock.First(), isVisiteds);
 			int count = 0;
-			BlockVisitor.VisitAll(methodBlock, onBlockEnter: b => {
-				if (!(b is ScopeBlock scopeBlock))
-					return false;
-
+			foreach (var scopeBlock in methodBlock.Enumerate<ScopeBlock>()) {
 				int c = 0;
 				var blocks = scopeBlock.Blocks;
 				for (int i = 0; i < blocks.Count; i++) {
@@ -76,8 +69,7 @@ namespace Zexil.DotNet.FlowAnalysis {
 				}
 				((List<Block>)blocks).RemoveRange(blocks.Count - c, c);
 				count += c;
-				return c != 0;
-			});
+			}
 			return count;
 
 			static void VisitSuccessors(BasicBlock basicBlock, HashSet<Block> isVisiteds) {

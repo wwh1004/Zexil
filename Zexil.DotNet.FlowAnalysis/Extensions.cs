@@ -124,20 +124,25 @@ namespace Zexil.DotNet.FlowAnalysis {
 		}
 
 		/// <summary>
-		/// Enumerates blocks by type
+		/// Enumerates blocks by type (like call <see cref="BlockVisitor.Visit(Block, BlockHandler?, BlockHandler?)"/> and pass 'onBlockEnter' argument)
 		/// </summary>
 		/// <typeparam name="TBlock"></typeparam>
-		/// <param name="scopeBlock"></param>
+		/// <param name="block"></param>
 		/// <returns></returns>
-		public static IEnumerable<TBlock> Enumerate<TBlock>(this ScopeBlock scopeBlock) where TBlock : Block {
-			if (scopeBlock is null)
-				throw new ArgumentNullException(nameof(scopeBlock));
+		public static IEnumerable<TBlock> Enumerate<TBlock>(this Block block) where TBlock : Block {
+			if (block is null)
+				throw new ArgumentNullException(nameof(block));
 
-			return EnumerateCore<TBlock>(scopeBlock.Blocks);
+			if (block is TBlock t1)
+				yield return t1;
+			if (block is ScopeBlock scopeBlock) {
+				foreach (var t2 in EnumerateCore<TBlock>(scopeBlock.Blocks))
+					yield return t2;
+			}
 		}
 
 		/// <summary>
-		/// Enumerates blocks by type
+		/// Enumerates blocks by type (like call <see cref="BlockVisitor.Visit(IEnumerable{Block}, BlockHandler?, BlockHandler?)"/> and pass 'onBlockEnter' argument)
 		/// </summary>
 		/// <typeparam name="TBlock"></typeparam>
 		/// <param name="blocks"></param>

@@ -16,14 +16,10 @@ namespace Zexil.DotNet.FlowAnalysis {
 				throw new ArgumentNullException(nameof(methodBlock));
 
 			object contextKey = new object();
-			var emptyContext = new BlockContext();
-			// If basic block has no any successors, we set empty context to reduce memory usage.
-			BlockVisitor.VisitAll(methodBlock, onBlockEnter: b => {
-				if (!(b is BasicBlock basicBlock))
-					return false;
-				if(basicBlock.Successors.Count == 0) {
-					basicBlock.Contexts.Set(contextKey, emptyContext);
-					return false;
+			foreach (var basicBlock in methodBlock.Enumerate<BasicBlock>()) {
+				if (basicBlock.Successors.Count == 0) {
+					basicBlock.Contexts.Set(contextKey, BlockContext.Empty);
+					continue;
 				}
 
 				var block = (Block)basicBlock;
@@ -53,7 +49,6 @@ namespace Zexil.DotNet.FlowAnalysis {
 
 					block = block.Scope;
 				} while (!flag && !(block is MethodBlock));
-				return false;
 
 				static bool AddTarget(List<Block> targets, ScopeBlock scope, BasicBlock? target) {
 					if (target is null)
@@ -66,12 +61,9 @@ namespace Zexil.DotNet.FlowAnalysis {
 						targets.Add(parent);
 					return true;
 				}
-			});
+			}
 
-			BlockVisitor.VisitAll(methodBlock, onBlockEnter: b => {
-				if (!(b is ScopeBlock scopeBlock))
-					return false;
-
+			foreach (var scopeBlock in methodBlock.Enumerate<ScopeBlock>()) {
 				var blocks = scopeBlock.Blocks;
 				var stack = new Stack<Block>();
 				stack.Push(blocks[0]);
@@ -86,11 +78,12 @@ namespace Zexil.DotNet.FlowAnalysis {
 					for (int i = targetCount - 1; i >= 0; i--)
 						stack.Push(context.Targets[i]);
 				} while (index != blocks.Count);
-				return false;
-			});
+			}
 		}
 
 		private sealed class BlockContext : IBlockContext {
+			public static readonly BlockContext Empty = new BlockContext();
+			// If basic block has no any successors, we set empty context to reduce memory usage.
 			public List<Block> Targets = new List<Block>();
 		}
 	}

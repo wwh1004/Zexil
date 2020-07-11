@@ -46,13 +46,20 @@ namespace Zexil.DotNet.FlowAnalysis {
 
 			var formatter = new BlockFormatter();
 #if !DEBUG
-			BlockVisitor.VisitAll(block, onBlockEnter: formatter.OnBlockEnter_SetBlockId);
+			formatter.SetBlockIds(block);
 #endif
-			BlockVisitor.VisitAll(block, formatter.OnBlockEnter, formatter.OnBlockLeave);
+			BlockVisitor.Visit(block, formatter.OnBlockEnter, formatter.OnBlockLeave);
 			return formatter._buffer.ToString();
 		}
 
-		private bool OnBlockEnter(Block block) {
+		private void SetBlockIds(Block block) {
+			foreach (var b in block.Enumerate<Block>()) {
+				if (b is BasicBlock basicBlock)
+					_blockIds[basicBlock] = _currentBlockId++;
+			}
+		}
+
+		private int OnBlockEnter(Block block) {
 			if (block is BasicBlock basicBlock) {
 				if (_newLine)
 					AppendLine();
@@ -136,22 +143,22 @@ namespace Zexil.DotNet.FlowAnalysis {
 			else {
 				throw new InvalidOperationException();
 			}
-			return false;
+			return 0;
 		}
 
-		private bool OnBlockLeave(Block block) {
+		private int OnBlockLeave(Block block) {
 			if (block is ScopeBlock) {
 				_indent -= 2;
 				AppendLine("}");
 				_newLine = true;
 			}
-			return false;
+			return 0;
 		}
 
-		private bool OnBlockEnter_SetBlockId(Block block) {
+		private int OnBlockEnter_SetBlockId(Block block) {
 			if (block is BasicBlock basicBlock)
 				_blockIds[basicBlock] = _currentBlockId++;
-			return false;
+			return 0;
 		}
 
 		private string FormatBlockId(BasicBlock basicBlock) {

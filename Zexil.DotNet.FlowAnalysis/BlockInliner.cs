@@ -17,10 +17,10 @@ namespace Zexil.DotNet.FlowAnalysis {
 				throw new ArgumentNullException(nameof(methodBlock));
 
 			int count = 0;
-			BlockVisitor.VisitAll(methodBlock, onBlockEnter: b => {
-				if (b is BasicBlock basicBlock) {
+			foreach (var block in methodBlock.Enumerate<Block>()) {
+				if (block is BasicBlock basicBlock) {
 					if ((basicBlock.Flags & BlockFlags.NoInlining) == BlockFlags.NoInlining)
-						return false;
+						continue;
 					if (basicBlock.IsEmpty && basicBlock.BranchOpcode.Code == Code.Br) {
 						// If basic block is empty and branch opcode is br, we can redirect targets.
 						var fallThrough = basicBlock.FallThrough;
@@ -41,15 +41,14 @@ namespace Zexil.DotNet.FlowAnalysis {
 						basicBlock.BranchOpcode = OpCodes.Ret;
 						basicBlock.FallThroughNoThrow = null;
 						count++;
-						return true;
 					}
 					else {
 						if (basicBlock.Predecessors.Count != 1 || basicBlock == basicBlock.Scope.First())
-							return false;
+							continue;
 						// Can't be inlined if has more than one predecessors or has no predecessor (not used basic block) or basic block is the first in current scope
 						var predecessor = basicBlock.Predecessors.Keys.First();
 						if (predecessor.BranchOpcode.Code != Code.Br || predecessor.Scope != basicBlock.Scope)
-							return false;
+							continue;
 						// Only br basic block and in the same scope then we can inline.
 
 						predecessor.Instructions.AddRange(basicBlock.Instructions);
@@ -64,13 +63,12 @@ namespace Zexil.DotNet.FlowAnalysis {
 						basicBlock.SwitchTargetsNoThrow = null;
 						predecessor.SwitchTargetsNoThrow = switchTargets;
 						count++;
-						return true;
 					}
 				}
-				else if (b is ScopeBlock scopeBlock) {
+				else if (block is ScopeBlock scopeBlock) {
 					// We should fix entry if first basic block is empty.
 					if (!(scopeBlock.FirstBlock is BasicBlock first) || !first.IsEmpty || first.BranchOpcode.Code != Code.Br)
-						return false;
+						continue;
 
 					var blocks = scopeBlock.Blocks;
 					var fallThrough = first;
@@ -85,12 +83,8 @@ namespace Zexil.DotNet.FlowAnalysis {
 					blocks[0] = fallThroughParent;
 					blocks[index] = first;
 					// Exchanges index
-					return true;
 				}
-				else {
-					return false;
-				}
-			});
+			}
 			return count;
 		}
 	}

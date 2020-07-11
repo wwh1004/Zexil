@@ -3,12 +3,12 @@ using System.Collections.Generic;
 
 namespace Zexil.DotNet.FlowAnalysis {
 	/// <summary>
-	/// Block visitor
+	/// Block visitor (more customizable than <see cref="Extensions.Enumerate{TBlock}(Block)"/> and <see cref="Extensions.Enumerate{TBlock}(IEnumerable{Block})"/>)
 	/// </summary>
 	public sealed class BlockVisitor {
 		private readonly BlockHandler? _onBlockEnter;
 		private readonly BlockHandler? _onBlockLeave;
-		private bool _isModified;
+		private int _count;
 
 		private BlockVisitor(BlockHandler? onBlockEnter, BlockHandler? onBlockLeave) {
 			_onBlockEnter = onBlockEnter;
@@ -22,10 +22,10 @@ namespace Zexil.DotNet.FlowAnalysis {
 		/// <param name="onBlockEnter">Called when enters a block</param>
 		/// <param name="onBlockLeave">Called when leaves a block</param>
 		/// <returns></returns>
-		public static bool VisitAll(IEnumerable<Block> blocks, BlockHandler? onBlockEnter = null, BlockHandler? onBlockLeave = null) {
+		public static int Visit(IEnumerable<Block> blocks, BlockHandler? onBlockEnter = null, BlockHandler? onBlockLeave = null) {
 			var visitor = new BlockVisitor(onBlockEnter, onBlockLeave);
-			visitor.VisitAllCore(blocks);
-			return visitor._isModified;
+			visitor.VisitCore(blocks);
+			return visitor._count;
 		}
 
 		/// <summary>
@@ -35,21 +35,21 @@ namespace Zexil.DotNet.FlowAnalysis {
 		/// <param name="onBlockEnter">Called when enters a block</param>
 		/// <param name="onBlockLeave">Called when leaves a block</param>
 		/// <returns></returns>
-		public static bool VisitAll(Block block, BlockHandler? onBlockEnter = null, BlockHandler? onBlockLeave = null) {
+		public static int Visit(Block block, BlockHandler? onBlockEnter = null, BlockHandler? onBlockLeave = null) {
 			var visitor = new BlockVisitor(onBlockEnter, onBlockLeave);
-			visitor.VisitAllCore(block);
-			return visitor._isModified;
+			visitor.VisitCore(block);
+			return visitor._count;
 		}
 
-		private void VisitAllCore(IEnumerable<Block> blocks) {
+		private void VisitCore(IEnumerable<Block> blocks) {
 			if (blocks is null)
 				throw new ArgumentNullException(nameof(blocks));
 
 			foreach (var block in blocks)
-				VisitAllCore(block);
+				VisitCore(block);
 		}
 
-		private void VisitAllCore(Block block) {
+		private void VisitCore(Block block) {
 			if (block is null)
 				throw new ArgumentNullException(nameof(block));
 
@@ -59,27 +59,27 @@ namespace Zexil.DotNet.FlowAnalysis {
 			}
 			else if (block is TryBlock tryBlock) {
 				OnBlockEnter(block);
-				VisitAllCore(tryBlock.Blocks);
+				VisitCore(tryBlock.Blocks);
 				OnBlockLeave(block);
 
-				VisitAllCore(tryBlock.Handlers);
+				VisitCore(tryBlock.Handlers);
 			}
 			else if (block is FilterBlock filterBlock) {
 				OnBlockEnter(block);
-				VisitAllCore(filterBlock.Blocks);
+				VisitCore(filterBlock.Blocks);
 				OnBlockLeave(block);
 			}
 			else if (block is HandlerBlock handlerBlock) {
 				if (!(handlerBlock.Filter is null))
-					VisitAllCore(handlerBlock.Filter);
+					VisitCore(handlerBlock.Filter);
 
 				OnBlockEnter(block);
-				VisitAllCore(handlerBlock.Blocks);
+				VisitCore(handlerBlock.Blocks);
 				OnBlockLeave(block);
 			}
 			else if (block is MethodBlock methodBlock) {
 				OnBlockEnter(block);
-				VisitAllCore(methodBlock.Blocks);
+				VisitCore(methodBlock.Blocks);
 				OnBlockLeave(block);
 			}
 			else {
@@ -89,12 +89,12 @@ namespace Zexil.DotNet.FlowAnalysis {
 
 		private void OnBlockEnter(Block block) {
 			if (!(_onBlockEnter is null))
-				_isModified |= _onBlockEnter(block);
+				_count += _onBlockEnter(block);
 		}
 
 		private void OnBlockLeave(Block block) {
 			if (!(_onBlockLeave is null))
-				_isModified |= _onBlockLeave(block);
+				_count += _onBlockLeave(block);
 		}
 	}
 }

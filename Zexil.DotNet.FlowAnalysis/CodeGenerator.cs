@@ -36,7 +36,7 @@ namespace Zexil.DotNet.FlowAnalysis {
 			int index = 0;
 			_basicBlocks = new List<BasicBlock>();
 
-			BlockVisitor.VisitAll(methodBlock, onBlockEnter: block => {
+			foreach (var block in methodBlock.Enumerate<Block>()) {
 				if (block is BasicBlock basicBlock) {
 					basicBlock.Contexts.Set(this, new BlockContext(index, basicBlock.BranchOpcode, lastTryBlocks));
 					_basicBlocks.Add(basicBlock);
@@ -46,8 +46,7 @@ namespace Zexil.DotNet.FlowAnalysis {
 				else if (block is TryBlock tryBlock) {
 					lastTryBlocks.Add(tryBlock);
 				}
-				return false;
-			});
+			}
 		}
 
 		private void Cleanup() {

@@ -4,7 +4,7 @@ namespace Zexil.DotNet.FlowAnalysis {
 	/// </summary>
 	/// <param name="block"></param>
 	/// <returns></returns>
-	public delegate bool BlockHandler(Block block);
+	public delegate int BlockHandler(Block block);
 
 	/// <summary>
 	/// Block handler
@@ -12,5 +12,5 @@ namespace Zexil.DotNet.FlowAnalysis {
 	/// <typeparam name="TBlock"></typeparam>
 	/// <param name="block"></param>
 	/// <returns></returns>
-	public delegate bool BlockHandler<TBlock>(TBlock block) where TBlock : Block;
+	public delegate int BlockHandler<TBlock>(TBlock block) where TBlock : Block;
 }
