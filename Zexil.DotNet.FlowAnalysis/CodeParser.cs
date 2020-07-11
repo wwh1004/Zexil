@@ -1,7 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using dnlib.DotNet;
 using dnlib.DotNet.Emit;
 
 namespace Zexil.DotNet.FlowAnalysis {
@@ -10,17 +8,11 @@ namespace Zexil.DotNet.FlowAnalysis {
 	/// </summary>
 	public sealed class CodeParser {
 		private readonly IList<Instruction> _instructions;
-		private readonly Dictionary<Instruction, int> _instructionMap;
 		private readonly IList<ExceptionHandler> _exceptionHandlers;
-		private EHInfo[] _ehInfos;
-		private int[] _indexRemap;
 
 		private CodeParser(IList<Instruction> instructions, IList<ExceptionHandler> exceptionHandlers) {
 			_instructions = instructions;
-			_instructionMap = Enumerable.Range(0, _instructions.Count).ToDictionary(i => _instructions[i], i => i);
 			_exceptionHandlers = exceptionHandlers;
-			_ehInfos = Array.Empty<EHInfo>();
-			_indexRemap = Array.Empty<int>();
 		}
 
 		/// <summary>
@@ -42,9 +34,11 @@ namespace Zexil.DotNet.FlowAnalysis {
 		}
 
 		private MethodBlock Parse() {
-			int entryCount = AnalyzeEntrys();
-			var basicBlocks = CreateBasicBlocks(entryCount);
-			return CreateMethodBlock(basicBlocks);
+			bool[] isEntrys = AnalyzeEntrys(out int entryCount);
+			var basicBlocks = CreateBasicBlocks(isEntrys, entryCount);
+			var methodBlock = CreateMethodBlock(basicBlocks);
+			_instructions.UpdateInstructionOffsets();
+			return methodBlock;
 		}
 
 		private static bool HasNotSupportedInstruction(IEnumerable<Instruction> instructions) {
@@ -55,118 +49,105 @@ namespace Zexil.DotNet.FlowAnalysis {
 			return false;
 		}
 
-		private int AnalyzeEntrys() {
-			var ehInfos = Enumerable.Range(0, _exceptionHandlers.Count).Select(i => new EHInfo(_exceptionHandlers[i], _instructionMap)).ToArray();
-			_ehInfos = ehInfos;
-			int[] indexRemap = new int[_instructions.Count];
-			_indexRemap = indexRemap;
+		private bool[] AnalyzeEntrys(out int entryCount) {
+			var instructions = _instructions;
+			for (int i = 0; i < instructions.Count; i++)
+				instructions[i].Offset = (uint)i;
+			// Sets index map
+			bool[] isEntrys = new bool[instructions.Count];
 
-			indexRemap[0] = 1;
-			for (int i = 0; i < _instructions.Count; i++) {
-				var instruction = _instructions[i];
+			isEntrys[0] = true;
+			for (int i = 0; i < instructions.Count; i++) {
+				var instruction = instructions[i];
 				switch (instruction.OpCode.FlowControl) {
 				case FlowControl.Branch:
 				case FlowControl.Cond_Branch:
 				case FlowControl.Return:
 				case FlowControl.Throw: {
-					if (i + 1 != _instructions.Count) {
+					if (i + 1 != instructions.Count) {
 						// If current instruction is not the last, then next instruction is a new entry
-						indexRemap[i + 1] = 1;
+						isEntrys[i + 1] = true;
 					}
 					if (instruction.OpCode.OperandType == OperandType.InlineBrTarget) {
 						// branch
-						indexRemap[_instructionMap[(Instruction)instruction.Operand]] = 1;
+						isEntrys[(int)((Instruction)instruction.Operand).Offset] = true;
 					}
 					else if (instruction.OpCode.OperandType == OperandType.InlineSwitch) {
 						// switch
 						foreach (var target in (IEnumerable<Instruction>)instruction.Operand)
-							indexRemap[_instructionMap[target]] = 1;
+							isEntrys[(int)target.Offset] = true;
 					}
 					break;
 				}
 				}
 			}
 
-			foreach (var ehInfo in ehInfos) {
-				indexRemap[ehInfo.TryStart] = 1;
-				if (ehInfo.TryEnd != _instructions.Count)
-					indexRemap[ehInfo.TryEnd] = 1;
+			foreach (var exceptionHandler in _exceptionHandlers) {
+				isEntrys[(int)exceptionHandler.TryStart.Offset] = true;
+				if (!(exceptionHandler.TryEnd is null))
+					isEntrys[(int)exceptionHandler.TryEnd.Offset] = true;
 				// try
-				if (ehInfo.FilterStart != -1)
-					indexRemap[ehInfo.FilterStart] = 1;
+				if (!(exceptionHandler.FilterStart is null))
+					isEntrys[(int)exceptionHandler.FilterStart.Offset] = true;
 				// filter
-				indexRemap[ehInfo.HandlerStart] = 1;
-				if (ehInfo.HandlerEnd != _instructions.Count)
-					indexRemap[ehInfo.HandlerEnd] = 1;
+				isEntrys[(int)exceptionHandler.HandlerStart.Offset] = true;
+				if (!(exceptionHandler.HandlerEnd is null))
+					isEntrys[(int)exceptionHandler.HandlerEnd.Offset] = true;
 				// handler
 			}
 
-			int entryCount = 0;
-			for (int i = 0; i < indexRemap.Length; i++) {
-				if (indexRemap[i] == 1) {
-					indexRemap[i] = entryCount;
+			entryCount = 0;
+			for (int i = 0; i < isEntrys.Length; i++) {
+				if (isEntrys[i]) {
+					instructions[i].Offset = (uint)entryCount;
 					entryCount++;
 				}
-				else {
-					indexRemap[i] = -1;
-				}
 			}
 
-			return entryCount;
+			return isEntrys;
 		}
 
-		private BasicBlock[] CreateBasicBlocks(int entryCount) {
-			int[] indexRemap = _indexRemap;
-			int[] blockLengths = new int[entryCount];
+		private BasicBlock[] CreateBasicBlocks(bool[] isEntrys, int entryCount) {
+			var basicBlocks = new BasicBlock[entryCount];
 			int blockLength = 0;
-			for (int i = indexRemap.Length - 1; i >= 0; i--) {
+			for (int i = isEntrys.Length - 1; i >= 0; i--) {
 				blockLength++;
-				if (indexRemap[i] == -1)
+				if (!isEntrys[i])
 					continue;
 
-				blockLengths[indexRemap[i]] = blockLength;
+				basicBlocks[--entryCount] = new BasicBlock(EnumerateInstructions(_instructions, i, blockLength));
 				blockLength = 0;
+				basicBlocks[entryCount].Instructions[0].Offset = (uint)entryCount;
 			}
+			// Creates basic blocks and sets index map for blocks
 
-			var basicBlocks = new BasicBlock[blockLengths.Length];
-			for (int i = 0; i < indexRemap.Length; i++) {
-				int reIndex = indexRemap[i];
-				if (reIndex != -1)
-					basicBlocks[reIndex] = new BasicBlock(EnumerateInstructions(_instructions, i, blockLengths[reIndex]));
-			}
-
-			for (int i = 0; i < indexRemap.Length; i++) {
-				int reIndex = indexRemap[i];
-				if (reIndex == -1)
-					continue;
-
-				var basicBlock = basicBlocks[reIndex];
-				basicBlocks[reIndex] = basicBlock;
+			for (int i = 0; i < basicBlocks.Length; i++) {
+				var basicBlock = basicBlocks[i];
 				var instructions = basicBlock.Instructions;
 				int lastInstructionIndex = instructions.Count - 1;
 				var lastInstruction = instructions[lastInstructionIndex];
 				switch (lastInstruction.OpCode.FlowControl) {
 				case FlowControl.Branch: {
 					basicBlock.BranchOpcode = lastInstruction.OpCode;
-					basicBlock.FallThroughNoThrow = basicBlocks[indexRemap[_instructionMap[(Instruction)lastInstruction.Operand]]];
+					basicBlock.FallThroughNoThrow = basicBlocks[(int)((Instruction)lastInstruction.Operand).Offset];
 					instructions.RemoveAt(lastInstructionIndex);
 					break;
 				}
 				case FlowControl.Cond_Branch: {
 					basicBlock.BranchOpcode = lastInstruction.OpCode;
-					if (reIndex + 1 == basicBlocks.Length)
+					if (i + 1 == basicBlocks.Length)
 						throw new InvalidMethodException();
-					basicBlock.FallThroughNoThrow = basicBlocks[reIndex + 1];
+					basicBlock.FallThroughNoThrow = basicBlocks[i + 1];
 					if (lastInstruction.OpCode.OperandType == OperandType.InlineBrTarget) {
 						// branch
-						basicBlock.CondTargetNoThrow = basicBlocks[indexRemap[_instructionMap[(Instruction)lastInstruction.Operand]]];
+						basicBlock.CondTargetNoThrow = basicBlocks[(int)((Instruction)lastInstruction.Operand).Offset];
 					}
 					else if (lastInstruction.OpCode.OperandType == OperandType.InlineSwitch) {
 						// switch
 						var switchTargets = (Instruction[])lastInstruction.Operand;
 						basicBlock.SwitchTargetsNoThrow = new TargetList(switchTargets.Length);
 						for (int j = 0; j < switchTargets.Length; j++)
-							basicBlock.SwitchTargetsNoThrow.Add(basicBlocks[indexRemap[_instructionMap[switchTargets[j]]]]);
+							basicBlock.SwitchTargetsNoThrow.Add(basicBlocks[(int)switchTargets[j].Offset]);
 					}
 					else {
 						throw new InvalidOperationException();
@@ -177,9 +158,9 @@ namespace Zexil.DotNet.FlowAnalysis {
 				case FlowControl.Call:
 				case FlowControl.Next: {
 					basicBlock.BranchOpcode = OpCodes.Br;
-					if (reIndex + 1 == basicBlocks.Length)
+					if (i + 1 == basicBlocks.Length)
 						throw new InvalidMethodException();
-					basicBlock.FallThroughNoThrow = basicBlocks[reIndex + 1];
+					basicBlock.FallThroughNoThrow = basicBlocks[i + 1];
 					break;
 				}
 				case FlowControl.Return:
@@ -200,8 +181,8 @@ namespace Zexil.DotNet.FlowAnalysis {
 		}
 
 		private MethodBlock CreateMethodBlock(BasicBlock[] basicBlocks) {
-			var ehInfos = _ehInfos;
-			if (ehInfos.Length == 0) {
+			var exceptionHandlers = _exceptionHandlers;
+			if (exceptionHandlers.Count == 0) {
 				var methodBlock = new MethodBlock(basicBlocks);
 				foreach (var basicBlock in basicBlocks)
 					basicBlock.ScopeNoThrow = methodBlock;
@@ -210,48 +191,38 @@ namespace Zexil.DotNet.FlowAnalysis {
 			else {
 				var blocks = new Block[basicBlocks.Length];
 				Array.Copy(basicBlocks, blocks, blocks.Length);
-
-				foreach (var ehInfo in ehInfos) {
-					ehInfo.TryStart = _indexRemap[ehInfo.TryStart];
-					ehInfo.TryEnd = _indexRemap[ehInfo.TryEnd];
-					if (ehInfo.FilterStart != -1)
-						ehInfo.FilterStart = _indexRemap[ehInfo.FilterStart];
-					ehInfo.HandlerStart = _indexRemap[ehInfo.HandlerStart];
-					ehInfo.HandlerEnd = ehInfo.HandlerEnd != _instructions.Count ? _indexRemap[ehInfo.HandlerEnd] : basicBlocks.Length;
-				}
-				var ehNodes = CreateEHNodes(ehInfos);
+				var ehNodes = CreateEHNodes(exceptionHandlers);
 				FoldEHBlocks(blocks, ehNodes);
-
 				var methodBlock = new MethodBlock(EnumerateNonNullBlocks(blocks, 0, blocks.Length));
 				SetBlockScope(methodBlock.Blocks, methodBlock);
 				return methodBlock;
 			}
 		}
 
-		private static List<EHNode> CreateEHNodes(EHInfo[] ehInfos) {
+		private static List<EHNode> CreateEHNodes(IList<ExceptionHandler> exceptionHandlers) {
 			var ehNodes = new List<EHNode>();
-			foreach (var ehInfo in ehInfos) {
+			foreach (var exceptionHandler in exceptionHandlers) {
 				var owner = default(EHNode);
 				foreach (var node in ehNodes) {
-					if (!node.Infos[0].IsTryEqual(ehInfo))
+					if (!IsTryEqual(node.Values[0], exceptionHandler))
 						continue;
 					owner = node;
 					break;
 				}
 
 				if (owner is null)
-					ehNodes.Add(new EHNode(ehInfo));
+					ehNodes.Add(new EHNode(exceptionHandler));
 				else
-					owner.Infos.Add(ehInfo);
+					owner.Values.Add(exceptionHandler);
 			}
 
 			foreach (var ehNode in ehNodes) {
 				int start = int.MaxValue;
 				int end = int.MinValue;
-				foreach (var ehInfo in ehNode.Infos) {
-					int temp = Math.Min(ehInfo.TryStart, ehInfo.HandlerType == BlockType.Filter ? ehInfo.FilterStart : ehInfo.HandlerStart);
+				foreach (var value in ehNode.Values) {
+					int temp = (int)Math.Min(value.TryStart.Offset, value.HandlerType == ExceptionHandlerType.Filter ? value.FilterStart.Offset : value.HandlerStart.Offset);
 					start = Math.Min(start, temp);
-					temp = Math.Max(ehInfo.TryEnd, ehInfo.HandlerEnd);
+					temp = (int)Math.Max(value.TryEnd.Offset, value.HandlerEnd.Offset);
 					end = Math.Max(end, temp);
 				}
 				ehNode.Start = start;
@@ -269,19 +240,23 @@ namespace Zexil.DotNet.FlowAnalysis {
 			});
 
 			return ehNodes;
+
+			static bool IsTryEqual(ExceptionHandler x, ExceptionHandler y) {
+				return x.TryStart == y.TryStart && x.TryEnd == y.TryEnd;
+			}
 		}
 
 		private static void FoldEHBlocks(Block?[] blocks, List<EHNode> ehNodes) {
 			for (int i = ehNodes.Count - 1; i >= 0; i--) {
 				var ehNode = ehNodes[i];
-				var tryInfo = ehNode.Infos[0];
-				var tryBlock = new TryBlock(EnumerateNonNullBlocks(blocks, tryInfo.TryStart, tryInfo.TryEnd));
-				RemoveBlocks(blocks, tryInfo.TryStart, tryInfo.TryEnd);
-				blocks[tryInfo.TryStart] = tryBlock;
+				var tryValue = ehNode.Values[0];
+				var tryBlock = new TryBlock(EnumerateNonNullBlocks(blocks, (int)tryValue.TryStart.Offset, (int)tryValue.TryEnd.Offset));
+				RemoveBlocks(blocks, (int)tryValue.TryStart.Offset, (int)tryValue.TryEnd.Offset);
+				blocks[(int)tryValue.TryStart.Offset] = tryBlock;
 
-				foreach (var info in ehNode.Infos) {
-					AddHandler(blocks, tryBlock, info);
-					RemoveBlocks(blocks, info.FilterStart != -1 ? info.FilterStart : info.HandlerStart, info.HandlerEnd);
+				foreach (var value in ehNode.Values) {
+					AddHandler(blocks, tryBlock, value);
+					RemoveBlocks(blocks, !(value.FilterStart is null) ? (int)value.FilterStart.Offset : (int)value.HandlerStart.Offset, (int)value.HandlerEnd.Offset);
 				}
 			}
 		}
@@ -291,16 +266,24 @@ namespace Zexil.DotNet.FlowAnalysis {
 				blocks[i] = null;
 		}
 
-		private static void AddHandler(Block?[] blocks, TryBlock tryBlock, EHInfo ehInfo) {
+		private static void AddHandler(Block?[] blocks, TryBlock tryBlock, ExceptionHandler exceptionHandler) {
 			var filterBlock = default(FilterBlock);
-			if (ehInfo.FilterStart != -1)
-				filterBlock = new FilterBlock(EnumerateNonNullBlocks(blocks, ehInfo.FilterStart, ehInfo.HandlerStart));
+			if (!(exceptionHandler.FilterStart is null))
+				filterBlock = new FilterBlock(EnumerateNonNullBlocks(blocks, (int)exceptionHandler.FilterStart.Offset, (int)exceptionHandler.HandlerStart.Offset));
 
+			var handlerType = exceptionHandler.HandlerType switch
+			{
+				ExceptionHandlerType.Catch => BlockType.Catch,
+				ExceptionHandlerType.Filter => BlockType.Filter,
+				ExceptionHandlerType.Finally => BlockType.Finally,
+				ExceptionHandlerType.Fault => BlockType.Fault,
+				_ => throw new ArgumentOutOfRangeException(),
+			};
 			var handlerBlock = new HandlerBlock(
-				EnumerateNonNullBlocks(blocks, ehInfo.HandlerStart, ehInfo.HandlerEnd),
-				ehInfo.HandlerType,
+				EnumerateNonNullBlocks(blocks, (int)exceptionHandler.HandlerStart.Offset, (int)exceptionHandler.HandlerEnd.Offset),
+				handlerType,
 				filterBlock,
-				ehInfo.CatchType
+				exceptionHandler.CatchType
 			);
 			tryBlock.Handlers.Add(handlerBlock);
 		}
@@ -339,47 +322,13 @@ namespace Zexil.DotNet.FlowAnalysis {
 			}
 		}
 
-		private sealed class EHInfo {
-			public int TryStart;
-			public int TryEnd;
-			public int FilterStart;
-			public int HandlerStart;
-			public int HandlerEnd;
-			public readonly ITypeDefOrRef? CatchType;
-			public readonly BlockType HandlerType;
-
-			public EHInfo(ExceptionHandler exceptionHandler, Dictionary<Instruction, int> instructionMap) {
-				TryStart = instructionMap[exceptionHandler.TryStart];
-				TryEnd = !(exceptionHandler.TryEnd is null) ? instructionMap[exceptionHandler.TryEnd] : instructionMap.Count;
-				// try
-				FilterStart = !(exceptionHandler.FilterStart is null) ? instructionMap[exceptionHandler.FilterStart] : -1;
-				// filter
-				HandlerStart = instructionMap[exceptionHandler.HandlerStart];
-				HandlerEnd = !(exceptionHandler.HandlerEnd is null) ? instructionMap[exceptionHandler.HandlerEnd] : instructionMap.Count;
-				// handler
-				CatchType = exceptionHandler.CatchType;
-				HandlerType = exceptionHandler.HandlerType switch
-				{
-					ExceptionHandlerType.Catch => BlockType.Catch,
-					ExceptionHandlerType.Filter => BlockType.Filter,
-					ExceptionHandlerType.Finally => BlockType.Finally,
-					ExceptionHandlerType.Fault => BlockType.Fault,
-					_ => throw new ArgumentOutOfRangeException(),
-				};
-			}
-
-			public bool IsTryEqual(EHInfo other) {
-				return other.TryStart == TryStart && other.TryEnd == TryEnd;
-			}
-		}
-
 		private sealed class EHNode {
-			public readonly List<EHInfo> Infos;
+			public readonly List<ExceptionHandler> Values;
 			public int Start;
 			public int End;
 
-			public EHNode(EHInfo value) {
-				Infos = new List<EHInfo> { value };
+			public EHNode(ExceptionHandler value) {
+				Values = new List<ExceptionHandler> { value };
 			}
 		}
 	}
