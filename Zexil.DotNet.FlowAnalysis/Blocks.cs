@@ -20,6 +20,11 @@ namespace Zexil.DotNet.FlowAnalysis {
 		Basic,
 
 		/// <summary>
+		/// Protected block (including try, filter, catch, finally, fault)
+		/// </summary>
+		Protected,
+
+		/// <summary>
 		/// Try block
 		/// </summary>
 		Try,
@@ -290,7 +295,7 @@ namespace Zexil.DotNet.FlowAnalysis {
 	/// Scope block
 	/// </summary>
 	[DebuggerTypeProxy(typeof(DebugView))]
-	public abstract class ScopeBlock : Block {
+	public class ScopeBlock : Block {
 		/// <summary />
 		protected List<Block> _blocks;
 		/// <summary />
@@ -339,9 +344,20 @@ namespace Zexil.DotNet.FlowAnalysis {
 		/// <summary>
 		/// Constructor
 		/// </summary>
+		/// <param name="type">Block type</param>
+		public ScopeBlock(BlockType type) {
+			_blocks = new List<Block>();
+			_type = type;
+			_entries = new Dictionary<BasicBlock, int>();
+			_exits = new Dictionary<BasicBlock, int>();
+		}
+
+		/// <summary>
+		/// Constructor
+		/// </summary>
 		/// <param name="blocks">Child blocks</param>
 		/// <param name="type">Block type</param>
-		protected internal ScopeBlock(IEnumerable<Block> blocks, BlockType type) {
+		public ScopeBlock(IEnumerable<Block> blocks, BlockType type) {
 			if (blocks is null)
 				throw new ArgumentNullException(nameof(blocks));
 
@@ -367,60 +383,10 @@ namespace Zexil.DotNet.FlowAnalysis {
 	}
 
 	/// <summary>
-	/// Try block
-	/// </summary>
-	public sealed class TryBlock : ScopeBlock {
-		private readonly List<HandlerBlock> _handlers;
-
-		/// <summary>
-		/// Handler blocks
-		/// </summary>
-		public IList<HandlerBlock> Handlers => _handlers;
-
-		/// <summary>
-		/// Constructor
-		/// </summary>
-		/// <param name="blocks">Child blocks</param>
-		public TryBlock(IEnumerable<Block> blocks) : base(blocks, BlockType.Try) {
-			_handlers = new List<HandlerBlock>();
-		}
-
-		/// <summary>
-		/// Constructor
-		/// </summary>
-		/// <param name="blocks">Child blocks</param>
-		/// <param name="handlers">Handler blocks</param>
-		public TryBlock(IEnumerable<Block> blocks, IEnumerable<HandlerBlock> handlers) : base(blocks, BlockType.Try) {
-			_handlers = new List<HandlerBlock>(handlers);
-		}
-	}
-
-	/// <summary>
-	/// Filter block
-	/// </summary>
-	public sealed class FilterBlock : ScopeBlock {
-		/// <summary>
-		/// Constructor
-		/// </summary>
-		/// <param name="blocks">Child blocks</param>
-		public FilterBlock(IEnumerable<Block> blocks) : base(blocks, BlockType.Filter) {
-		}
-	}
-
-	/// <summary>
 	/// Handler block
 	/// </summary>
 	public sealed class HandlerBlock : ScopeBlock {
-		private FilterBlock? _filter;
 		private ITypeDefOrRef? _catchType;
-
-		/// <summary>
-		/// Filter block
-		/// </summary>
-		public FilterBlock? Filter {
-			get => _filter;
-			set => _filter = value;
-		}
 
 		/// <summary>
 		/// The catch type if <see cref="Block.Type"/> is <see cref="BlockType.Catch"/>
@@ -433,47 +399,20 @@ namespace Zexil.DotNet.FlowAnalysis {
 		/// <summary>
 		/// Constructor
 		/// </summary>
-		/// <param name="blocks">Child blocks</param>
 		/// <param name="type">Block type</param>
 		/// <param name="catchType">Catch type if exists</param>
-		public HandlerBlock(IEnumerable<Block> blocks, BlockType type, ITypeDefOrRef? catchType) : this(blocks, type, null, catchType) {
-		}
-
-		/// <summary>
-		/// Constructor
-		/// </summary>
-		/// <param name="blocks">Child blocks</param>
-		/// <param name="type">Block type</param>
-		/// <param name="filter">Filter block if exists</param>
-		/// <param name="catchType">Catch type if exists</param>
-		public HandlerBlock(IEnumerable<Block> blocks, BlockType type, FilterBlock? filter, ITypeDefOrRef? catchType) : base(blocks, type) {
-			if (!IsValidHandlerBlockType(type))
-				throw new ArgumentOutOfRangeException(nameof(type));
-
-			_filter = filter;
+		public HandlerBlock(BlockType type, ITypeDefOrRef? catchType) : base(type) {
 			_catchType = catchType;
 		}
 
-		private static bool IsValidHandlerBlockType(BlockType type) {
-			return type switch
-			{
-				BlockType.Catch => true,
-				BlockType.Finally => true,
-				BlockType.Fault => true,
-				_ => false,
-			};
-		}
-	}
-
-	/// <summary>
-	/// Method block
-	/// </summary>
-	public sealed class MethodBlock : ScopeBlock {
 		/// <summary>
 		/// Constructor
 		/// </summary>
 		/// <param name="blocks">Child blocks</param>
-		public MethodBlock(IEnumerable<Block> blocks) : base(blocks, BlockType.Method) {
+		/// <param name="type">Block type</param>
+		/// <param name="catchType">Catch type if exists</param>
+		public HandlerBlock(IEnumerable<Block> blocks, BlockType type, ITypeDefOrRef? catchType) : base(blocks, type) {
+			_catchType = catchType;
 		}
 	}
 }

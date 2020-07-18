@@ -48,7 +48,7 @@ namespace Zexil.DotNet.FlowAnalysis {
 #if !DEBUG
 			formatter.SetBlockIds(block);
 #endif
-			BlockVisitor.Visit(block, formatter.OnBlockEnter, formatter.OnBlockLeave);
+			formatter.FormatCore(block);
 			return formatter._buffer.ToString();
 		}
 
@@ -59,7 +59,7 @@ namespace Zexil.DotNet.FlowAnalysis {
 			}
 		}
 
-		private int OnBlockEnter(Block block) {
+		private void FormatCore(Block block) {
 			if (block is BasicBlock basicBlock) {
 				if (_newLine)
 					AppendLine();
@@ -95,70 +95,59 @@ namespace Zexil.DotNet.FlowAnalysis {
 				AppendLine(branchInfo.ToString());
 				_newLine = true;
 			}
-			else if (block is TryBlock tryBlock) {
-				if (_newLine)
-					AppendLine();
-				AppendLine(".try");
-				AppendLine("{");
-				_indent += 2;
-				_newLine = false;
-			}
-			else if (block is FilterBlock filterBlock) {
-				AppendLine("filter");
-				AppendLine("{");
-				_indent += 2;
-				_newLine = false;
-			}
-			else if (block is HandlerBlock handlerBlock) {
-				switch (handlerBlock.Type) {
+			else if (block is ScopeBlock scopeBlock) {
+				// enter
+				switch (block.Type) {
+				case BlockType.Protected:
+					if (_newLine)
+						AppendLine();
+					AppendLine(".protected");
+					AppendLine("{");
+					break;
+				case BlockType.Try:
+					AppendLine("try");
+					AppendLine("{");
+					break;
+				case BlockType.Filter:
+					AppendLine("filter");
+					AppendLine("{");
+					break;
 				case BlockType.Catch: {
-					if (handlerBlock.CatchType is null)
-						AppendLine("catch");
-					else
-						AppendLine($"catch {handlerBlock.CatchType}");
+					AppendLine(block is HandlerBlock handlerBlock ? $"catch {handlerBlock.CatchType}" : "catch");
+					AppendLine("{");
 					break;
 				}
-				case BlockType.Finally: {
+				case BlockType.Finally:
 					AppendLine("finally");
+					AppendLine("{");
 					break;
-				}
-				case BlockType.Fault: {
+				case BlockType.Fault:
 					AppendLine("fault");
+					AppendLine("{");
 					break;
-				}
-				default: {
+				case BlockType.Method:
+					AppendLine(".method");
+					AppendLine("{");
+					break;
+				default:
 					throw new InvalidOperationException();
 				}
-				}
-				AppendLine("{");
 				_indent += 2;
 				_newLine = false;
-			}
-			else if (block is MethodBlock methodBlock) {
-				AppendLine(".method");
-				AppendLine("{");
-				_indent += 2;
-				_newLine = false;
+				// enter scope
+
+				foreach (var child in scopeBlock.Blocks)
+					FormatCore(child);
+				// format child blocks
+
+				_indent -= 2;
+				AppendLine("}");
+				_newLine = true;
+				// leave scope
 			}
 			else {
 				throw new InvalidOperationException();
 			}
-			return 0;
-		}
-
-		private int OnBlockLeave(Block block) {
-			if (block is ScopeBlock) {
-				_indent -= 2;
-				AppendLine("}");
-				_newLine = true;
-			}
-			return 0;
-		}
-
-		private int OnBlockEnter_SetBlockId(Block block) {
-			if (block is BasicBlock basicBlock)
-				_blockIds[basicBlock] = _currentBlockId++;
-			return 0;
 		}
 
 		private string FormatBlockId(BasicBlock basicBlock) {

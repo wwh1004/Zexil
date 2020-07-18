@@ -41,6 +41,7 @@ namespace Zexil.DotNet.FlowAnalysis {
 					else
 						instructions[i - c] = instructions[i];
 				}
+				instructions.RemoveRange(instructions.Count - c, c);
 				count += c;
 			}
 			return count;
@@ -51,8 +52,8 @@ namespace Zexil.DotNet.FlowAnalysis {
 		/// </summary>
 		/// <param name="methodBlock"></param>
 		/// <returns></returns>
-		public static int RemoveUnusedBlocks(MethodBlock methodBlock) {
-			if (methodBlock is null)
+		public static int RemoveUnusedBlocks(ScopeBlock methodBlock) {
+			if (methodBlock is null || methodBlock.Type != BlockType.Method)
 				throw new ArgumentNullException(nameof(methodBlock));
 
 			var isVisiteds = new HashSet<Block>();
@@ -67,7 +68,7 @@ namespace Zexil.DotNet.FlowAnalysis {
 					else
 						c++;
 				}
-				((List<Block>)blocks).RemoveRange(blocks.Count - c, c);
+				blocks.RemoveRange(blocks.Count - c, c);
 				count += c;
 			}
 			return count;
@@ -89,16 +90,16 @@ namespace Zexil.DotNet.FlowAnalysis {
 
 			static void VisitScope(Block block, HashSet<Block> isVisiteds) {
 				while (true) {
-					if (block is MethodBlock)
+					if (block.Type == BlockType.Method)
 						break;
 					var scope = block.Scope;
 					if (!isVisiteds.Add(scope))
 						break;
-					if (scope is TryBlock tryBlock) {
-						foreach (var handler in tryBlock.Handlers) {
-							if (!(handler.Filter is null))
-								VisitSuccessors(handler.Filter.First(), isVisiteds);
-							VisitSuccessors(handler.First(), isVisiteds);
+					if (scope.Type == BlockType.Protected) {
+						foreach (var ehBlock in scope.Blocks) {
+							if (ehBlock.Type == BlockType.Try)
+								continue;
+							VisitSuccessors(ehBlock.First(), isVisiteds);
 						}
 					}
 					block = scope;

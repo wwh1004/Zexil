@@ -14,28 +14,18 @@ namespace Zexil.DotNet.FlowAnalysis {
 		/// </summary>
 		/// <param name="methodDef"></param>
 		/// <returns></returns>
-		public static MethodBlock ToMethodBlock(this MethodDef methodDef) {
-			if (methodDef is null)
-				throw new ArgumentNullException(nameof(methodDef));
-
+		public static ScopeBlock ToMethodBlock(this MethodDef methodDef) {
 			methodDef.Body.SimplifyMacros(methodDef.Parameters);
 			return CodeParser.Parse(methodDef.Body.Instructions, methodDef.Body.ExceptionHandlers);
 		}
 
 		/// <summary>
-		/// Restores <see cref="MethodDef"/> from <see cref="MethodBlock"/>
+		/// Restores <see cref="MethodDef"/> from method block
 		/// </summary>
 		/// <param name="methodDef"></param>
 		/// <param name="methodBlock"></param>
-		public static void FromMethodBlock(this MethodDef methodDef, MethodBlock methodBlock) {
-			if (methodDef is null)
-				throw new ArgumentNullException(nameof(methodDef));
-			if (methodBlock is null)
-				throw new ArgumentNullException(nameof(methodBlock));
-
+		public static void FromMethodBlock(this MethodDef methodDef, ScopeBlock methodBlock) {
 			var body = methodDef.Body;
-			if (body is null)
-				throw new InvalidOperationException();
 			CodeGenerator.Generate(methodBlock, out var instructions, out var exceptionHandlers, out var locals);
 			body.Instructions.Clear();
 			body.Instructions.AddRange(instructions);
@@ -51,16 +41,13 @@ namespace Zexil.DotNet.FlowAnalysis {
 		/// <param name="block"></param>
 		/// <returns></returns>
 		public static BasicBlock First(this Block block) {
-			if (block is null)
-				throw new ArgumentNullException(nameof(block));
-
 			return (BasicBlock)Impl(block);
 
 			static Block Impl(Block b) {
-				if (b is BasicBlock)
-					return b;
+				if (b is ScopeBlock scopeBlock)
+					return Impl(scopeBlock.FirstBlock);
 				else
-					return Impl(((ScopeBlock)b).FirstBlock);
+					return b;
 			}
 		}
 
@@ -70,31 +57,23 @@ namespace Zexil.DotNet.FlowAnalysis {
 		/// <param name="block"></param>
 		/// <returns></returns>
 		public static BasicBlock Last(this Block block) {
-			if (block is null)
-				throw new ArgumentNullException(nameof(block));
-
 			return (BasicBlock)Impl(block);
 
 			static Block Impl(Block b) {
-				if (b is BasicBlock)
-					return b;
+				if (b is ScopeBlock scopeBlock)
+					return Impl(scopeBlock.LastBlock);
 				else
-					return Impl(((ScopeBlock)b).LastBlock);
+					return b;
 			}
 		}
 
 		/// <summary>
-		/// Gets block's parent of which scope is <paramref name="scope"/> and throws if null
+		/// Gets block's parent or self of which scope is parameter <paramref name="scope"/> and throws if null
 		/// </summary>
 		/// <param name="block"></param>
 		/// <param name="scope"></param>
 		/// <returns></returns>
-		public static Block GetParent(this Block block, ScopeBlock scope) {
-			if (block is null)
-				throw new ArgumentNullException(nameof(block));
-			if (scope is null)
-				throw new ArgumentNullException(nameof(scope));
-
+		public static Block Upward(this Block block, ScopeBlock scope) {
 			var root = block;
 			while (root.Scope != scope)
 				root = root.Scope;
@@ -102,20 +81,15 @@ namespace Zexil.DotNet.FlowAnalysis {
 		}
 
 		/// <summary>
-		/// Gets block's parent of which scope is <paramref name="scope"/>
+		/// Gets block's parent or self of which scope is parameter <paramref name="scope"/>
 		/// </summary>
 		/// <param name="block"></param>
 		/// <param name="scope"></param>
 		/// <returns></returns>
-		public static Block? GetParentNoThrow(this Block block, ScopeBlock scope) {
-			if (block is null)
-				throw new ArgumentNullException(nameof(block));
-			if (scope is null)
-				throw new ArgumentNullException(nameof(scope));
-
+		public static Block? UpwardThrow(this Block block, ScopeBlock scope) {
 			var root = block;
 			while (root.ScopeNoThrow != scope) {
-				if (root is MethodBlock)
+				if (root.Type == BlockType.Method)
 					return null;
 				else
 					root = root.Scope;
@@ -124,65 +98,101 @@ namespace Zexil.DotNet.FlowAnalysis {
 		}
 
 		/// <summary>
-		/// Enumerates blocks by type (like call <see cref="BlockVisitor.Visit(Block, BlockHandler?, BlockHandler?)"/> and pass 'onBlockEnter' argument)
+		/// Enumerates blocks by type
 		/// </summary>
 		/// <typeparam name="TBlock"></typeparam>
 		/// <param name="block"></param>
 		/// <returns></returns>
 		public static IEnumerable<TBlock> Enumerate<TBlock>(this Block block) where TBlock : Block {
-			if (block is null)
-				throw new ArgumentNullException(nameof(block));
-
-			if (block is TBlock t1)
-				yield return t1;
-			if (block is ScopeBlock scopeBlock) {
-				foreach (var t2 in EnumerateCore<TBlock>(scopeBlock.Blocks))
-					yield return t2;
-			}
+			return block.EnumerateInward<TBlock>();
 		}
 
 		/// <summary>
-		/// Enumerates blocks by type (like call <see cref="BlockVisitor.Visit(IEnumerable{Block}, BlockHandler?, BlockHandler?)"/> and pass 'onBlockEnter' argument)
+		/// Enumerates blocks by type
 		/// </summary>
 		/// <typeparam name="TBlock"></typeparam>
 		/// <param name="blocks"></param>
 		/// <returns></returns>
 		public static IEnumerable<TBlock> Enumerate<TBlock>(this IEnumerable<Block> blocks) where TBlock : Block {
-			if (blocks is null)
-				throw new ArgumentNullException(nameof(blocks));
-
-			return EnumerateCore<TBlock>(blocks);
+			return blocks.EnumerateInward<TBlock>();
 		}
 
-		private static IEnumerable<TBlock> EnumerateCore<TBlock>(IEnumerable<Block> blocks) where TBlock : Block {
+		/// <summary>
+		/// Enumerates blocks by type from outer blocks to inner blocks
+		/// </summary>
+		/// <typeparam name="TBlock"></typeparam>
+		/// <param name="block"></param>
+		/// <returns></returns>
+		public static IEnumerable<TBlock> EnumerateInward<TBlock>(this Block block) where TBlock : Block {
+			if (block is TBlock t1)
+				yield return t1;
+			if (block is ScopeBlock scopeBlock) {
+				foreach (var t2 in scopeBlock.Blocks.EnumerateInward<TBlock>())
+					yield return t2;
+			}
+		}
+
+		/// <summary>
+		/// Enumerates blocks by type from outer blocks to inner blocks
+		/// </summary>
+		/// <typeparam name="TBlock"></typeparam>
+		/// <param name="blocks"></param>
+		/// <returns></returns>
+		public static IEnumerable<TBlock> EnumerateInward<TBlock>(this IEnumerable<Block> blocks) where TBlock : Block {
 			foreach (var block in blocks) {
-				if (block is BasicBlock basicBlock) {
+				switch (block) {
+				case BasicBlock _:
 					if (block is TBlock t1)
 						yield return t1;
-				}
-				else if (block is TryBlock tryBlock) {
-					if (block is TBlock t1)
-						yield return t1;
-					foreach (var t2 in EnumerateCore<TBlock>(tryBlock.Blocks))
-						yield return t2;
-					foreach (var t3 in EnumerateCore<TBlock>(tryBlock.Handlers))
-						yield return t3;
-				}
-				else if (block is HandlerBlock handlerBlock) {
-					if (!(handlerBlock.Filter is null)) {
-						foreach (var t1 in EnumerateCore<TBlock>(handlerBlock.Filter.Blocks))
-							yield return t1;
-					}
+					break;
+				case ScopeBlock scopeBlock:
 					if (block is TBlock t2)
 						yield return t2;
-					foreach (var t3 in EnumerateCore<TBlock>(handlerBlock.Blocks))
+					foreach (var t3 in scopeBlock.Blocks.EnumerateInward<TBlock>())
 						yield return t3;
+					break;
+				default:
+					throw new InvalidOperationException();
 				}
-				else {
+			}
+		}
+
+		/// <summary>
+		/// Enumerates blocks by type from inner blocks to outer blocks
+		/// </summary>
+		/// <typeparam name="TBlock"></typeparam>
+		/// <param name="block"></param>
+		/// <returns></returns>
+		public static IEnumerable<TBlock> EnumerateOutward<TBlock>(this Block block) where TBlock : Block {
+			if (block is ScopeBlock scopeBlock) {
+				foreach (var t1 in scopeBlock.Blocks.EnumerateOutward<TBlock>())
+					yield return t1;
+			}
+			if (block is TBlock t2)
+				yield return t2;
+		}
+
+		/// <summary>
+		/// Enumerates blocks by type from inner blocks to outer blocks
+		/// </summary>
+		/// <typeparam name="TBlock"></typeparam>
+		/// <param name="blocks"></param>
+		/// <returns></returns>
+		public static IEnumerable<TBlock> EnumerateOutward<TBlock>(this IEnumerable<Block> blocks) where TBlock : Block {
+			foreach (var block in blocks) {
+				switch (block) {
+				case BasicBlock _:
 					if (block is TBlock t1)
 						yield return t1;
-					foreach (var t2 in EnumerateCore<TBlock>(((ScopeBlock)block).Blocks))
+					break;
+				case ScopeBlock scopeBlock:
+					foreach (var t2 in scopeBlock.Blocks.EnumerateOutward<TBlock>())
 						yield return t2;
+					if (block is TBlock t3)
+						yield return t3;
+					break;
+				default:
+					throw new InvalidOperationException();
 				}
 			}
 		}
@@ -194,17 +204,29 @@ namespace Zexil.DotNet.FlowAnalysis {
 		/// <param name="list"></param>
 		/// <param name="collection"></param>
 		public static void AddRange<T>(this IList<T> list, IEnumerable<T> collection) {
-			if (list is null)
-				throw new ArgumentNullException(nameof(list));
-			if (collection is null)
-				throw new ArgumentNullException(nameof(collection));
-
 			if (list is List<T> list2) {
 				list2.AddRange(collection);
 			}
 			else {
-				foreach (var instruction in collection)
-					list.Add(instruction);
+				foreach (var item in collection)
+					list.Add(item);
+			}
+		}
+
+		/// <summary>
+		/// Removes a range of elements from the <see cref="IList{T}"/>
+		/// </summary>
+		/// <param name="list"></param>
+		/// <param name="index"></param>
+		/// <param name="count"></param>
+		public static void RemoveRange<T>(this IList<T> list, int index, int count) {
+			if (list is List<T> list2) {
+				list2.RemoveRange(index, count);
+			}
+			else {
+				for (int i = index + count - 1; i >= index; i--)
+					list.RemoveAt(i);
+				// forr has better performance than for
 			}
 		}
 	}

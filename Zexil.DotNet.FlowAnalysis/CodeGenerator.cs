@@ -22,7 +22,7 @@ namespace Zexil.DotNet.FlowAnalysis {
 		/// <param name="instructions"></param>
 		/// <param name="exceptionHandlers"></param>
 		/// <param name="locals"></param>
-		public static void Generate(MethodBlock methodBlock, out IList<Instruction> instructions, out IList<ExceptionHandler> exceptionHandlers, out IList<Local> locals) {
+		public static void Generate(ScopeBlock methodBlock, out IList<Instruction> instructions, out IList<ExceptionHandler> exceptionHandlers, out IList<Local> locals) {
 			var generator = new CodeGenerator();
 			generator.Layout(methodBlock);
 			instructions = generator.GenerateInstructions();
@@ -31,20 +31,20 @@ namespace Zexil.DotNet.FlowAnalysis {
 			generator.Cleanup();
 		}
 
-		private void Layout(MethodBlock methodBlock) {
-			var lastTryBlocks = new List<TryBlock>();
+		private void Layout(ScopeBlock methodBlock) {
+			var lastProtectedBlocks = new List<ScopeBlock>();
 			int index = 0;
 			_basicBlocks = new List<BasicBlock>();
 
 			foreach (var block in methodBlock.Enumerate<Block>()) {
 				if (block is BasicBlock basicBlock) {
-					basicBlock.Contexts.Set(this, new BlockContext(index, basicBlock.BranchOpcode, lastTryBlocks));
+					basicBlock.Contexts.Set(this, new BlockContext(index, basicBlock.BranchOpcode, lastProtectedBlocks));
 					_basicBlocks.Add(basicBlock);
-					lastTryBlocks.Clear();
+					lastProtectedBlocks.Clear();
 					index++;
 				}
-				else if (block is TryBlock tryBlock) {
-					lastTryBlocks.Add(tryBlock);
+				else if (block.Type == BlockType.Protected) {
+					lastProtectedBlocks.Add((ScopeBlock)block);
 				}
 			}
 		}
@@ -128,34 +128,56 @@ namespace Zexil.DotNet.FlowAnalysis {
 			for (int i = _basicBlocks.Count - 1; i >= 0; i--) {
 				// The innermost exception block should be declared first. (error: 0x801318A4)
 				var basicBlock = _basicBlocks[i];
-				var tryBlocks = basicBlock.Contexts.Get<BlockContext>(this).TryBlocks;
-				if (tryBlocks is null || tryBlocks.Count == 0)
+				var protectedBlocks = basicBlock.Contexts.Get<BlockContext>(this).ProtectedBlocks;
+				if (protectedBlocks is null || protectedBlocks.Count == 0)
 					continue;
 
-				for (int j = tryBlocks.Count - 1; j >= 0; j--) {
-					var tryBlock = tryBlocks[j];
-					foreach (var handlerBlock in tryBlock.Handlers)
-						exceptionHandlers.Add(GetExceptionHandler(tryBlock, handlerBlock));
+				for (int j = protectedBlocks.Count - 1; j >= 0; j--) {
+					var protectedBlock = protectedBlocks[j];
+					var blocks = protectedBlock.Blocks;
+
+					int tryBlockIndex = -1;
+					for (int k = 0; k < blocks.Count; k++) {
+						if (blocks[k].Type == BlockType.Try) {
+							tryBlockIndex = k;
+							break;
+						}
+					}
+					var tryBlock = (ScopeBlock)blocks[tryBlockIndex];
+					var tryStartBlock = tryBlock.FirstBlock.First();
+					var tryEndBlock = GetNextBasicBlock(tryBlock.LastBlock.Last());
+					var tryStart = GetFirstInstruction(tryStartBlock);
+					var tryEnd = !(tryEndBlock is null) ? GetFirstInstruction(tryEndBlock) : null;
+
+					for (int k = 0; k < blocks.Count; k++) {
+						if (k == tryBlockIndex) {
+							k++;
+							if (k == blocks.Count)
+								break;
+						}
+						if (blocks[k].Type == BlockType.Filter)
+							exceptionHandlers.Add(GetExceptionHandler(tryStart, tryEnd, (ScopeBlock)blocks[k], (HandlerBlock)blocks[++k]));
+						else
+							exceptionHandlers.Add(GetExceptionHandler(tryStart, tryEnd, null, (HandlerBlock)blocks[k]));
+					}
 				}
 			}
 			return exceptionHandlers;
 		}
 
-		private ExceptionHandler GetExceptionHandler(TryBlock tryBlock, HandlerBlock handlerBlock) {
-			var tryStart = tryBlock.FirstBlock.First();
-			var tryEnd = GetNextBasicBlock(tryBlock.LastBlock.Last()) ?? throw new InvalidOperationException();
-			var filterStart = handlerBlock.Filter?.FirstBlock.First();
+		private ExceptionHandler GetExceptionHandler(Instruction tryStart, Instruction? tryEnd, ScopeBlock? filterBlock, HandlerBlock handlerBlock) {
+			var filterStart = filterBlock?.FirstBlock.First();
 			var handlerStart = handlerBlock.FirstBlock.First();
 			var handlerEnd = GetNextBasicBlock(handlerBlock.LastBlock.Last());
 
 			return new ExceptionHandler() {
-				TryStart = GetFirstInstruction(tryStart),
-				TryEnd = GetFirstInstruction(tryEnd),
+				TryStart = tryStart,
+				TryEnd = tryEnd,
 				HandlerStart = GetFirstInstruction(handlerStart),
 				HandlerEnd = !(handlerEnd is null) ? GetFirstInstruction(handlerEnd) : null,
 				FilterStart = !(filterStart is null) ? GetFirstInstruction(filterStart) : null,
 				CatchType = handlerBlock.CatchType,
-				HandlerType = GetHandlerType(handlerBlock)
+				HandlerType = GetHandlerType(filterBlock, handlerBlock)
 			};
 		}
 
@@ -192,8 +214,8 @@ namespace Zexil.DotNet.FlowAnalysis {
 			return !basicBlock.IsEmpty ? basicBlock.Instructions[0] : basicBlock.Contexts.Get<BlockContext>(this).BranchInstruction;
 		}
 
-		private static ExceptionHandlerType GetHandlerType(HandlerBlock handlerBlock) {
-			return !(handlerBlock.Filter is null) ? ExceptionHandlerType.Filter : handlerBlock.Type switch
+		private static ExceptionHandlerType GetHandlerType(ScopeBlock? filterBlock, HandlerBlock handlerBlock) {
+			return !(filterBlock is null) ? ExceptionHandlerType.Filter : handlerBlock.Type switch
 			{
 				BlockType.Catch => ExceptionHandlerType.Catch,
 				BlockType.Finally => ExceptionHandlerType.Finally,
@@ -206,13 +228,13 @@ namespace Zexil.DotNet.FlowAnalysis {
 			public readonly int Index;
 			public readonly Instruction BranchInstruction;
 			public Instruction? FixupInstruction;
-			public List<TryBlock>? TryBlocks;
+			public List<ScopeBlock>? ProtectedBlocks;
 
-			public BlockContext(int index, OpCode branchOpcode, List<TryBlock> tryBlocks) {
+			public BlockContext(int index, OpCode branchOpcode, List<ScopeBlock> protectedBlocks) {
 				Index = index;
 				BranchInstruction = new Instruction(branchOpcode);
-				if (tryBlocks.Count != 0)
-					TryBlocks = new List<TryBlock>(tryBlocks);
+				if (protectedBlocks.Count != 0)
+					ProtectedBlocks = new List<ScopeBlock>(protectedBlocks);
 #if DEBUG
 				BranchInstruction.Offset = 0xF000 | (uint)index;
 #endif

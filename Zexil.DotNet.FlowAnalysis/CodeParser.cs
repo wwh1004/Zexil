@@ -22,7 +22,7 @@ namespace Zexil.DotNet.FlowAnalysis {
 		/// <param name="instructions"></param>
 		/// <param name="exceptionHandlers"></param>
 		/// <returns></returns>
-		public static MethodBlock Parse(IList<Instruction> instructions, IList<ExceptionHandler> exceptionHandlers) {
+		public static ScopeBlock Parse(IList<Instruction> instructions, IList<ExceptionHandler> exceptionHandlers) {
 			if (instructions is null)
 				throw new ArgumentNullException(nameof(instructions));
 			if (exceptionHandlers is null)
@@ -33,7 +33,7 @@ namespace Zexil.DotNet.FlowAnalysis {
 			return new CodeParser(instructions, exceptionHandlers).Parse();
 		}
 
-		private MethodBlock Parse() {
+		private ScopeBlock Parse() {
 			bool[] isEntrys = AnalyzeEntrys(out int entryCount);
 			var basicBlocks = CreateBasicBlocks(isEntrys, entryCount);
 			var methodBlock = CreateMethodBlock(basicBlocks);
@@ -183,10 +183,10 @@ namespace Zexil.DotNet.FlowAnalysis {
 			}
 		}
 
-		private MethodBlock CreateMethodBlock(BasicBlock[] basicBlocks) {
+		private ScopeBlock CreateMethodBlock(BasicBlock[] basicBlocks) {
 			var exceptionHandlers = _exceptionHandlers;
 			if (exceptionHandlers.Count == 0) {
-				var methodBlock = new MethodBlock(basicBlocks);
+				var methodBlock = new ScopeBlock(basicBlocks, BlockType.Method);
 				foreach (var basicBlock in basicBlocks)
 					basicBlock.ScopeNoThrow = methodBlock;
 				return methodBlock;
@@ -194,15 +194,15 @@ namespace Zexil.DotNet.FlowAnalysis {
 			else {
 				var blocks = new Block[basicBlocks.Length];
 				Array.Copy(basicBlocks, blocks, blocks.Length);
-				var ehNodes = CreateEHNodes(exceptionHandlers);
+				var ehNodes = CreateEHNodes(exceptionHandlers, blocks.Length);
 				FoldEHBlocks(blocks, ehNodes);
-				var methodBlock = new MethodBlock(EnumerateNonNullBlocks(blocks, 0, blocks.Length));
+				var methodBlock = new ScopeBlock(EnumerateNonNullBlocks(blocks, 0, blocks.Length), BlockType.Method);
 				SetBlockScope(methodBlock.Blocks, methodBlock);
 				return methodBlock;
 			}
 		}
 
-		private static List<EHNode> CreateEHNodes(IList<ExceptionHandler> exceptionHandlers) {
+		private static List<EHNode> CreateEHNodes(IList<ExceptionHandler> exceptionHandlers, int methodEnd) {
 			var ehNodes = new List<EHNode>();
 			foreach (var exceptionHandler in exceptionHandlers) {
 				var owner = default(EHNode);
@@ -223,24 +223,12 @@ namespace Zexil.DotNet.FlowAnalysis {
 				int start = int.MaxValue;
 				int end = int.MinValue;
 				foreach (var value in ehNode.Values) {
-					int temp = (int)Math.Min(value.TryStart.Offset, value.HandlerType == ExceptionHandlerType.Filter ? value.FilterStart.Offset : value.HandlerStart.Offset);
-					start = Math.Min(start, temp);
-					temp = (int)Math.Max(value.TryEnd.Offset, value.HandlerEnd.Offset);
-					end = Math.Max(end, temp);
+					start = Math.Min(start, (int)Math.Min(value.TryStart.Offset, value.HandlerType == ExceptionHandlerType.Filter ? value.FilterStart.Offset : value.HandlerStart.Offset));
+					end = Math.Max(end, Math.Max(value.GetTryEndOffset(methodEnd), value.GetHandlerEndOffset(methodEnd)));
 				}
 				ehNode.Start = start;
 				ehNode.End = end;
 			}
-
-			ehNodes.Sort((x, y) => {
-				int a = x.Start - y.Start;
-				if (a != 0)
-					return a;
-				a = y.End - x.End;
-				if (a != 0)
-					return a;
-				throw new InvalidMethodException();
-			});
 
 			return ehNodes;
 
@@ -250,16 +238,18 @@ namespace Zexil.DotNet.FlowAnalysis {
 		}
 
 		private static void FoldEHBlocks(Block?[] blocks, List<EHNode> ehNodes) {
-			for (int i = ehNodes.Count - 1; i >= 0; i--) {
+			for (int i = 0; i < ehNodes.Count; i++) {
 				var ehNode = ehNodes[i];
 				var tryValue = ehNode.Values[0];
-				var tryBlock = new TryBlock(EnumerateNonNullBlocks(blocks, (int)tryValue.TryStart.Offset, (int)tryValue.TryEnd.Offset));
-				RemoveBlocks(blocks, (int)tryValue.TryStart.Offset, (int)tryValue.TryEnd.Offset);
-				blocks[(int)tryValue.TryStart.Offset] = tryBlock;
+				var protectedBlock = new ScopeBlock(BlockType.Protected);
+				var tryBlock = new ScopeBlock(EnumerateNonNullBlocks(blocks, (int)tryValue.TryStart.Offset, tryValue.GetTryEndOffset(blocks.Length)), BlockType.Try);
+				protectedBlock.Blocks.Add(tryBlock);
+				RemoveBlocks(blocks, (int)tryValue.TryStart.Offset, tryValue.GetTryEndOffset(blocks.Length));
+				blocks[(int)tryValue.TryStart.Offset] = protectedBlock;
 
 				foreach (var value in ehNode.Values) {
-					AddHandler(blocks, tryBlock, value);
-					RemoveBlocks(blocks, !(value.FilterStart is null) ? (int)value.FilterStart.Offset : (int)value.HandlerStart.Offset, (int)value.HandlerEnd.Offset);
+					AddHandler(blocks, protectedBlock, value);
+					RemoveBlocks(blocks, !(value.FilterStart is null) ? (int)value.FilterStart.Offset : (int)value.HandlerStart.Offset, value.GetHandlerEndOffset(blocks.Length));
 				}
 			}
 		}
@@ -269,10 +259,11 @@ namespace Zexil.DotNet.FlowAnalysis {
 				blocks[i] = null;
 		}
 
-		private static void AddHandler(Block?[] blocks, TryBlock tryBlock, ExceptionHandler exceptionHandler) {
-			var filterBlock = default(FilterBlock);
-			if (!(exceptionHandler.FilterStart is null))
-				filterBlock = new FilterBlock(EnumerateNonNullBlocks(blocks, (int)exceptionHandler.FilterStart.Offset, (int)exceptionHandler.HandlerStart.Offset));
+		private static void AddHandler(Block?[] blocks, ScopeBlock protectedBlock, ExceptionHandler exceptionHandler) {
+			if (!(exceptionHandler.FilterStart is null)) {
+				var filterBlock = new ScopeBlock(EnumerateNonNullBlocks(blocks, (int)exceptionHandler.FilterStart.Offset, (int)exceptionHandler.HandlerStart.Offset), BlockType.Filter);
+				protectedBlock.Blocks.Add(filterBlock);
+			}
 
 			var handlerType = exceptionHandler.HandlerType switch
 			{
@@ -282,13 +273,8 @@ namespace Zexil.DotNet.FlowAnalysis {
 				ExceptionHandlerType.Fault => BlockType.Fault,
 				_ => throw new ArgumentOutOfRangeException(),
 			};
-			var handlerBlock = new HandlerBlock(
-				EnumerateNonNullBlocks(blocks, (int)exceptionHandler.HandlerStart.Offset, (int)exceptionHandler.HandlerEnd.Offset),
-				handlerType,
-				filterBlock,
-				exceptionHandler.CatchType
-			);
-			tryBlock.Handlers.Add(handlerBlock);
+			var handlerBlock = new HandlerBlock(EnumerateNonNullBlocks(blocks, (int)exceptionHandler.HandlerStart.Offset, exceptionHandler.GetHandlerEndOffset(blocks.Length)), handlerType, exceptionHandler.CatchType);
+			protectedBlock.Blocks.Add(handlerBlock);
 		}
 
 		private static IEnumerable<Block> EnumerateNonNullBlocks(Block?[] blocks, int startIndex, int endIndex) {
@@ -301,27 +287,9 @@ namespace Zexil.DotNet.FlowAnalysis {
 
 		private static void SetBlockScope(IEnumerable<Block> blocks, ScopeBlock parent) {
 			foreach (var block in blocks) {
-				if (block is BasicBlock) {
-					block.ScopeNoThrow = parent;
-				}
-				else if (block is TryBlock tryBlock) {
-					tryBlock.ScopeNoThrow = parent;
-					SetBlockScope(tryBlock.Blocks, tryBlock);
-					SetBlockScope(tryBlock.Handlers, tryBlock);
-				}
-				else if (block is HandlerBlock handlerBlock) {
-					handlerBlock.ScopeNoThrow = parent;
-					SetBlockScope(handlerBlock.Blocks, handlerBlock);
-
-					var filterBlock = handlerBlock.Filter;
-					if (!(filterBlock is null)) {
-						filterBlock.ScopeNoThrow = handlerBlock;
-						SetBlockScope(filterBlock.Blocks, handlerBlock);
-					}
-				}
-				else {
-					throw new InvalidOperationException();
-				}
+				block.ScopeNoThrow = parent;
+				if (block is ScopeBlock scopeBlock)
+					SetBlockScope(scopeBlock.Blocks, scopeBlock);
 			}
 		}
 
@@ -333,6 +301,16 @@ namespace Zexil.DotNet.FlowAnalysis {
 			public EHNode(ExceptionHandler value) {
 				Values = new List<ExceptionHandler> { value };
 			}
+		}
+	}
+
+	internal static class CodeParserExtensions {
+		public static int GetTryEndOffset(this ExceptionHandler exceptionHandler, int methodEnd) {
+			return !(exceptionHandler.TryEnd is null) ? (int)exceptionHandler.TryEnd.Offset : methodEnd;
+		}
+
+		public static int GetHandlerEndOffset(this ExceptionHandler exceptionHandler, int methodEnd) {
+			return !(exceptionHandler.HandlerEnd is null) ? (int)exceptionHandler.HandlerEnd.Offset : methodEnd;
 		}
 	}
 }

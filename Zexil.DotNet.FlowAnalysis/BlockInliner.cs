@@ -12,8 +12,8 @@ namespace Zexil.DotNet.FlowAnalysis {
 		/// </summary>
 		/// <param name="methodBlock"></param>
 		/// <returns></returns>
-		public static int Inline(MethodBlock methodBlock) {
-			if (methodBlock is null)
+		public static int Inline(ScopeBlock methodBlock) {
+			if (methodBlock is null || methodBlock.Type != BlockType.Method)
 				throw new ArgumentNullException(nameof(methodBlock));
 
 			int count = 0;
@@ -21,6 +21,7 @@ namespace Zexil.DotNet.FlowAnalysis {
 				if (block is BasicBlock basicBlock) {
 					if ((basicBlock.Flags & BlockFlags.NoInlining) == BlockFlags.NoInlining)
 						continue;
+
 					if (basicBlock.IsEmpty && basicBlock.BranchOpcode.Code == Code.Br) {
 						// If basic block is empty and branch opcode is br, we can redirect targets.
 						var fallThrough = basicBlock.FallThrough;
@@ -76,7 +77,7 @@ namespace Zexil.DotNet.FlowAnalysis {
 						fallThrough = fallThrough.FallThrough;
 					} while (fallThrough.IsEmpty && fallThrough.BranchOpcode.Code == Code.Br && fallThrough.Scope == scopeBlock);
 					// Gets final target basic block
-					var fallThroughParent = fallThrough.GetParent(scopeBlock);
+					var fallThroughParent = fallThrough.Upward(scopeBlock);
 					// Gets parent of which scope is scopeBlock
 
 					int index = blocks.IndexOf(fallThroughParent);
