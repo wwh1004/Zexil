@@ -240,6 +240,16 @@ namespace Zexil.DotNet.FlowAnalysis {
 		/// <summary>
 		/// Constructor
 		/// </summary>
+		public BasicBlock() {
+			_instructions = new List<Instruction>();
+			_branchOpcode = OpCodes.Ret;
+			_predecessors = new Dictionary<BasicBlock, int>();
+			_successors = new Dictionary<BasicBlock, int>();
+		}
+
+		/// <summary>
+		/// Constructor
+		/// </summary>
 		/// <param name="instructions">Instructions in current basic block excluding branch instruction</param>
 		public BasicBlock(IEnumerable<Instruction> instructions) : this(instructions, OpCodes.Ret) {
 		}

@@ -53,8 +53,10 @@ namespace Zexil.DotNet.FlowAnalysis {
 		/// <param name="methodBlock"></param>
 		/// <returns></returns>
 		public static int RemoveUnusedBlocks(ScopeBlock methodBlock) {
-			if (methodBlock is null || methodBlock.Type != BlockType.Method)
+			if (methodBlock is null)
 				throw new ArgumentNullException(nameof(methodBlock));
+			if (methodBlock.Type != BlockType.Method)
+				throw new ArgumentException($"{nameof(methodBlock)} is not a method block");
 
 			var isVisiteds = new HashSet<Block>();
 			VisitSuccessors(methodBlock.First(), isVisiteds);

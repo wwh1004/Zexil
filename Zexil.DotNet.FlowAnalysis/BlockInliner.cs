@@ -13,8 +13,10 @@ namespace Zexil.DotNet.FlowAnalysis {
 		/// <param name="methodBlock"></param>
 		/// <returns></returns>
 		public static int Inline(ScopeBlock methodBlock) {
-			if (methodBlock is null || methodBlock.Type != BlockType.Method)
+			if (methodBlock is null)
 				throw new ArgumentNullException(nameof(methodBlock));
+			if (methodBlock.Type != BlockType.Method)
+				throw new ArgumentException($"{nameof(methodBlock)} is not a method block");
 
 			int count = 0;
 			foreach (var block in methodBlock.Enumerate<Block>()) {
@@ -24,21 +26,7 @@ namespace Zexil.DotNet.FlowAnalysis {
 
 					if (basicBlock.IsEmpty && basicBlock.BranchOpcode.Code == Code.Br) {
 						// If basic block is empty and branch opcode is br, we can redirect targets.
-						var fallThrough = basicBlock.FallThrough;
-						var predecessors = basicBlock.Predecessors.Keys.ToArray();
-						foreach (var predecessor in predecessors) {
-							if (predecessor.FallThroughNoThrow == basicBlock)
-								predecessor.FallThroughNoThrow = fallThrough;
-							if (predecessor.CondTargetNoThrow == basicBlock)
-								predecessor.CondTargetNoThrow = fallThrough;
-							var switchTargets = predecessor.SwitchTargetsNoThrow;
-							if (!(switchTargets is null)) {
-								for (int i = 0; i < switchTargets.Count; i++) {
-									if (switchTargets[i] == basicBlock)
-										switchTargets[i] = fallThrough;
-								}
-							}
-						}
+						basicBlock.Redirect(basicBlock.FallThrough);
 						basicBlock.BranchOpcode = OpCodes.Ret;
 						basicBlock.FallThroughNoThrow = null;
 						count++;
@@ -51,18 +39,7 @@ namespace Zexil.DotNet.FlowAnalysis {
 						if (predecessor.BranchOpcode.Code != Code.Br || predecessor.Scope != basicBlock.Scope)
 							continue;
 						// Only br basic block and in the same scope then we can inline.
-
-						predecessor.Instructions.AddRange(basicBlock.Instructions);
-						basicBlock.Instructions.Clear();
-						predecessor.BranchOpcode = basicBlock.BranchOpcode;
-						basicBlock.BranchOpcode = OpCodes.Ret;
-						predecessor.FallThroughNoThrow = basicBlock.FallThroughNoThrow;
-						basicBlock.FallThroughNoThrow = null;
-						predecessor.CondTargetNoThrow = basicBlock.CondTargetNoThrow;
-						basicBlock.CondTargetNoThrow = null;
-						var switchTargets = basicBlock.SwitchTargetsNoThrow;
-						basicBlock.SwitchTargetsNoThrow = null;
-						predecessor.SwitchTargetsNoThrow = switchTargets;
+						predecessor.Concat(basicBlock);
 						count++;
 					}
 				}

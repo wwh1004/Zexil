@@ -12,8 +12,10 @@ namespace Zexil.DotNet.FlowAnalysis {
 		/// </summary>
 		/// <param name="methodBlock"></param>
 		public static void Sort(ScopeBlock methodBlock) {
-			if (methodBlock is null || methodBlock.Type != BlockType.Method)
+			if (methodBlock is null)
 				throw new ArgumentNullException(nameof(methodBlock));
+			if (methodBlock.Type != BlockType.Method)
+				throw new ArgumentException($"{nameof(methodBlock)} is not a method block");
 
 			object contextKey = new object();
 			foreach (var basicBlock in methodBlock.Enumerate<BasicBlock>()) {

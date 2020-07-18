@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using dnlib.DotNet;
 using dnlib.DotNet.Emit;
 
@@ -95,6 +96,47 @@ namespace Zexil.DotNet.FlowAnalysis {
 					root = root.Scope;
 			}
 			return root;
+		}
+
+		/// <summary>
+		/// Redirect branches from basicBlock to newTarget
+		/// </summary>
+		/// <param name="basicBlock"></param>
+		/// <param name="newTarget"></param>
+		public static void Redirect(this BasicBlock basicBlock, BasicBlock newTarget) {
+			var predecessors = basicBlock.Predecessors.Keys.ToArray();
+			foreach (var predecessor in predecessors) {
+				if (predecessor.FallThroughNoThrow == basicBlock)
+					predecessor.FallThroughNoThrow = newTarget;
+				if (predecessor.CondTargetNoThrow == basicBlock)
+					predecessor.CondTargetNoThrow = newTarget;
+				var switchTargets = predecessor.SwitchTargetsNoThrow;
+				if (!(switchTargets is null)) {
+					for (int i = 0; i < switchTargets.Count; i++) {
+						if (switchTargets[i] == basicBlock)
+							switchTargets[i] = newTarget;
+					}
+				}
+			}
+		}
+
+		/// <summary>
+		/// Concatenates two basic blocks
+		/// </summary>
+		/// <param name="first"></param>
+		/// <param name="second"></param>
+		public static void Concat(this BasicBlock first, BasicBlock second) {
+			first.Instructions.AddRange(second.Instructions);
+			second.Instructions.Clear();
+			first.BranchOpcode = second.BranchOpcode;
+			second.BranchOpcode = OpCodes.Ret;
+			first.FallThroughNoThrow = second.FallThroughNoThrow;
+			second.FallThroughNoThrow = null;
+			first.CondTargetNoThrow = second.CondTargetNoThrow;
+			second.CondTargetNoThrow = null;
+			var switchTargets = second.SwitchTargetsNoThrow;
+			second.SwitchTargetsNoThrow = null;
+			first.SwitchTargetsNoThrow = switchTargets;
 		}
 
 		/// <summary>
