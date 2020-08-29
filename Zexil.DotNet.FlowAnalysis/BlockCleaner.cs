@@ -65,10 +65,13 @@ namespace Zexil.DotNet.FlowAnalysis {
 				int c = 0;
 				var blocks = scopeBlock.Blocks;
 				for (int i = 0; i < blocks.Count; i++) {
-					if (isVisiteds.Contains(blocks[i]))
+					if (isVisiteds.Contains(blocks[i])) {
 						blocks[i - c] = blocks[i];
-					else
+					}
+					else {
+						(blocks[i] as BasicBlock)?.Erase();
 						c++;
+					}
 				}
 				blocks.RemoveRange(blocks.Count - c, c);
 				count += c;

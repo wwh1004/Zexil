@@ -5,8 +5,8 @@
 		<Copyright>Copyright © 2020 Wwh</Copyright>
 	</PropertyGroup>
 	<PropertyGroup>
-		<TargetFramework>netstandard2.1</TargetFramework>
-		<Nullable>enable</Nullable>
+		<TargetFramework>netstandard2.0</TargetFramework>
+		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 		<OutputPath>..\bin\$(Configuration)</OutputPath>
 		<GenerateDocumentationFile>true</GenerateDocumentationFile>
 	</PropertyGroup>

@@ -137,6 +137,24 @@ namespace Zexil.DotNet.FlowAnalysis {
 			var switchTargets = second.SwitchTargetsNoThrow;
 			second.SwitchTargetsNoThrow = null;
 			first.SwitchTargetsNoThrow = switchTargets;
+#if DEBUG
+			second.IsErased = true;
+#endif
+		}
+
+		/// <summary>
+		/// Erases a basic block (will NOT remove it from its scope)
+		/// </summary>
+		/// <param name="basicBlock"></param>
+		public static void Erase(this BasicBlock basicBlock) {
+			basicBlock.Instructions.Clear();
+			basicBlock.BranchOpcode = OpCodes.Ret;
+			basicBlock.FallThroughNoThrow = null;
+			basicBlock.CondTargetNoThrow = null;
+			basicBlock.SwitchTargetsNoThrow = null;
+#if DEBUG
+			basicBlock.IsErased = true;
+#endif
 		}
 
 		/// <summary>

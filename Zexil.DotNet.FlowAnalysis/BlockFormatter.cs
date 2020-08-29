@@ -65,11 +65,13 @@ namespace Zexil.DotNet.FlowAnalysis {
 					AppendLine();
 
 				string blockId = FormatBlockId(basicBlock);
-				if (basicBlock.IsEmpty)
-					blockId += "(empty)";
 				AppendLine($"// {blockId} (pres: {FormatPredecessors(basicBlock)}, sucs: {FormatSuccessors(basicBlock)})");
 #if DEBUG
-				AppendLine("// ofs:IL_" + basicBlock._originalOffset.ToString("X4"));
+				AppendLine($"// " +
+					$"ofs:IL_{basicBlock.OriginalOffset:X4}" +
+					$"{(basicBlock.IsEmpty ? ", empty" : string.Empty)}" +
+					$"{(basicBlock.Predecessors.Count == 0 ? ", noref" : string.Empty)}" +
+					$"{(basicBlock.IsErased ? ", erased" : string.Empty)}");
 #endif
 				for (int i = 0; i < basicBlock.Instructions.Count; i++)
 					AppendLine(basicBlock.Instructions[i].ToString());
@@ -77,19 +79,14 @@ namespace Zexil.DotNet.FlowAnalysis {
 				var branchInfo = new StringBuilder();
 				branchInfo.Append("// opcode:" + basicBlock.BranchOpcode.ToString());
 				if (basicBlock.BranchOpcode.FlowControl == FlowControl.Branch) {
-					branchInfo.Append(" | fall-through:" + FormatBlockId(basicBlock.FallThrough));
+					branchInfo.Append($" | fall-through:{FormatBlockId(basicBlock.FallThrough)}");
 				}
 				else if (basicBlock.BranchOpcode.FlowControl == FlowControl.Cond_Branch) {
 					branchInfo.Append(" | fall-through:" + FormatBlockId(basicBlock.FallThrough));
-					if (basicBlock.BranchOpcode.Code == Code.Switch) {
-						branchInfo.Append(" | switch-targets:{");
-						foreach (var switchTarget in basicBlock.SwitchTargets)
-							branchInfo.Append(FormatBlockId(switchTarget) + " ");
-						branchInfo[^1] = '}';
-					}
-					else {
-						branchInfo.Append(" | cond-target:" + FormatBlockId(basicBlock.CondTarget));
-					}
+					if (basicBlock.BranchOpcode.Code == Code.Switch)
+						branchInfo.Append($" | switch-targets:{{{string.Join(", ", basicBlock.SwitchTargets.Select(t => FormatBlockId(t)))}}}");
+					else
+						branchInfo.Append($" | cond-target:{FormatBlockId(basicBlock.CondTarget)}");
 				}
 
 				AppendLine(branchInfo.ToString());
@@ -152,7 +149,7 @@ namespace Zexil.DotNet.FlowAnalysis {
 
 		private string FormatBlockId(BasicBlock basicBlock) {
 #if DEBUG
-			return $"BLK_{basicBlock._originalOffset:X4}";
+			return $"BLK_{basicBlock.OriginalOffset:X4}";
 #else
 			return _blockIds.TryGetValue(basicBlock, out int blockId) ? $"BLK_{blockId:X4}" : "BLK_????";
 #endif

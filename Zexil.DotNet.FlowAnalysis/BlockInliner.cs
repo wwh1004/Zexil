@@ -27,8 +27,7 @@ namespace Zexil.DotNet.FlowAnalysis {
 					if (basicBlock.IsEmpty && basicBlock.BranchOpcode.Code == Code.Br) {
 						// If basic block is empty and branch opcode is br, we can redirect targets.
 						basicBlock.Redirect(basicBlock.FallThrough);
-						basicBlock.BranchOpcode = OpCodes.Ret;
-						basicBlock.FallThroughNoThrow = null;
+						basicBlock.Erase();
 						count++;
 					}
 					else {
@@ -44,7 +43,7 @@ namespace Zexil.DotNet.FlowAnalysis {
 					}
 				}
 				else if (block is ScopeBlock scopeBlock) {
-					// We should fix entry if first basic block is empty.
+					// We should fix (just exchange) entry if first basic block is empty and let it be inlined later.
 					if (!(scopeBlock.FirstBlock is BasicBlock first) || !first.IsEmpty || first.BranchOpcode.Code != Code.Br)
 						continue;
 

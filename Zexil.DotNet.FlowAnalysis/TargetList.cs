@@ -15,7 +15,21 @@ namespace Zexil.DotNet.FlowAnalysis {
 		/// </summary>
 		public BasicBlock? Owner {
 			get => _owner;
-			internal set => _owner = value;
+			internal set {
+				if (!(value is null) && !(_owner is null))
+					throw new InvalidOperationException($"{nameof(TargetList)} is already owned by another {nameof(BasicBlock)}.");
+
+				if (!(value is null)) {
+					_owner = value;
+					foreach (var target in _targets)
+						UpdateReferences(null, target);
+				}
+				else if (!(_owner is null)) {
+					foreach (var target in _targets)
+						UpdateReferences(target, null);
+					_owner = null;
+				}
+			}
 		}
 
 		/// <summary>
@@ -42,9 +56,7 @@ namespace Zexil.DotNet.FlowAnalysis {
 		}
 
 		private void UpdateReferences(BasicBlock? oldValue, BasicBlock? newValue) {
-			if (_owner is null)
-				throw new InvalidOperationException();
-			_owner.UpdateReferences(oldValue, newValue);
+			_owner?.UpdateReferences(oldValue, newValue);
 		}
 
 		#region implement

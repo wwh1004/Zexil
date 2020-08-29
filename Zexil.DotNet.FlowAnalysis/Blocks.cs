@@ -142,15 +142,13 @@ namespace Zexil.DotNet.FlowAnalysis {
 	/// </summary>
 	public sealed class BasicBlock : Block {
 		private readonly List<Instruction> _instructions;
+		private readonly Instruction _branchInstruction;
 		private OpCode _branchOpcode;
 		private BasicBlock? _fallThrough;
 		private BasicBlock? _condTarget;
 		private TargetList? _switchTargets;
 		private readonly Dictionary<BasicBlock, int> _predecessors;
 		private readonly Dictionary<BasicBlock, int> _successors;
-#if DEBUG
-		internal readonly uint _originalOffset;
-#endif
 
 		/// <inheritdoc />
 		public override BlockType Type => BlockType.Basic;
@@ -166,16 +164,25 @@ namespace Zexil.DotNet.FlowAnalysis {
 		public bool IsEmpty => _instructions.Count == 0;
 
 		/// <summary>
+		/// Returns branch instruction of current basic block (dummy instruction)
+		/// </summary>
+		public Instruction BranchInstruction => _branchInstruction;
+
+		/// <summary>
 		/// Returns branch opcode of current basic block
 		/// </summary>
 		public OpCode BranchOpcode {
 			get => _branchOpcode;
-			set => _branchOpcode = value;
+			set {
+				_branchOpcode = value;
+				_branchInstruction.OpCode = value;
+			}
 		}
 
 		/// <summary>
 		/// Returns fall through and throws if null
 		/// </summary>
+		[DebuggerBrowsable(DebuggerBrowsableState.Never)]
 		public BasicBlock FallThrough => FallThroughNoThrow ?? throw new ArgumentNullException(nameof(FallThroughNoThrow));
 
 		/// <summary>
@@ -189,6 +196,7 @@ namespace Zexil.DotNet.FlowAnalysis {
 		/// <summary>
 		/// Returns conditional target and throws if null
 		/// </summary>
+		[DebuggerBrowsable(DebuggerBrowsableState.Never)]
 		public BasicBlock CondTarget => CondTargetNoThrow ?? throw new ArgumentNullException(nameof(CondTargetNoThrow));
 
 		/// <summary>
@@ -202,6 +210,7 @@ namespace Zexil.DotNet.FlowAnalysis {
 		/// <summary>
 		/// Returns switch targets and throws if null
 		/// </summary>
+		[DebuggerBrowsable(DebuggerBrowsableState.Never)]
 		public TargetList SwitchTargets => SwitchTargetsNoThrow ?? throw new ArgumentNullException(nameof(SwitchTargetsNoThrow));
 
 		/// <summary>
@@ -213,12 +222,14 @@ namespace Zexil.DotNet.FlowAnalysis {
 				if (value is null) {
 					if (_switchTargets is null)
 						return;
+
 					_switchTargets.Owner = null;
 					_switchTargets = null;
 				}
 				else {
 					if (!(value.Owner is null))
-						throw new InvalidOperationException($"{nameof(value)} is already owned by another {nameof(BasicBlock)}.");
+						throw new InvalidOperationException($"{nameof(SwitchTargetsNoThrow)} is already owned by another {nameof(BasicBlock)}.");
+
 					if (!(_switchTargets is null))
 						_switchTargets.Owner = null;
 					value.Owner = this;
@@ -237,11 +248,21 @@ namespace Zexil.DotNet.FlowAnalysis {
 		/// </summary>
 		public IDictionary<BasicBlock, int> Successors => _successors;
 
+#if DEBUG
+		internal uint OriginalOffset { get; }
+
+		/// <summary>
+		/// Returns if current basic block is erased
+		/// </summary>
+		public bool IsErased { get; set; }
+#endif
+
 		/// <summary>
 		/// Constructor
 		/// </summary>
 		public BasicBlock() {
 			_instructions = new List<Instruction>();
+			_branchInstruction = new Instruction(OpCodes.Ret);
 			_branchOpcode = OpCodes.Ret;
 			_predecessors = new Dictionary<BasicBlock, int>();
 			_successors = new Dictionary<BasicBlock, int>();
@@ -261,11 +282,12 @@ namespace Zexil.DotNet.FlowAnalysis {
 		/// <param name="branchOpcode">Branch opcode of current basic block</param>
 		public BasicBlock(IEnumerable<Instruction> instructions, OpCode branchOpcode) {
 			_instructions = new List<Instruction>(instructions ?? throw new ArgumentNullException(nameof(instructions)));
-			_branchOpcode = branchOpcode ?? throw new ArgumentNullException(nameof(branchOpcode));
+			_branchInstruction = new Instruction(branchOpcode ?? throw new ArgumentNullException(nameof(branchOpcode)));
+			_branchOpcode = branchOpcode;
 			_predecessors = new Dictionary<BasicBlock, int>();
 			_successors = new Dictionary<BasicBlock, int>();
 #if DEBUG
-			_originalOffset = _instructions.Count == 0 ? ushort.MaxValue : _instructions[0].Offset;
+			OriginalOffset = _instructions.Count == 0 ? ushort.MaxValue : _instructions[0].Offset;
 #endif
 		}
 
@@ -310,10 +332,10 @@ namespace Zexil.DotNet.FlowAnalysis {
 		protected List<Block> _blocks;
 		/// <summary />
 		protected BlockType _type;
-		/// <summary />
-		protected readonly Dictionary<BasicBlock, int> _entries;
-		/// <summary />
-		protected readonly Dictionary<BasicBlock, int> _exits;
+		///// <summary />
+		//protected readonly Dictionary<BasicBlock, int> _entries;
+		///// <summary />
+		//protected readonly Dictionary<BasicBlock, int> _exits;
 
 		/// <summary>
 		/// Child blocks
@@ -341,15 +363,15 @@ namespace Zexil.DotNet.FlowAnalysis {
 		/// </summary>
 		public override BlockType Type => _type;
 
-		/// <summary>
-		/// Returns entries of current scope block
-		/// </summary>
-		public IDictionary<BasicBlock, int> Entries => _entries;
+		///// <summary>
+		///// Returns entries of current scope block
+		///// </summary>
+		//public IDictionary<BasicBlock, int> Entries => _entries;
 
-		/// <summary>
-		/// Returns exits of current scope block
-		/// </summary>
-		public IDictionary<BasicBlock, int> Exits => _exits;
+		///// <summary>
+		///// Returns exits of current scope block
+		///// </summary>
+		//public IDictionary<BasicBlock, int> Exits => _exits;
 
 		/// <summary>
 		/// Constructor
@@ -358,8 +380,8 @@ namespace Zexil.DotNet.FlowAnalysis {
 		public ScopeBlock(BlockType type) {
 			_blocks = new List<Block>();
 			_type = type;
-			_entries = new Dictionary<BasicBlock, int>();
-			_exits = new Dictionary<BasicBlock, int>();
+			//_entries = new Dictionary<BasicBlock, int>();
+			//_exits = new Dictionary<BasicBlock, int>();
 		}
 
 		/// <summary>
@@ -373,8 +395,8 @@ namespace Zexil.DotNet.FlowAnalysis {
 
 			_blocks = new List<Block>(blocks);
 			_type = type;
-			_entries = new Dictionary<BasicBlock, int>();
-			_exits = new Dictionary<BasicBlock, int>();
+			//_entries = new Dictionary<BasicBlock, int>();
+			//_exits = new Dictionary<BasicBlock, int>();
 		}
 
 		private sealed class DebugView {
