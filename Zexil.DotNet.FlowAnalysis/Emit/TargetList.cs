@@ -2,11 +2,11 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 
-namespace Zexil.DotNet.FlowAnalysis {
+namespace Zexil.DotNet.FlowAnalysis.Emit {
 	/// <summary>
 	/// Switch target list
 	/// </summary>
-	public sealed class TargetList : IList<BasicBlock> {
+	public sealed class TargetList : ITargetList, IList<BasicBlock> {
 		private BasicBlock? _owner;
 		private readonly List<BasicBlock> _targets;
 
@@ -59,7 +59,19 @@ namespace Zexil.DotNet.FlowAnalysis {
 			_owner?.UpdateReferences(oldValue, newValue);
 		}
 
-		#region implement
+		#region ITargetList
+		IBasicBlock? ITargetList.Owner { get => Owner; set => Owner = (BasicBlock?)value; }
+		IBasicBlock IList<IBasicBlock>.this[int index] { get => this[index]; set => this[index] = (BasicBlock)value; }
+		int IList<IBasicBlock>.IndexOf(IBasicBlock item) { return IndexOf((BasicBlock)item); }
+		void IList<IBasicBlock>.Insert(int index, IBasicBlock item) { Insert(index, (BasicBlock)item); }
+		void ICollection<IBasicBlock>.Add(IBasicBlock item) { Add((BasicBlock)item); }
+		bool ICollection<IBasicBlock>.Contains(IBasicBlock item) { return Contains((BasicBlock)item); }
+		void ICollection<IBasicBlock>.CopyTo(IBasicBlock[] array, int arrayIndex) { throw new NotSupportedException(); }
+		bool ICollection<IBasicBlock>.Remove(IBasicBlock item) { return Remove((BasicBlock)item); }
+		IEnumerator<IBasicBlock> IEnumerable<IBasicBlock>.GetEnumerator() { return GetEnumerator(); }
+		#endregion
+
+		#region IList<BasicBlock>
 		/// <inheritdoc />
 		public int Count => _targets.Count;
 
@@ -112,9 +124,8 @@ namespace Zexil.DotNet.FlowAnalysis {
 			return _targets.Contains(item);
 		}
 
-		/// <inheritdoc />
-		public void CopyTo(BasicBlock[] array, int arrayIndex) {
-			_targets.CopyTo(array, arrayIndex);
+		void ICollection<BasicBlock>.CopyTo(BasicBlock[] array, int arrayIndex) {
+			throw new NotSupportedException();
 		}
 
 		/// <inheritdoc />

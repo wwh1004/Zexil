@@ -2,7 +2,7 @@ using System;
 using System.Linq;
 using dnlib.DotNet.Emit;
 
-namespace Zexil.DotNet.FlowAnalysis {
+namespace Zexil.DotNet.FlowAnalysis.Emit {
 	/// <summary>
 	/// Block inliner
 	/// </summary>

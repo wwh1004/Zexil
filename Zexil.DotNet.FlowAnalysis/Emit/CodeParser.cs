@@ -1,8 +1,9 @@
 using System;
 using System.Collections.Generic;
 using dnlib.DotNet.Emit;
+using DNE = dnlib.DotNet.Emit;
 
-namespace Zexil.DotNet.FlowAnalysis {
+namespace Zexil.DotNet.FlowAnalysis.Emit {
 	/// <summary>
 	/// Instructions to blocks converter
 	/// </summary>
@@ -60,10 +61,10 @@ namespace Zexil.DotNet.FlowAnalysis {
 			for (int i = 0; i < instructions.Count; i++) {
 				var instruction = instructions[i];
 				switch (instruction.OpCode.FlowControl) {
-				case FlowControl.Branch:
-				case FlowControl.Cond_Branch:
-				case FlowControl.Return:
-				case FlowControl.Throw: {
+				case DNE.FlowControl.Branch:
+				case DNE.FlowControl.Cond_Branch:
+				case DNE.FlowControl.Return:
+				case DNE.FlowControl.Throw: {
 					if (i + 1 != instructions.Count) {
 						// If current instruction is not the last, then next instruction is a new entry
 						isEntrys[i + 1] = true;
@@ -130,14 +131,16 @@ namespace Zexil.DotNet.FlowAnalysis {
 				int lastInstructionIndex = instructions.Count - 1;
 				var lastInstruction = instructions[lastInstructionIndex];
 				switch (lastInstruction.OpCode.FlowControl) {
-				case FlowControl.Branch: {
+				case DNE.FlowControl.Branch: {
 					basicBlock.BranchOpcode = lastInstruction.OpCode;
+					basicBlock.FlowControl = FlowControl.Branch;
 					basicBlock.FallThroughNoThrow = basicBlocks[(int)((Instruction)lastInstruction.Operand).Offset];
 					instructions.RemoveAt(lastInstructionIndex);
 					break;
 				}
-				case FlowControl.Cond_Branch: {
+				case DNE.FlowControl.Cond_Branch: {
 					basicBlock.BranchOpcode = lastInstruction.OpCode;
+					basicBlock.FlowControl = FlowControl.CondBranch;
 					if (i + 1 == basicBlocks.Length)
 						throw new InvalidMethodException();
 					basicBlock.FallThroughNoThrow = basicBlocks[i + 1];
@@ -158,20 +161,29 @@ namespace Zexil.DotNet.FlowAnalysis {
 					instructions.RemoveAt(lastInstructionIndex);
 					break;
 				}
-				case FlowControl.Call:
-				case FlowControl.Next: {
+				case DNE.FlowControl.Call:
+				case DNE.FlowControl.Next: {
 					basicBlock.BranchOpcode = OpCodes.Br;
+					basicBlock.FlowControl = FlowControl.Branch;
 					if (i + 1 == basicBlocks.Length)
 						throw new InvalidMethodException();
 					basicBlock.FallThroughNoThrow = basicBlocks[i + 1];
 					break;
 				}
-				case FlowControl.Return:
-				case FlowControl.Throw: {
+				case DNE.FlowControl.Return: {
 					basicBlock.BranchOpcode = lastInstruction.OpCode;
+					basicBlock.FlowControl = FlowControl.Return;
 					instructions.RemoveAt(lastInstructionIndex);
 					break;
 				}
+				case DNE.FlowControl.Throw: {
+					basicBlock.BranchOpcode = lastInstruction.OpCode;
+					basicBlock.FlowControl = FlowControl.Throw;
+					instructions.RemoveAt(lastInstructionIndex);
+					break;
+				}
+				default:
+					throw new InvalidOperationException();
 				}
 			}
 

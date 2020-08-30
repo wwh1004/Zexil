@@ -1,8 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using dnlib.DotNet;
-using dnlib.DotNet.Emit;
 
 namespace Zexil.DotNet.FlowAnalysis {
 	/// <summary>
@@ -10,42 +7,15 @@ namespace Zexil.DotNet.FlowAnalysis {
 	/// </summary>
 	public static class Extensions {
 		/// <summary>
-		/// Creates method block from methodDef.
-		/// NOTICE: <see cref="CilBody.SimplifyMacros"/> will be called!
-		/// </summary>
-		/// <param name="methodDef"></param>
-		/// <returns></returns>
-		public static ScopeBlock ToMethodBlock(this MethodDef methodDef) {
-			methodDef.Body.SimplifyMacros(methodDef.Parameters);
-			return CodeParser.Parse(methodDef.Body.Instructions, methodDef.Body.ExceptionHandlers);
-		}
-
-		/// <summary>
-		/// Restores <see cref="MethodDef"/> from method block
-		/// </summary>
-		/// <param name="methodDef"></param>
-		/// <param name="methodBlock"></param>
-		public static void FromMethodBlock(this MethodDef methodDef, ScopeBlock methodBlock) {
-			var body = methodDef.Body;
-			CodeGenerator.Generate(methodBlock, out var instructions, out var exceptionHandlers, out var locals);
-			body.Instructions.Clear();
-			body.Instructions.AddRange(instructions);
-			body.ExceptionHandlers.Clear();
-			body.ExceptionHandlers.AddRange(exceptionHandlers);
-			body.Variables.Clear();
-			body.Variables.AddRange(locals);
-		}
-
-		/// <summary>
 		/// Gets the first basic block
 		/// </summary>
 		/// <param name="block"></param>
 		/// <returns></returns>
-		public static BasicBlock First(this Block block) {
-			return (BasicBlock)Impl(block);
+		public static IBasicBlock First(this IBlock block) {
+			return (IBasicBlock)Impl(block);
 
-			static Block Impl(Block b) {
-				if (b is ScopeBlock scopeBlock)
+			static IBlock Impl(IBlock b) {
+				if (b is IScopeBlock scopeBlock)
 					return Impl(scopeBlock.FirstBlock);
 				else
 					return b;
@@ -57,11 +27,11 @@ namespace Zexil.DotNet.FlowAnalysis {
 		/// </summary>
 		/// <param name="block"></param>
 		/// <returns></returns>
-		public static BasicBlock Last(this Block block) {
-			return (BasicBlock)Impl(block);
+		public static IBasicBlock Last(this IBlock block) {
+			return (IBasicBlock)Impl(block);
 
-			static Block Impl(Block b) {
-				if (b is ScopeBlock scopeBlock)
+			static IBlock Impl(IBlock b) {
+				if (b is IScopeBlock scopeBlock)
 					return Impl(scopeBlock.LastBlock);
 				else
 					return b;
@@ -74,7 +44,7 @@ namespace Zexil.DotNet.FlowAnalysis {
 		/// <param name="block"></param>
 		/// <param name="scope"></param>
 		/// <returns></returns>
-		public static Block Upward(this Block block, ScopeBlock scope) {
+		public static IBlock Upward(this IBlock block, IScopeBlock scope) {
 			var root = block;
 			while (root.Scope != scope)
 				root = root.Scope;
@@ -87,7 +57,7 @@ namespace Zexil.DotNet.FlowAnalysis {
 		/// <param name="block"></param>
 		/// <param name="scope"></param>
 		/// <returns></returns>
-		public static Block? UpwardThrow(this Block block, ScopeBlock scope) {
+		public static IBlock? UpwardThrow(this IBlock block, IScopeBlock scope) {
 			var root = block;
 			while (root.ScopeNoThrow != scope) {
 				if (root.Type == BlockType.Method)
@@ -99,71 +69,12 @@ namespace Zexil.DotNet.FlowAnalysis {
 		}
 
 		/// <summary>
-		/// Redirect branches from basicBlock to newTarget
-		/// </summary>
-		/// <param name="basicBlock"></param>
-		/// <param name="newTarget"></param>
-		public static void Redirect(this BasicBlock basicBlock, BasicBlock newTarget) {
-			var predecessors = basicBlock.Predecessors.Keys.ToArray();
-			foreach (var predecessor in predecessors) {
-				if (predecessor.FallThroughNoThrow == basicBlock)
-					predecessor.FallThroughNoThrow = newTarget;
-				if (predecessor.CondTargetNoThrow == basicBlock)
-					predecessor.CondTargetNoThrow = newTarget;
-				var switchTargets = predecessor.SwitchTargetsNoThrow;
-				if (!(switchTargets is null)) {
-					for (int i = 0; i < switchTargets.Count; i++) {
-						if (switchTargets[i] == basicBlock)
-							switchTargets[i] = newTarget;
-					}
-				}
-			}
-		}
-
-		/// <summary>
-		/// Concatenates two basic blocks
-		/// </summary>
-		/// <param name="first"></param>
-		/// <param name="second"></param>
-		public static void Concat(this BasicBlock first, BasicBlock second) {
-			first.Instructions.AddRange(second.Instructions);
-			second.Instructions.Clear();
-			first.BranchOpcode = second.BranchOpcode;
-			second.BranchOpcode = OpCodes.Ret;
-			first.FallThroughNoThrow = second.FallThroughNoThrow;
-			second.FallThroughNoThrow = null;
-			first.CondTargetNoThrow = second.CondTargetNoThrow;
-			second.CondTargetNoThrow = null;
-			var switchTargets = second.SwitchTargetsNoThrow;
-			second.SwitchTargetsNoThrow = null;
-			first.SwitchTargetsNoThrow = switchTargets;
-#if DEBUG
-			second.IsErased = true;
-#endif
-		}
-
-		/// <summary>
-		/// Erases a basic block (will NOT remove it from its scope)
-		/// </summary>
-		/// <param name="basicBlock"></param>
-		public static void Erase(this BasicBlock basicBlock) {
-			basicBlock.Instructions.Clear();
-			basicBlock.BranchOpcode = OpCodes.Ret;
-			basicBlock.FallThroughNoThrow = null;
-			basicBlock.CondTargetNoThrow = null;
-			basicBlock.SwitchTargetsNoThrow = null;
-#if DEBUG
-			basicBlock.IsErased = true;
-#endif
-		}
-
-		/// <summary>
 		/// Enumerates blocks by type
 		/// </summary>
 		/// <typeparam name="TBlock"></typeparam>
 		/// <param name="block"></param>
 		/// <returns></returns>
-		public static IEnumerable<TBlock> Enumerate<TBlock>(this Block block) where TBlock : Block {
+		public static IEnumerable<TBlock> Enumerate<TBlock>(this IBlock block) where TBlock : IBlock {
 			return block.EnumerateInward<TBlock>();
 		}
 
@@ -173,7 +84,7 @@ namespace Zexil.DotNet.FlowAnalysis {
 		/// <typeparam name="TBlock"></typeparam>
 		/// <param name="blocks"></param>
 		/// <returns></returns>
-		public static IEnumerable<TBlock> Enumerate<TBlock>(this IEnumerable<Block> blocks) where TBlock : Block {
+		public static IEnumerable<TBlock> Enumerate<TBlock>(this IEnumerable<IBlock> blocks) where TBlock : IBlock {
 			return blocks.EnumerateInward<TBlock>();
 		}
 
@@ -183,10 +94,10 @@ namespace Zexil.DotNet.FlowAnalysis {
 		/// <typeparam name="TBlock"></typeparam>
 		/// <param name="block"></param>
 		/// <returns></returns>
-		public static IEnumerable<TBlock> EnumerateInward<TBlock>(this Block block) where TBlock : Block {
+		public static IEnumerable<TBlock> EnumerateInward<TBlock>(this IBlock block) where TBlock : IBlock {
 			if (block is TBlock t1)
 				yield return t1;
-			if (block is ScopeBlock scopeBlock) {
+			if (block is IScopeBlock scopeBlock) {
 				foreach (var t2 in scopeBlock.Blocks.EnumerateInward<TBlock>())
 					yield return t2;
 			}
@@ -198,14 +109,14 @@ namespace Zexil.DotNet.FlowAnalysis {
 		/// <typeparam name="TBlock"></typeparam>
 		/// <param name="blocks"></param>
 		/// <returns></returns>
-		public static IEnumerable<TBlock> EnumerateInward<TBlock>(this IEnumerable<Block> blocks) where TBlock : Block {
+		public static IEnumerable<TBlock> EnumerateInward<TBlock>(this IEnumerable<IBlock> blocks) where TBlock : IBlock {
 			foreach (var block in blocks) {
 				switch (block) {
-				case BasicBlock _:
+				case IBasicBlock _:
 					if (block is TBlock t1)
 						yield return t1;
 					break;
-				case ScopeBlock scopeBlock:
+				case IScopeBlock scopeBlock:
 					if (block is TBlock t2)
 						yield return t2;
 					foreach (var t3 in scopeBlock.Blocks.EnumerateInward<TBlock>())
@@ -223,8 +134,8 @@ namespace Zexil.DotNet.FlowAnalysis {
 		/// <typeparam name="TBlock"></typeparam>
 		/// <param name="block"></param>
 		/// <returns></returns>
-		public static IEnumerable<TBlock> EnumerateOutward<TBlock>(this Block block) where TBlock : Block {
-			if (block is ScopeBlock scopeBlock) {
+		public static IEnumerable<TBlock> EnumerateOutward<TBlock>(this IBlock block) where TBlock : IBlock {
+			if (block is IScopeBlock scopeBlock) {
 				foreach (var t1 in scopeBlock.Blocks.EnumerateOutward<TBlock>())
 					yield return t1;
 			}
@@ -238,14 +149,14 @@ namespace Zexil.DotNet.FlowAnalysis {
 		/// <typeparam name="TBlock"></typeparam>
 		/// <param name="blocks"></param>
 		/// <returns></returns>
-		public static IEnumerable<TBlock> EnumerateOutward<TBlock>(this IEnumerable<Block> blocks) where TBlock : Block {
+		public static IEnumerable<TBlock> EnumerateOutward<TBlock>(this IEnumerable<IBlock> blocks) where TBlock : IBlock {
 			foreach (var block in blocks) {
 				switch (block) {
-				case BasicBlock _:
+				case IBasicBlock _:
 					if (block is TBlock t1)
 						yield return t1;
 					break;
-				case ScopeBlock scopeBlock:
+				case IScopeBlock scopeBlock:
 					foreach (var t2 in scopeBlock.Blocks.EnumerateOutward<TBlock>())
 						yield return t2;
 					if (block is TBlock t3)
@@ -270,6 +181,33 @@ namespace Zexil.DotNet.FlowAnalysis {
 			else {
 				foreach (var item in collection)
 					list.Add(item);
+			}
+		}
+
+		/// <summary>
+		/// Inserts the elements of a collection into the <see cref="IList{T}"/> at the specified index.
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="list"></param>
+		/// <param name="index"></param>
+		/// <param name="collection"></param>
+		public static void InsertRange<T>(this IList<T> list, int index, IEnumerable<T> collection) {
+			if (!(collection is ICollection<T> c))
+				c = new List<T>(collection);
+			if (list is List<T> list2) {
+				list2.InsertRange(index, c);
+			}
+			else {
+				int length = list.Count;
+#pragma warning disable CS8604 // Possible null reference argument.
+				for (int i = 0; i < c.Count; i++)
+					list.Add(default);
+#pragma warning restore CS8604 // Possible null reference argument.
+				for (int i = index; i < length; i++)
+					list[i + c.Count] = list[i];
+				int n = 0;
+				foreach (var item in c)
+					list[index + n++] = item;
 			}
 		}
 

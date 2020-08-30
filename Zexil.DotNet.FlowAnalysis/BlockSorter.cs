@@ -8,23 +8,23 @@ namespace Zexil.DotNet.FlowAnalysis {
 	public static class BlockSorter {
 		/// <summary>
 		/// Sorts all blocks in <paramref name="methodBlock"/>
-		/// NOTICE: Do NOT use it to remove unsed blocks! Please call <see cref="BlockCleaner.RemoveUnusedBlocks(ScopeBlock)"/> first!
+		/// NOTICE: Do NOT use it to remove unsed blocks! Please call <code>BlockCleaner.RemoveUnusedBlocks(ScopeBlock methodBlock)</code> first!
 		/// </summary>
 		/// <param name="methodBlock"></param>
-		public static void Sort(ScopeBlock methodBlock) {
+		public static void Sort(IScopeBlock methodBlock) {
 			if (methodBlock is null)
 				throw new ArgumentNullException(nameof(methodBlock));
 			if (methodBlock.Type != BlockType.Method)
 				throw new ArgumentException($"{nameof(methodBlock)} is not a method block");
 
 			object contextKey = new object();
-			foreach (var basicBlock in methodBlock.Enumerate<BasicBlock>()) {
+			foreach (var basicBlock in methodBlock.Enumerate<IBasicBlock>()) {
 				if (basicBlock.Successors.Count == 0) {
 					basicBlock.Contexts.Set(contextKey, BlockContext.Empty);
 					continue;
 				}
 
-				var block = (Block)basicBlock;
+				var block = (IBlock)basicBlock;
 				// block is jump source (jump from)
 				bool added;
 				/*
@@ -57,7 +57,7 @@ namespace Zexil.DotNet.FlowAnalysis {
 					}
 				} while (!added && block.Type != BlockType.Method);
 
-				static bool AddTarget(List<Block> targets, ScopeBlock scope, BasicBlock? target) {
+				static bool AddTarget(List<IBlock> targets, IScopeBlock scope, IBasicBlock? target) {
 					if (target is null)
 						return false;
 					var parent = target.UpwardThrow(scope);
@@ -70,11 +70,12 @@ namespace Zexil.DotNet.FlowAnalysis {
 				}
 			}
 
-			foreach (var scopeBlock in methodBlock.Enumerate<ScopeBlock>()) {
+			foreach (var scopeBlock in methodBlock.Enumerate<IScopeBlock>()) {
 				if (scopeBlock.Type == BlockType.Protected)
 					continue;
+
 				var blocks = scopeBlock.Blocks;
-				var stack = new Stack<Block>();
+				var stack = new Stack<IBlock>();
 				stack.Push(blocks[0]);
 				int index = 0;
 				do {
@@ -95,7 +96,7 @@ namespace Zexil.DotNet.FlowAnalysis {
 		private sealed class BlockContext : IBlockContext {
 			public static readonly BlockContext Empty = new BlockContext();
 			// If basic block has no any successors, we set empty context to reduce memory usage.
-			public List<Block> Targets = new List<Block>();
+			public List<IBlock> Targets = new List<IBlock>();
 		}
 	}
 }

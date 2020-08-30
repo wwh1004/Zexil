@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using dnlib.DotNet.Emit;
 
-namespace Zexil.DotNet.FlowAnalysis {
+namespace Zexil.DotNet.FlowAnalysis.Emit {
 	/// <summary>
 	/// Blocks to instructions converter
 	/// </summary>
@@ -62,22 +62,22 @@ namespace Zexil.DotNet.FlowAnalysis {
 				instructionCount += basicBlock.Instructions.Count;
 				instructionCount++;
 
-				switch (branchInstruction.OpCode.FlowControl) {
+				switch (basicBlock.FlowControl) {
 				case FlowControl.Branch:
-				case FlowControl.Cond_Branch: break;
+				case FlowControl.CondBranch: break;
 				case FlowControl.Return:
 				case FlowControl.Throw: continue;
 				default: throw new ArgumentOutOfRangeException(nameof(OpCode.FlowControl));
 				}
 
 				var fallThrough = basicBlock.FallThrough;
-				if (branchInstruction.OpCode.FlowControl == FlowControl.Branch) {
+				if (basicBlock.FlowControl == FlowControl.Branch) {
 					branchInstruction.Operand = GetFirstInstruction(fallThrough);
 					continue;
 				}
 				// unconditional branch
 
-				if (branchInstruction.OpCode.FlowControl == FlowControl.Cond_Branch) {
+				if (basicBlock.FlowControl == FlowControl.CondBranch) {
 					if (branchInstruction.OpCode.OperandType == OperandType.InlineBrTarget) {
 						branchInstruction.Operand = GetFirstInstruction(basicBlock.CondTarget);
 					}
