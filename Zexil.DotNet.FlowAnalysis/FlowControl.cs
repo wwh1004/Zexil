@@ -4,11 +4,6 @@ namespace Zexil.DotNet.FlowAnalysis {
 	/// </summary>
 	public enum FlowControl {
 		/// <summary>
-		/// Return instruction
-		/// </summary>
-		Return,
-
-		/// <summary>
 		/// Unconditional branch
 		/// </summary>
 		Branch,
@@ -17,6 +12,11 @@ namespace Zexil.DotNet.FlowAnalysis {
 		/// Conditional branch
 		/// </summary>
 		CondBranch,
+
+		/// <summary>
+		/// Return instruction
+		/// </summary>
+		Return,
 
 		/// <summary>
 		/// Throw instruction

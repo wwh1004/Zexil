@@ -46,15 +46,15 @@ namespace Zexil.DotNet.FlowAnalysis.Collections {
 		}
 
 		private struct Enumerator2 : IEnumerator<IBlock> {
-			private Enumerator _enumerator;
+			private readonly IEnumerator<TBlock> _enumerator;
 
-			public Enumerator2(in Enumerator enumerator) {
+			public Enumerator2(IEnumerator<TBlock> enumerator) {
 				_enumerator = enumerator;
 			}
 
 			public IBlock Current => _enumerator.Current;
 
-			object IEnumerator.Current => _enumerator.Current;
+			object IEnumerator.Current => ((IEnumerator)_enumerator).Current;
 
 			public void Dispose() {
 				_enumerator.Dispose();
@@ -65,7 +65,7 @@ namespace Zexil.DotNet.FlowAnalysis.Collections {
 			}
 
 			public void Reset() {
-				((IEnumerator)_enumerator).Reset();
+				_enumerator.Reset();
 			}
 		}
 	}

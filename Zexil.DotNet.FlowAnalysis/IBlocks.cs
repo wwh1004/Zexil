@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using dnlib.DotNet;
 
 namespace Zexil.DotNet.FlowAnalysis {
 	/// <summary>
@@ -203,6 +202,6 @@ namespace Zexil.DotNet.FlowAnalysis {
 		/// <summary>
 		/// The catch type if <see cref="IBlock.Type"/> is <see cref="BlockType.Catch"/>
 		/// </summary>
-		public ITypeDefOrRef? CatchType { get; set; }
+		public object? CatchType { get; set; }
 	}
 }

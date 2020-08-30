@@ -6,7 +6,7 @@ namespace Zexil.DotNet.FlowAnalysis {
 	internal abstract class BlockFormatterCore {
 		protected readonly StringBuilder _buffer;
 #if !DEBUG
-		protected readonly Dictionary<IBasicBlock, int> _blockIds;
+		protected readonly System.Collections.Generic.Dictionary<IBasicBlock, int> _blockIds;
 		protected int _currentBlockId;
 #endif
 		protected int _indent;
@@ -15,7 +15,7 @@ namespace Zexil.DotNet.FlowAnalysis {
 		protected BlockFormatterCore() {
 			_buffer = new StringBuilder();
 #if !DEBUG
-			_blockIds = new Dictionary<IBasicBlock, int>();
+			_blockIds = new System.Collections.Generic.Dictionary<IBasicBlock, int>();
 #endif
 		}
 
@@ -61,7 +61,8 @@ namespace Zexil.DotNet.FlowAnalysis {
 					AppendLine("{");
 					break;
 				case BlockType.Catch: {
-					AppendLine(block is IHandlerBlock handlerBlock ? $"catch {handlerBlock.CatchType}" : "catch");
+					object? catchType = ((IHandlerBlock)block).CatchType;
+					AppendLine(!(catchType is null) ? $"catch {catchType}" : "catch");
 					AppendLine("{");
 					break;
 				}

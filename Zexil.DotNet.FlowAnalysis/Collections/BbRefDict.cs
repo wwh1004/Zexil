@@ -95,14 +95,14 @@ namespace Zexil.DotNet.FlowAnalysis.Collections {
 			}
 
 			IEnumerator IEnumerable.GetEnumerator() {
-				return _dictionary.Keys.GetEnumerator();
+				return ((IEnumerable)_dictionary.Keys).GetEnumerator();
 			}
 		}
 
 		private struct Enumerator2 : IEnumerator<KeyValuePair<IBasicBlock, int>> {
-			private readonly Enumerator _enumerator;
+			private readonly IEnumerator<KeyValuePair<TBasicBlock, int>> _enumerator;
 
-			public Enumerator2(in Enumerator enumerator) {
+			public Enumerator2(IEnumerator<KeyValuePair<TBasicBlock, int>> enumerator) {
 				_enumerator = enumerator;
 			}
 
@@ -113,7 +113,7 @@ namespace Zexil.DotNet.FlowAnalysis.Collections {
 				}
 			}
 
-			object IEnumerator.Current => _enumerator.Current;
+			object IEnumerator.Current => ((IEnumerator)_enumerator).Current;
 
 			public void Dispose() {
 				_enumerator.Dispose();
@@ -124,7 +124,7 @@ namespace Zexil.DotNet.FlowAnalysis.Collections {
 			}
 
 			public void Reset() {
-				((IEnumerator)_enumerator).Reset();
+				_enumerator.Reset();
 			}
 		}
 	}

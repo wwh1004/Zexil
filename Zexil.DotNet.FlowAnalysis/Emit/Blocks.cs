@@ -4,6 +4,7 @@ using System.Diagnostics;
 using dnlib.DotNet;
 using dnlib.DotNet.Emit;
 using Zexil.DotNet.FlowAnalysis.Collections;
+using DNE = dnlib.DotNet.Emit;
 
 namespace Zexil.DotNet.FlowAnalysis.Emit {
 	/// <summary>
@@ -52,7 +53,9 @@ namespace Zexil.DotNet.FlowAnalysis.Emit {
 		}
 
 		#region IBlock
+		[DebuggerBrowsable(DebuggerBrowsableState.Never)]
 		IScopeBlock IBlock.Scope => Scope;
+		[DebuggerBrowsable(DebuggerBrowsableState.Never)]
 		IScopeBlock? IBlock.ScopeNoThrow { get => ScopeNoThrow; set => ScopeNoThrow = (ScopeBlock?)value; }
 		#endregion
 	}
@@ -97,6 +100,14 @@ namespace Zexil.DotNet.FlowAnalysis.Emit {
 			set {
 				_branchOpcode = value;
 				_branchInstruction.OpCode = value;
+				_flowControl = value.FlowControl switch
+				{
+					DNE.FlowControl.Branch => FlowControl.Branch,
+					DNE.FlowControl.Cond_Branch => FlowControl.CondBranch,
+					DNE.FlowControl.Return => FlowControl.Return,
+					DNE.FlowControl.Throw => FlowControl.Throw,
+					_ => throw new ArgumentOutOfRangeException(nameof(value))
+				};
 			}
 		}
 
@@ -245,13 +256,21 @@ namespace Zexil.DotNet.FlowAnalysis.Emit {
 		}
 
 		#region IBasicBlock
+		[DebuggerBrowsable(DebuggerBrowsableState.Never)]
 		IBasicBlock IBasicBlock.FallThrough => FallThrough;
+		[DebuggerBrowsable(DebuggerBrowsableState.Never)]
 		IBasicBlock? IBasicBlock.FallThroughNoThrow { get => FallThroughNoThrow; set => FallThroughNoThrow = (BasicBlock?)value; }
+		[DebuggerBrowsable(DebuggerBrowsableState.Never)]
 		IBasicBlock IBasicBlock.CondTarget => CondTarget;
+		[DebuggerBrowsable(DebuggerBrowsableState.Never)]
 		IBasicBlock? IBasicBlock.CondTargetNoThrow { get => CondTargetNoThrow; set => CondTargetNoThrow = (BasicBlock?)value; }
+		[DebuggerBrowsable(DebuggerBrowsableState.Never)]
 		ITargetList IBasicBlock.SwitchTargets => SwitchTargets;
+		[DebuggerBrowsable(DebuggerBrowsableState.Never)]
 		ITargetList? IBasicBlock.SwitchTargetsNoThrow { get => SwitchTargetsNoThrow; set => SwitchTargetsNoThrow = (TargetList?)value; }
+		[DebuggerBrowsable(DebuggerBrowsableState.Never)]
 		IDictionary<IBasicBlock, int> IBasicBlock.Predecessors => _predecessors;
+		[DebuggerBrowsable(DebuggerBrowsableState.Never)]
 		IDictionary<IBasicBlock, int> IBasicBlock.Successors => _successors;
 		#endregion
 	}
@@ -320,8 +339,11 @@ namespace Zexil.DotNet.FlowAnalysis.Emit {
 		}
 
 		#region IScopeBlock
+		[DebuggerBrowsable(DebuggerBrowsableState.Never)]
 		IList<IBlock> IScopeBlock.Blocks => _blocks;
+		[DebuggerBrowsable(DebuggerBrowsableState.Never)]
 		IBlock IScopeBlock.FirstBlock => FirstBlock;
+		[DebuggerBrowsable(DebuggerBrowsableState.Never)]
 		IBlock IScopeBlock.LastBlock => LastBlock;
 		#endregion
 	}
@@ -358,5 +380,10 @@ namespace Zexil.DotNet.FlowAnalysis.Emit {
 		public HandlerBlock(IEnumerable<Block> blocks, BlockType type, ITypeDefOrRef? catchType) : base(blocks, type) {
 			_catchType = catchType;
 		}
+
+		#region IHandlerBlock
+		[DebuggerBrowsable(DebuggerBrowsableState.Never)]
+		object? IHandlerBlock.CatchType { get => CatchType; set => CatchType = (ITypeDefOrRef?)value; }
+		#endregion
 	}
 }
