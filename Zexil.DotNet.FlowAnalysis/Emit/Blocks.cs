@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Runtime.CompilerServices;
 using dnlib.DotNet;
 using dnlib.DotNet.Emit;
+using Zexil.DotNet.FlowAnalysis.Collections;
 
 namespace Zexil.DotNet.FlowAnalysis.Emit {
 	/// <summary>
@@ -68,8 +68,8 @@ namespace Zexil.DotNet.FlowAnalysis.Emit {
 		private BasicBlock? _fallThrough;
 		private BasicBlock? _condTarget;
 		private TargetList? _switchTargets;
-		private readonly Dictionary<BasicBlock, int> _predecessors;
-		private readonly Dictionary<BasicBlock, int> _successors;
+		private readonly BbRefDict<BasicBlock> _predecessors;
+		private readonly BbRefDict<BasicBlock> _successors;
 
 		/// <inheritdoc />
 		public override BlockType Type => BlockType.Basic;
@@ -177,11 +177,6 @@ namespace Zexil.DotNet.FlowAnalysis.Emit {
 
 #if DEBUG
 		internal uint OriginalOffset { get; }
-
-		/// <summary>
-		/// Returns if current basic block is erased
-		/// </summary>
-		public bool IsErased { get; set; }
 #endif
 
 		/// <summary>
@@ -191,8 +186,8 @@ namespace Zexil.DotNet.FlowAnalysis.Emit {
 			_instructions = new List<Instruction>();
 			_branchInstruction = new Instruction(OpCodes.Ret);
 			_branchOpcode = OpCodes.Ret;
-			_predecessors = new Dictionary<BasicBlock, int>();
-			_successors = new Dictionary<BasicBlock, int>();
+			_predecessors = new BbRefDict<BasicBlock>();
+			_successors = new BbRefDict<BasicBlock>();
 		}
 
 		/// <summary>
@@ -211,8 +206,8 @@ namespace Zexil.DotNet.FlowAnalysis.Emit {
 			_instructions = new List<Instruction>(instructions ?? throw new ArgumentNullException(nameof(instructions)));
 			_branchInstruction = new Instruction(branchOpcode ?? throw new ArgumentNullException(nameof(branchOpcode)));
 			_branchOpcode = branchOpcode;
-			_predecessors = new Dictionary<BasicBlock, int>();
-			_successors = new Dictionary<BasicBlock, int>();
+			_predecessors = new BbRefDict<BasicBlock>();
+			_successors = new BbRefDict<BasicBlock>();
 #if DEBUG
 			OriginalOffset = _instructions.Count == 0 ? ushort.MaxValue : _instructions[0].Offset;
 #endif
@@ -256,8 +251,8 @@ namespace Zexil.DotNet.FlowAnalysis.Emit {
 		IBasicBlock? IBasicBlock.CondTargetNoThrow { get => CondTargetNoThrow; set => CondTargetNoThrow = (BasicBlock?)value; }
 		ITargetList IBasicBlock.SwitchTargets => SwitchTargets;
 		ITargetList? IBasicBlock.SwitchTargetsNoThrow { get => SwitchTargetsNoThrow; set => SwitchTargetsNoThrow = (TargetList?)value; }
-		IDictionary<IBasicBlock, int> IBasicBlock.Predecessors => Unsafe.As<IDictionary<IBasicBlock, int>>(Predecessors);
-		IDictionary<IBasicBlock, int> IBasicBlock.Successors => Unsafe.As<IDictionary<IBasicBlock, int>>(Successors);
+		IDictionary<IBasicBlock, int> IBasicBlock.Predecessors => _predecessors;
+		IDictionary<IBasicBlock, int> IBasicBlock.Successors => _successors;
 		#endregion
 	}
 
@@ -268,8 +263,7 @@ namespace Zexil.DotNet.FlowAnalysis.Emit {
 	public class ScopeBlock : Block, IScopeBlock {
 		/// <summary />
 		protected BlockType _type;
-		/// <summary />
-		protected List<Block> _blocks;
+		internal BlockList<Block> _blocks;
 
 		/// <inheritdoc />
 		public override BlockType Type => _type;
@@ -295,7 +289,7 @@ namespace Zexil.DotNet.FlowAnalysis.Emit {
 		/// <param name="type">Block type</param>
 		public ScopeBlock(BlockType type) {
 			_type = type;
-			_blocks = new List<Block>();
+			_blocks = new BlockList<Block>();
 		}
 
 		/// <summary>
@@ -308,7 +302,7 @@ namespace Zexil.DotNet.FlowAnalysis.Emit {
 				throw new ArgumentNullException(nameof(blocks));
 
 			_type = type;
-			_blocks = new List<Block>(blocks);
+			_blocks = new BlockList<Block>(blocks);
 		}
 
 		private sealed class DebugView {
@@ -326,7 +320,7 @@ namespace Zexil.DotNet.FlowAnalysis.Emit {
 		}
 
 		#region IScopeBlock
-		IList<IBlock> IScopeBlock.Blocks => Unsafe.As<IList<IBlock>>(Blocks);
+		IList<IBlock> IScopeBlock.Blocks => _blocks;
 		IBlock IScopeBlock.FirstBlock => FirstBlock;
 		IBlock IScopeBlock.LastBlock => LastBlock;
 		#endregion

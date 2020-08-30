@@ -80,7 +80,15 @@ namespace Zexil.DotNet.FlowAnalysis {
 		/// Trampoline, used for a scope block that has multiple entries
 		/// Target(s): <see cref="IBasicBlock"/>
 		/// </summary>
-		Trampoline = 1 << 2
+		Trampoline = 1 << 2,
+
+#if DEBUG
+		/// <summary>
+		/// Block is erased so this block should NOT be used again
+		/// Target(s): <see cref="IBlock"/>
+		/// </summary>
+		Erased = 1 << 32
+#endif
 	}
 
 	/// <summary>

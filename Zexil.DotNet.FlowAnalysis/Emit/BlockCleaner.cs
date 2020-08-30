@@ -58,8 +58,11 @@ namespace Zexil.DotNet.FlowAnalysis.Emit {
 			if (methodBlock.Type != BlockType.Method)
 				throw new ArgumentException($"{nameof(methodBlock)} is not a method block");
 
-			return BlockCleanerCore.RemoveUnusedBlocks(methodBlock, t => ((BasicBlock)t).Erase());
-			// todo:: static local func
+			return BlockCleanerCore.RemoveUnusedBlocks(methodBlock, Erase);
+
+			static void Erase(IBasicBlock basicBlock) {
+				((BasicBlock)basicBlock).Erase();
+			}
 		}
 	}
 }

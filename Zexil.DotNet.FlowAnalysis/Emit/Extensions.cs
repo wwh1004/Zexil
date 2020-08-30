@@ -138,7 +138,7 @@ namespace Zexil.DotNet.FlowAnalysis.Emit {
 			second.SwitchTargetsNoThrow = null;
 			first.SwitchTargetsNoThrow = switchTargets;
 #if DEBUG
-			second.IsErased = true;
+			second.Flags |= BlockFlags.Erased;
 #endif
 		}
 
@@ -153,7 +153,7 @@ namespace Zexil.DotNet.FlowAnalysis.Emit {
 			basicBlock.CondTargetNoThrow = null;
 			basicBlock.SwitchTargetsNoThrow = null;
 #if DEBUG
-			basicBlock.IsErased = true;
+			basicBlock.Flags |= BlockFlags.Erased;
 #endif
 		}
 
