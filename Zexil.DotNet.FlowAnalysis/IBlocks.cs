@@ -76,7 +76,7 @@ namespace Zexil.DotNet.FlowAnalysis {
 		NoInlining = 1 << 1,
 
 		/// <summary>
-		/// Trampoline, used for a scope block that has multiple entries
+		/// Trampoline, used for a scope block that has multiple entries (e.g. VB.NET On Error Resume Next will cause branch into try block)
 		/// Target(s): <see cref="IBasicBlock"/>
 		/// </summary>
 		Trampoline = 1 << 2,

@@ -1,30 +1,32 @@
 using System;
 using System.Collections.Generic;
 
-namespace Zexil.DotNet.FlowAnalysis {
+namespace Zexil.DotNet.FlowAnalysis.Emit {
+	// TODO: refacoring, do NOT sort by dfs
+
 	/// <summary>
 	/// Block sorter
 	/// </summary>
 	public static class BlockSorter {
 		/// <summary>
 		/// Sorts all blocks in <paramref name="methodBlock"/>
-		/// NOTICE: Do NOT use it to remove unsed blocks! Please call <code>BlockCleaner.RemoveUnusedBlocks(ScopeBlock methodBlock)</code> first!
+		/// NOTICE: Do NOT use it to remove unsed blocks! Please call <see cref="BlockCleaner.RemoveUnusedBlocks(ScopeBlock)"/> first!
 		/// </summary>
 		/// <param name="methodBlock"></param>
-		public static void Sort(IScopeBlock methodBlock) {
+		public static void Sort(ScopeBlock methodBlock) {
 			if (methodBlock is null)
 				throw new ArgumentNullException(nameof(methodBlock));
 			if (methodBlock.Type != BlockType.Method)
 				throw new ArgumentException($"{nameof(methodBlock)} is not a method block");
 
 			object contextKey = new object();
-			foreach (var basicBlock in methodBlock.Enumerate<IBasicBlock>()) {
+			foreach (var basicBlock in methodBlock.Enumerate<BasicBlock>()) {
 				if (basicBlock.Successors.Count == 0) {
 					basicBlock.Contexts.Set(contextKey, BlockContext.Empty);
 					continue;
 				}
 
-				var block = (IBlock)basicBlock;
+				var block = (Block)basicBlock;
 				// block is jump source (jump from)
 				bool added;
 				/*
@@ -57,7 +59,7 @@ namespace Zexil.DotNet.FlowAnalysis {
 					}
 				} while (!added && block.Type != BlockType.Method);
 
-				static bool AddTarget(List<IBlock> targets, IScopeBlock scope, IBasicBlock? target) {
+				static bool AddTarget(List<Block> targets, ScopeBlock scope, BasicBlock? target) {
 					if (target is null)
 						return false;
 					var parent = target.UpwardThrow(scope);
@@ -70,12 +72,12 @@ namespace Zexil.DotNet.FlowAnalysis {
 				}
 			}
 
-			foreach (var scopeBlock in methodBlock.Enumerate<IScopeBlock>()) {
+			foreach (var scopeBlock in methodBlock.Enumerate<ScopeBlock>()) {
 				if (scopeBlock.Type == BlockType.Protected)
 					continue;
 
 				var blocks = scopeBlock.Blocks;
-				var stack = new Stack<IBlock>();
+				var stack = new Stack<Block>();
 				stack.Push(blocks[0]);
 				int index = 0;
 				do {
@@ -96,7 +98,7 @@ namespace Zexil.DotNet.FlowAnalysis {
 		private sealed class BlockContext : IBlockContext {
 			public static readonly BlockContext Empty = new BlockContext();
 			// If basic block has no any successors, we set empty context to reduce memory usage.
-			public List<IBlock> Targets = new List<IBlock>();
+			public List<Block> Targets = new List<Block>();
 		}
 	}
 }

@@ -8,7 +8,7 @@ namespace Zexil.DotNet.FlowAnalysis.Emit {
 	/// <summary>
 	/// Block formatter
 	/// </summary>
-	public sealed class BlockFormatter {
+	public static class BlockFormatter {
 		private static readonly object _syncRoot = new object();
 
 		/// <summary>
@@ -33,10 +33,10 @@ namespace Zexil.DotNet.FlowAnalysis.Emit {
 			if (block is null)
 				throw new ArgumentNullException(nameof(block));
 
-			return BlockFormatterCore.Format_NoLock(new BlockFormatterImpl(), block);
+			return Shared.BlockFormatter.Format_NoLock(new BlockFormatterImpl(), block);
 		}
 
-		private sealed class BlockFormatterImpl : BlockFormatterCore {
+		private sealed class BlockFormatterImpl : Shared.BlockFormatter {
 			protected override void FormatBasicBlockCore(IBasicBlock basicBlock) {
 				FormatBasicBlockImpl((BasicBlock)basicBlock);
 			}

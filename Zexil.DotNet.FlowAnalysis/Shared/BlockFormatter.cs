@@ -2,24 +2,38 @@ using System;
 using System.Linq;
 using System.Text;
 
-namespace Zexil.DotNet.FlowAnalysis {
-	internal abstract class BlockFormatterCore {
+namespace Zexil.DotNet.FlowAnalysis.Shared {
+	/// <summary>
+	/// Block formatter common code
+	/// </summary>
+	public abstract class BlockFormatter {
+		/// <summary />
 		protected readonly StringBuilder _buffer;
 #if !DEBUG
+		/// <summary />
 		protected readonly System.Collections.Generic.Dictionary<IBasicBlock, int> _blockIds;
+		/// <summary />
 		protected int _currentBlockId;
 #endif
+		/// <summary />
 		protected int _indent;
+		/// <summary />
 		protected bool _newLine;
 
-		protected BlockFormatterCore() {
+		/// <summary />
+		protected BlockFormatter() {
 			_buffer = new StringBuilder();
 #if !DEBUG
 			_blockIds = new System.Collections.Generic.Dictionary<IBasicBlock, int>();
 #endif
 		}
 
-		public static string Format_NoLock(BlockFormatterCore formatter, IBlock block) {
+		/// <summary>
+		/// Formats a block
+		/// </summary>
+		/// <param name="block"></param>
+		/// <returns></returns>
+		public static string Format_NoLock(BlockFormatter formatter, IBlock block) {
 #if !DEBUG
 			formatter.SetBlockIds(block);
 #endif
@@ -36,6 +50,7 @@ namespace Zexil.DotNet.FlowAnalysis {
 		}
 #endif
 
+		/// <summary />
 		protected virtual void FormatCore(IBlock block) {
 			if (block is IBasicBlock basicBlock) {
 				if (_newLine)
@@ -99,8 +114,10 @@ namespace Zexil.DotNet.FlowAnalysis {
 			}
 		}
 
+		/// <summary />
 		protected abstract void FormatBasicBlockCore(IBasicBlock basicBlock);
 
+		/// <summary />
 		protected virtual string FormatBlockId(IBasicBlock basicBlock) {
 #if DEBUG
 			throw new NotImplementedException();
@@ -109,18 +126,22 @@ namespace Zexil.DotNet.FlowAnalysis {
 #endif
 		}
 
+		/// <summary />
 		protected virtual string FormatPredecessors(IBasicBlock basicBlock) {
-			return string.Join(", ", basicBlock.Predecessors.Select(t => FormatBlockId(t.Key)));
+			return string.Join(", ", basicBlock.Predecessors.Keys.Select(FormatBlockId));
 		}
 
+		/// <summary />
 		protected virtual string FormatSuccessors(IBasicBlock basicBlock) {
-			return string.Join(", ", basicBlock.Successors.Select(t => FormatBlockId(t.Key)));
+			return string.Join(", ", basicBlock.Successors.Keys.Select(FormatBlockId));
 		}
 
+		/// <summary />
 		protected void AppendLine() {
 			_buffer.AppendLine();
 		}
 
+		/// <summary />
 		protected virtual void AppendLine(string value) {
 			_buffer.Append(' ', _indent);
 			_buffer.AppendLine(value);

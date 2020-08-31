@@ -1,7 +1,10 @@
+using System;
+
 namespace Zexil.DotNet.FlowAnalysis {
 	/// <summary>
 	/// Flow control
 	/// </summary>
+	[Flags]
 	public enum FlowControl {
 		/// <summary>
 		/// Unconditional branch
@@ -21,6 +24,13 @@ namespace Zexil.DotNet.FlowAnalysis {
 		/// <summary>
 		/// Throw instruction
 		/// </summary>
-		Throw
+		Throw,
+
+		/// <summary>
+		/// Basic flow control mask
+		/// </summary>
+		BasicMask = Throw,
+
+		
 	}
 }

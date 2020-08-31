@@ -48,7 +48,7 @@ namespace Zexil.DotNet.Emulation {
 			if (arguments is null)
 				throw new ArgumentNullException(nameof(arguments));
 
-
+			return null;
 		}
 	}
 }

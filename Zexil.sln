@@ -5,7 +5,9 @@ VisualStudioVersion = 16.0.29920.165
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Zexil.DotNet.FlowAnalysis", "Zexil.DotNet.FlowAnalysis\Zexil.DotNet.FlowAnalysis.csproj", "{2CA9271D-D7B2-4A95-816F-EFFCC717AD79}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Zexil.DotNet.Emulation", "Zexil.DotNet.Emulation\Zexil.DotNet.Emulation.csproj", "{156E0503-F572-47F2-9FE3-2D5FA875F2B6}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Zexil.DotNet.Emulation", "Zexil.DotNet.Emulation\Zexil.DotNet.Emulation.csproj", "{156E0503-F572-47F2-9FE3-2D5FA875F2B6}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Zexil.DotNet.Ast", "Zexil.DotNet.Ast\Zexil.DotNet.Ast.csproj", "{70CE8B84-2649-4ECB-B2E6-3E873CE9C4D3}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +23,10 @@ Global
 		{156E0503-F572-47F2-9FE3-2D5FA875F2B6}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{156E0503-F572-47F2-9FE3-2D5FA875F2B6}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{156E0503-F572-47F2-9FE3-2D5FA875F2B6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{70CE8B84-2649-4ECB-B2E6-3E873CE9C4D3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{70CE8B84-2649-4ECB-B2E6-3E873CE9C4D3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{70CE8B84-2649-4ECB-B2E6-3E873CE9C4D3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{70CE8B84-2649-4ECB-B2E6-3E873CE9C4D3}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

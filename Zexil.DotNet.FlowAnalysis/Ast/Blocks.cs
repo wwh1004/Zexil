@@ -2,11 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using dnlib.DotNet;
-using dnlib.DotNet.Emit;
+using Zexil.DotNet.Ast;
 using Zexil.DotNet.FlowAnalysis.Collections;
-using DNE = dnlib.DotNet.Emit;
 
-namespace Zexil.DotNet.FlowAnalysis.Emit {
+namespace Zexil.DotNet.FlowAnalysis.Ast {
 	/// <summary>
 	/// Represents a block
 	/// </summary>
@@ -49,7 +48,8 @@ namespace Zexil.DotNet.FlowAnalysis.Emit {
 
 		/// <inheritdoc />
 		public override string ToString() {
-			return BlockFormatter.Format(this);
+			//return BlockFormatter.Format(this);
+			throw new NotImplementedException();
 		}
 
 		#region IBlock
@@ -64,8 +64,8 @@ namespace Zexil.DotNet.FlowAnalysis.Emit {
 	/// Basic block
 	/// </summary>
 	public sealed class BasicBlock : Block, IBasicBlock {
-		private readonly List<Instruction> _instructions;
-		private readonly Instruction _branchInstruction;
+		private readonly List<AstNode> _nodes;
+		private readonly AstNode _branchNode;
 		private FlowControl _flowControl;
 		private BasicBlock? _fallThrough;
 		private BasicBlock? _condTarget;
@@ -77,36 +77,26 @@ namespace Zexil.DotNet.FlowAnalysis.Emit {
 		public override BlockType Type => BlockType.Basic;
 
 		/// <summary>
-		/// Instructions in current basic block excluding branch instruction
+		/// Nodes in current basic block excluding branch node
 		/// </summary>
-		public IList<Instruction> Instructions => _instructions;
+		public IList<AstNode> Nodes => _nodes;
 
 		/// <summary>
-		/// Returns <see langword="true"/> if <see cref="Instructions"/> is empty
+		/// Returns <see langword="true"/> if <see cref="Nodes"/> is empty
 		/// </summary>
-		public bool IsEmpty => _instructions.Count == 0;
+		public bool IsEmpty => _nodes.Count == 0;
 
 		/// <summary>
-		/// Returns branch instruction of current basic block (dummy instruction)
+		/// Returns branch node of current basic block (dummy node)
 		/// </summary>
-		public Instruction BranchInstruction => _branchInstruction;
+		public AstNode BranchNode => _branchNode;
 
 		/// <summary>
 		/// Returns branch opcode of current basic block
 		/// </summary>
 		public OpCode BranchOpcode {
-			get => _branchInstruction.OpCode;
-			set {
-				_branchInstruction.OpCode = value;
-				_flowControl = value.FlowControl switch
-				{
-					DNE.FlowControl.Branch => FlowControl.Branch,
-					DNE.FlowControl.Cond_Branch => FlowControl.CondBranch,
-					DNE.FlowControl.Return => FlowControl.Return,
-					DNE.FlowControl.Throw => FlowControl.Throw,
-					_ => throw new ArgumentOutOfRangeException(nameof(value))
-				};
-			}
+			get => _branchNode.OpCode;
+			set => throw new NotImplementedException();
 		}
 
 		/// <inheritdoc />
@@ -187,47 +177,6 @@ namespace Zexil.DotNet.FlowAnalysis.Emit {
 #if DEBUG
 		internal uint OriginalOffset { get; }
 #endif
-
-		/// <summary>
-		/// Constructor
-		/// </summary>
-		public BasicBlock() {
-			_instructions = new List<Instruction>();
-			_branchInstruction = new Instruction(OpCodes.Ret);
-			_predecessors = new BbRefDict<BasicBlock>();
-			_successors = new BbRefDict<BasicBlock>();
-		}
-
-		/// <summary>
-		/// Constructor
-		/// </summary>
-		/// <param name="instructions">Instructions in current basic block excluding branch instruction</param>
-		public BasicBlock(IEnumerable<Instruction> instructions) : this(instructions, OpCodes.Ret) {
-		}
-
-		/// <summary>
-		/// Constructor
-		/// </summary>
-		/// <param name="instructions">Instructions in current basic block excluding branch instruction</param>
-		/// <param name="branchOpcode">Branch opcode of current basic block</param>
-		public BasicBlock(IEnumerable<Instruction> instructions, OpCode branchOpcode) : this(instructions, new Instruction(branchOpcode)) {
-		}
-
-		/// <summary>
-		/// Constructor
-		/// </summary>
-		/// <param name="instructions">Instructions in current basic block excluding branch instruction</param>
-		/// <param name="branchInstruction">branch instruction of current basic block (dummy instruction)</param>
-		public BasicBlock(IEnumerable<Instruction> instructions, Instruction branchInstruction) {
-			_instructions = new List<Instruction>(instructions ?? throw new ArgumentNullException(nameof(instructions)));
-			_branchInstruction = branchInstruction ?? throw new ArgumentNullException(nameof(branchInstruction));
-			branchInstruction.Operand = null;
-			_predecessors = new BbRefDict<BasicBlock>();
-			_successors = new BbRefDict<BasicBlock>();
-#if DEBUG
-			OriginalOffset = _instructions.Count == 0 ? ushort.MaxValue : _instructions[0].Offset;
-#endif
-		}
 
 		internal BasicBlock? UpdateReferences(BasicBlock? oldValue, BasicBlock? newValue) {
 			if (oldValue != newValue) {

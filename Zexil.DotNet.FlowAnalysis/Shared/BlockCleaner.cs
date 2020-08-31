@@ -1,8 +1,16 @@
 using System;
 using System.Collections.Generic;
 
-namespace Zexil.DotNet.FlowAnalysis {
-	internal static class BlockCleanerCore {
+namespace Zexil.DotNet.FlowAnalysis.Shared {
+	/// <summary>
+	/// Block cleaner common code
+	/// </summary>
+	public static class BlockCleaner {
+		/// <summary>
+		/// Removes all unused blocks
+		/// </summary>
+		/// <param name="methodBlock"></param>
+		/// <returns></returns>
 		public static int RemoveUnusedBlocks(IScopeBlock methodBlock, Action<IBasicBlock> eraser) {
 			var isVisiteds = new HashSet<IBlock>();
 			VisitSuccessors(methodBlock.First(), isVisiteds);
@@ -33,10 +41,10 @@ namespace Zexil.DotNet.FlowAnalysis {
 
 			static void VisitSuccessorsCore(IBasicBlock basicBlock, HashSet<IBlock> isVisiteds) {
 				VisitScope(basicBlock, isVisiteds);
-				foreach (var successor in basicBlock.Successors) {
-					if (!isVisiteds.Add(successor.Key))
+				foreach (var successor in basicBlock.Successors.Keys) {
+					if (!isVisiteds.Add(successor))
 						continue;
-					VisitSuccessorsCore(successor.Key, isVisiteds);
+					VisitSuccessorsCore(successor, isVisiteds);
 				}
 			}
 
