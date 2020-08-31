@@ -1,4 +1,3 @@
-using System;
 using System.Collections;
 using System.Collections.Generic;
 
@@ -28,11 +27,13 @@ namespace Zexil.DotNet.FlowAnalysis.Collections {
 		}
 
 		void ICollection<KeyValuePair<IBasicBlock, int>>.Add(KeyValuePair<IBasicBlock, int> item) {
-			throw new NotImplementedException();
+			var item2 = new KeyValuePair<TBasicBlock, int>((TBasicBlock)item.Key, item.Value);
+			((ICollection<KeyValuePair<TBasicBlock, int>>)this).Add(item2);
 		}
 
 		bool ICollection<KeyValuePair<IBasicBlock, int>>.Contains(KeyValuePair<IBasicBlock, int> item) {
-			throw new NotImplementedException();
+			var item2 = new KeyValuePair<TBasicBlock, int>((TBasicBlock)item.Key, item.Value);
+			return ((ICollection<KeyValuePair<TBasicBlock, int>>)this).Contains(item2);
 		}
 
 		bool IDictionary<IBasicBlock, int>.ContainsKey(IBasicBlock key) {
@@ -40,7 +41,10 @@ namespace Zexil.DotNet.FlowAnalysis.Collections {
 		}
 
 		void ICollection<KeyValuePair<IBasicBlock, int>>.CopyTo(KeyValuePair<IBasicBlock, int>[] array, int arrayIndex) {
-			throw new NotImplementedException();
+			var array2 = new KeyValuePair<TBasicBlock, int>[Count];
+			((ICollection<KeyValuePair<TBasicBlock, int>>)this).CopyTo(array2, 0);
+			for (int i = 0; i < array2.Length; i++)
+				array[arrayIndex + i] = new KeyValuePair<IBasicBlock, int>(array2[i].Key, array2[i].Value);
 		}
 
 		IEnumerator<KeyValuePair<IBasicBlock, int>> IEnumerable<KeyValuePair<IBasicBlock, int>>.GetEnumerator() {
@@ -52,7 +56,8 @@ namespace Zexil.DotNet.FlowAnalysis.Collections {
 		}
 
 		bool ICollection<KeyValuePair<IBasicBlock, int>>.Remove(KeyValuePair<IBasicBlock, int> item) {
-			throw new NotImplementedException();
+			var item2 = new KeyValuePair<TBasicBlock, int>((TBasicBlock)item.Key, item.Value);
+			return ((ICollection<KeyValuePair<TBasicBlock, int>>)this).Remove(item2);
 		}
 
 		bool IDictionary<IBasicBlock, int>.TryGetValue(IBasicBlock key, out int value) {
@@ -71,11 +76,11 @@ namespace Zexil.DotNet.FlowAnalysis.Collections {
 			public bool IsReadOnly => true;
 
 			public void Add(IBasicBlock item) {
-				throw new NotSupportedException();
+				((ICollection<TBasicBlock>)_dictionary.Keys).Add((TBasicBlock)item);
 			}
 
 			public void Clear() {
-				throw new NotSupportedException();
+				((ICollection<TBasicBlock>)_dictionary.Keys).Clear();
 			}
 
 			public bool Contains(IBasicBlock item) {
@@ -83,7 +88,15 @@ namespace Zexil.DotNet.FlowAnalysis.Collections {
 			}
 
 			public void CopyTo(IBasicBlock[] array, int arrayIndex) {
-				throw new NotImplementedException();
+				if (array is TBasicBlock[] array2) {
+					_dictionary.Keys.CopyTo(array2, arrayIndex);
+				}
+				else {
+					array2 = new TBasicBlock[Count];
+					_dictionary.Keys.CopyTo(array2, 0);
+					for (int i = 0; i < array2.Length; i++)
+						array[arrayIndex + i] = array2[i];
+				}
 			}
 
 			public IEnumerator<IBasicBlock> GetEnumerator() {
@@ -91,7 +104,7 @@ namespace Zexil.DotNet.FlowAnalysis.Collections {
 			}
 
 			public bool Remove(IBasicBlock item) {
-				throw new NotSupportedException();
+				return ((ICollection<TBasicBlock>)_dictionary.Keys).Remove((TBasicBlock)item);
 			}
 
 			IEnumerator IEnumerable.GetEnumerator() {

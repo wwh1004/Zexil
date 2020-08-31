@@ -62,7 +62,7 @@ namespace Zexil.DotNet.FlowAnalysis.Emit {
 				instructionCount += basicBlock.Instructions.Count;
 				instructionCount++;
 
-				switch (basicBlock.FlowControl) {
+				switch (basicBlock.FlowType) {
 				case FlowControl.Branch:
 				case FlowControl.CondBranch: break;
 				case FlowControl.Return:
@@ -71,13 +71,13 @@ namespace Zexil.DotNet.FlowAnalysis.Emit {
 				}
 
 				var fallThrough = basicBlock.FallThrough;
-				if (basicBlock.FlowControl == FlowControl.Branch) {
+				if (basicBlock.FlowType == FlowControl.Branch) {
 					branchInstruction.Operand = GetFirstInstruction(fallThrough);
 					continue;
 				}
 				// unconditional branch
 
-				if (basicBlock.FlowControl == FlowControl.CondBranch) {
+				if (basicBlock.FlowType == FlowControl.CondBranch) {
 					if (branchInstruction.OpCode.OperandType == OperandType.InlineBrTarget) {
 						branchInstruction.Operand = GetFirstInstruction(basicBlock.CondTarget);
 					}

@@ -1,5 +1,3 @@
-using System;
-using System.Collections;
 using System.Collections.Generic;
 
 namespace Zexil.DotNet.FlowAnalysis.Collections {
@@ -8,6 +6,9 @@ namespace Zexil.DotNet.FlowAnalysis.Collections {
 		}
 
 		public BlockList(IEnumerable<TBlock> collection) : base(collection) {
+		}
+
+		public BlockList(int capacity) : base(capacity) {
 		}
 
 		IBlock IList<IBlock>.this[int index] {
@@ -26,11 +27,19 @@ namespace Zexil.DotNet.FlowAnalysis.Collections {
 		}
 
 		void ICollection<IBlock>.CopyTo(IBlock[] array, int arrayIndex) {
-			throw new NotImplementedException();
+			if (array is TBlock[] array2) {
+				CopyTo(array2, arrayIndex);
+			}
+			else {
+				array2 = new TBlock[Count];
+				CopyTo(array2, 0);
+				for (int i = 0; i < array2.Length; i++)
+					array[arrayIndex + i] = array2[i];
+			}
 		}
 
 		IEnumerator<IBlock> IEnumerable<IBlock>.GetEnumerator() {
-			return new Enumerator2(GetEnumerator());
+			return (IEnumerator<IBlock>)(IEnumerator<TBlock>)GetEnumerator();
 		}
 
 		int IList<IBlock>.IndexOf(IBlock item) {
@@ -43,30 +52,6 @@ namespace Zexil.DotNet.FlowAnalysis.Collections {
 
 		bool ICollection<IBlock>.Remove(IBlock item) {
 			return Remove((TBlock)item);
-		}
-
-		private struct Enumerator2 : IEnumerator<IBlock> {
-			private readonly IEnumerator<TBlock> _enumerator;
-
-			public Enumerator2(IEnumerator<TBlock> enumerator) {
-				_enumerator = enumerator;
-			}
-
-			public IBlock Current => _enumerator.Current;
-
-			object IEnumerator.Current => ((IEnumerator)_enumerator).Current;
-
-			public void Dispose() {
-				_enumerator.Dispose();
-			}
-
-			public bool MoveNext() {
-				return _enumerator.MoveNext();
-			}
-
-			public void Reset() {
-				_enumerator.Reset();
-			}
 		}
 	}
 }

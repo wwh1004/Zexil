@@ -56,10 +56,10 @@ namespace Zexil.DotNet.FlowAnalysis.Emit {
 
 				var branchInfo = new StringBuilder();
 				branchInfo.Append("// opcode:" + basicBlock.BranchOpcode.ToString());
-				if (basicBlock.FlowControl == FlowControl.Branch) {
+				if (basicBlock.FlowType == FlowControl.Branch) {
 					branchInfo.Append($" | fall-through:{FormatBlockId(basicBlock.FallThrough)}");
 				}
-				else if (basicBlock.FlowControl == FlowControl.CondBranch) {
+				else if (basicBlock.FlowType == FlowControl.CondBranch) {
 					branchInfo.Append(" | fall-through:" + FormatBlockId(basicBlock.FallThrough));
 					if (basicBlock.BranchOpcode.Code == Code.Switch)
 						branchInfo.Append($" | switch-targets:{{{string.Join(", ", ((IList<BasicBlock>)basicBlock.SwitchTargets).Select(t => FormatBlockId(t)))}}}");

@@ -132,6 +132,16 @@ namespace Zexil.DotNet.FlowAnalysis {
 		/// <summary>
 		/// Flow control
 		/// </summary>
+		FlowControl FlowType { get; set; }
+
+		/// <summary>
+		/// Flow annotation
+		/// </summary>
+		FlowControl FlowAnnotation { get; set; }
+
+		/// <summary>
+		/// Flow control (type with annotation)
+		/// </summary>
 		FlowControl FlowControl { get; set; }
 
 		/// <summary>

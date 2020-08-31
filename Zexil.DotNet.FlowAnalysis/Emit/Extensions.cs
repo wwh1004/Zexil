@@ -127,19 +127,12 @@ namespace Zexil.DotNet.FlowAnalysis.Emit {
 		/// <param name="second"></param>
 		public static void Concat(this BasicBlock first, BasicBlock second) {
 			first.Instructions.AddRange(second.Instructions);
-			second.Instructions.Clear();
 			first.BranchOpcode = second.BranchOpcode;
-			second.BranchOpcode = OpCodes.Ret;
 			first.FallThroughNoThrow = second.FallThroughNoThrow;
-			second.FallThroughNoThrow = null;
 			first.CondTargetNoThrow = second.CondTargetNoThrow;
-			second.CondTargetNoThrow = null;
 			var switchTargets = second.SwitchTargetsNoThrow;
-			second.SwitchTargetsNoThrow = null;
-			first.SwitchTargetsNoThrow = switchTargets;
-#if DEBUG
-			second.Flags |= BlockFlags.Erased;
-#endif
+			if (!(switchTargets is null))
+				first.SwitchTargetsNoThrow = new TargetList(switchTargets);
 		}
 
 		/// <summary>
