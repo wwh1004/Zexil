@@ -1,5 +1,4 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
@@ -30,25 +29,13 @@ namespace Zexil.DotNet.Emulation {
 	/// CLR context
 	/// </summary>
 	public sealed unsafe class ExecutionEngineContext : IDisposable {
-		/// <summary>
-		/// Default stack size
-		/// </summary>
-		public const uint DefaultStackSize = 0x800000;
-
-		private readonly Dictionary<Assembly, AssemblyDesc> _assemblies = new Dictionary<Assembly, AssemblyDesc>();
-		private readonly Dictionary<Type, TypeDesc> _types = new Dictionary<Type, TypeDesc>();
-		private readonly List<IntPtr> _stackBases = new List<IntPtr>();
+		internal readonly Dictionary<Assembly, AssemblyDesc> _assemblies = new Dictionary<Assembly, AssemblyDesc>();
+		internal readonly Dictionary<Module, ModuleDesc> _modules = new Dictionary<Module, ModuleDesc>();
+		internal readonly Dictionary<Type, TypeDesc> _types = new Dictionary<Type, TypeDesc>();
+		internal readonly Dictionary<FieldInfo, FieldDesc> _fields = new Dictionary<FieldInfo, FieldDesc>();
+		internal readonly Dictionary<MethodBase, MethodDesc> _methods = new Dictionary<MethodBase, MethodDesc>();
 		private readonly object _syncRoot = new object();
-		[ThreadStatic]
-		private byte* _stackBase;
-		// 8MB stack for each thread
-		[ThreadStatic]
-		private byte* _stack;
 		private bool _isDisposed;
-
-		internal Dictionary<Assembly, AssemblyDesc> InternalAssemblies => _assemblies;
-
-		internal Dictionary<Type, TypeDesc> InternalTypes => _types;
 
 		/// <summary>
 		/// Loaded assemblies by <see cref="ExecutionEngine"/>
@@ -56,46 +43,32 @@ namespace Zexil.DotNet.Emulation {
 		public IEnumerable<AssemblyDesc> Assemblies => _assemblies.Values;
 
 		/// <summary>
+		/// Loaded modules by <see cref="ExecutionEngine"/>
+		/// </summary>
+		public IEnumerable<ModuleDesc> Modules => _modules.Values;
+
+		/// <summary>
 		/// Loaded types by <see cref="ExecutionEngine"/>
 		/// </summary>
 		public IEnumerable<TypeDesc> Types => _types.Values;
 
 		/// <summary>
-		/// Stack base pointer (default is 8MB size for each thread)
+		/// Loaded fields by <see cref="ExecutionEngine"/>
 		/// </summary>
-		public byte* StackBase {
-			get {
-				if (_stackBase == null) {
-					_stackBase = (byte*)Pal.AllocMemory(DefaultStackSize, false);
-					lock (((ICollection)_stackBases).SyncRoot)
-						_stackBases.Add((IntPtr)_stackBase);
-				}
-				return _stackBase;
-			}
-		}
+		public IEnumerable<FieldDesc> Fields => _fields.Values;
 
 		/// <summary>
-		/// Stack pointer (default is 8MB size for each thread)
+		/// Loaded methods by <see cref="ExecutionEngine"/>
 		/// </summary>
-		public byte* Stack {
-			get {
-				if (_stack == null)
-					_stack = StackBase;
-				return _stack;
-			}
-			set {
-				byte* stackBase = StackBase;
-				if (value < stackBase || value > stackBase + DefaultStackSize)
-					throw new ExecutionEngineException(new ArgumentOutOfRangeException());
-
-				_stack = value;
-			}
-		}
+		public IEnumerable<MethodDesc> Methods => _methods.Values;
 
 		/// <summary>
 		/// Synchronization root
 		/// </summary>
 		public object SyncRoot => _syncRoot;
+
+		internal ExecutionEngineContext() {
+		}
 
 		/// <inheritdoc/>
 		public void Dispose() {
@@ -104,9 +77,6 @@ namespace Zexil.DotNet.Emulation {
 					Pal.UnmapFile(assembly.RawAssembly);
 				_assemblies.Clear();
 				_types.Clear();
-				foreach (var stackBase in _stackBases)
-					Pal.FreeMemory((void*)stackBase);
-				_stackBases.Clear();
 				_isDisposed = true;
 			}
 		}
@@ -118,7 +88,7 @@ namespace Zexil.DotNet.Emulation {
 	public sealed unsafe class ExecutionEngine : IDisposable {
 		private readonly ExecutionEngineContext _context;
 		private readonly int _bitness;
-		private readonly Interpreter _interpreter;
+		private readonly InterpreterManager _interpreterManager;
 		private bool _isDisposed;
 
 		/// <summary>
@@ -142,21 +112,73 @@ namespace Zexil.DotNet.Emulation {
 		public bool Is64Bit => _bitness == 64;
 
 		/// <summary>
-		/// Interpreter
+		/// Interpreter manager
 		/// </summary>
-		public Interpreter Interpreter => _interpreter;
+		public InterpreterManager InterpreterManager => _interpreterManager;
 
 		/// <summary>
 		/// Constructor
 		/// </summary>
-		/// <param name="context"></param>
-		public ExecutionEngine(ExecutionEngineContext context) {
-			_context = context;
+		public ExecutionEngine() {
+			_context = new ExecutionEngineContext();
 			_bitness = sizeof(void*) * 8;
+			_interpreterManager = new InterpreterManager(this);
 		}
 
 		/// <summary>
 		/// Loads an assembly into <see cref="ExecutionEngine"/>
+		/// </summary>
+		/// <param name="assemblyData"></param>
+		/// <returns></returns>
+		public AssemblyDesc LoadAssembly(byte[] assemblyData) {
+			if (assemblyData is null)
+				throw new ArgumentNullException(nameof(assemblyData));
+
+			try {
+				var assembly = Assembly.Load(assemblyData);
+				return LoadAssembly(assembly);
+			}
+			catch (Exception ex) {
+				throw new ExecutionEngineException(ex);
+			}
+		}
+
+		/// <summary>
+		/// Loads an assembly into <see cref="ExecutionEngine"/>
+		/// </summary>
+		/// <param name="assemblyPath"></param>
+		/// <returns></returns>
+		public AssemblyDesc LoadAssembly(string assemblyPath) {
+			if (string.IsNullOrEmpty(assemblyPath))
+				throw new ArgumentNullException(nameof(assemblyPath));
+
+			try {
+				var assembly = Assembly.LoadFile(Path.GetFullPath(assemblyPath));
+				return LoadAssembly(assembly);
+			}
+			catch (Exception ex) {
+				throw new ExecutionEngineException(ex);
+			}
+		}
+
+		/// <summary>
+		/// Loads an assembly into <see cref="ExecutionEngine"/>
+		/// </summary>
+		/// <param name="assembly"></param>
+		/// <returns></returns>
+		public AssemblyDesc LoadAssembly(Assembly assembly) {
+			if (assembly is null)
+				throw new ArgumentNullException(nameof(assembly));
+
+			var assemblyDesc = new AssemblyDesc(this, assembly, null);
+			_context._assemblies.Add(assembly, assemblyDesc);
+			foreach (var module in assembly.Modules)
+				ResolveModule(module);
+			return assemblyDesc;
+		}
+
+		/// <summary>
+		/// Loads an assembly into <see cref="ExecutionEngine"/> and enables <see cref="InterpreterStub"/>
 		/// </summary>
 		/// <param name="assemblyData"></param>
 		/// <param name="originalAssemblyData"></param>
@@ -171,8 +193,10 @@ namespace Zexil.DotNet.Emulation {
 				string path = Path.GetTempFileName();
 				File.WriteAllBytes(path, originalAssemblyData);
 				var assembly = Assembly.Load(assemblyData);
-				var assemblyDesc = new AssemblyDesc(assembly, Pal.MapFile(path, true));
-				_context.InternalAssemblies.Add(assembly, assemblyDesc);
+				var assemblyDesc = new AssemblyDesc(this, assembly, Pal.MapFile(path, true));
+				_context._assemblies.Add(assembly, assemblyDesc);
+				foreach (var module in assembly.Modules)
+					ResolveModule(module);
 				return assemblyDesc;
 			}
 			catch (Exception ex) {
@@ -189,9 +213,29 @@ namespace Zexil.DotNet.Emulation {
 			if (assembly is null)
 				throw new ExecutionEngineException(new ArgumentNullException(nameof(assembly)));
 
-			if (_context.InternalAssemblies.TryGetValue(assembly, out var assemblyDesc))
+			if (_context._assemblies.TryGetValue(assembly, out var assemblyDesc))
 				return assemblyDesc;
 			throw new ExecutionEngineException(new ArgumentOutOfRangeException(nameof(assembly), $"{assembly} is not loaded by {nameof(ExecutionEngine)}"));
+		}
+
+		/// <summary>
+		/// Resolves a module and returns runtime module.
+		/// </summary>
+		/// <param name="module"></param>
+		/// <returns></returns>
+		public ModuleDesc ResolveModule(Module module) {
+			if (module is null)
+				throw new ExecutionEngineException(new ArgumentNullException(nameof(module)));
+
+			if (_context._modules.TryGetValue(module, out var moduleDesc))
+				return moduleDesc;
+			var assemblyDesc = ResolveAssembly(module.Assembly);
+			moduleDesc = new ModuleDesc(this, module);
+			_context._modules.Add(module, moduleDesc);
+			assemblyDesc._modules.Add(moduleDesc);
+			if (assemblyDesc.RawAssembly != null)
+				InterpreterStub.Register(moduleDesc);
+			return moduleDesc;
 		}
 
 		/// <summary>
@@ -203,21 +247,59 @@ namespace Zexil.DotNet.Emulation {
 			if (type is null)
 				throw new ExecutionEngineException(new ArgumentNullException(nameof(type)));
 
-			if (_context.InternalTypes.TryGetValue(type, out var typeDesc))
+			if (_context._types.TryGetValue(type, out var typeDesc))
 				return typeDesc;
-			ResolveAssembly(type.Assembly);
-			// Checks whether assembly that contains this type is loaded by EE
-			return new TypeDesc(this, type);
+			var moduleDesc = ResolveModule(type.Module);
+			typeDesc = new TypeDesc(this, type);
+			_context._types.Add(type, typeDesc);
+			moduleDesc._types.Add(typeDesc);
+			return typeDesc;
 		}
 
-		internal void AddType(TypeDesc type) {
-			_context.InternalTypes.Add(type.InternalValue, type);
+		/// <summary>
+		/// Resolves a field and returns runtime field.
+		/// </summary>
+		/// <param name="field"></param>
+		/// <returns></returns>
+		public FieldDesc ResolveField(FieldInfo field) {
+			if (field is null)
+				throw new ExecutionEngineException(new ArgumentNullException(nameof(field)));
+
+			if (_context._fields.TryGetValue(field, out var fieldDesc))
+				return fieldDesc;
+			var typeDesc = ResolveType(field.DeclaringType);
+			fieldDesc = new FieldDesc(this, field);
+			_context._fields.Add(field, fieldDesc);
+			typeDesc._fields.Add(fieldDesc);
+			return fieldDesc;
+		}
+
+		/// <summary>
+		/// Resolves a method and returns runtime method.
+		/// </summary>
+		/// <param name="method"></param>
+		/// <returns></returns>
+		public MethodDesc ResolveMethod(MethodBase method) {
+			if (method is null)
+				throw new ExecutionEngineException(new ArgumentNullException(nameof(method)));
+
+			if (_context._methods.TryGetValue(method, out var methodDesc))
+				return methodDesc;
+			var typeDesc = ResolveType(method.DeclaringType);
+			methodDesc = new MethodDesc(this, method);
+			_context._methods.Add(method, methodDesc);
+			typeDesc._methods.Add(methodDesc);
+			return methodDesc;
 		}
 
 		/// <inheritdoc/>
 		public void Dispose() {
 			if (!_isDisposed) {
 				_context.Dispose();
+				foreach (var interpreter in _interpreterManager.Interpreters) {
+					if (interpreter is IDisposable disposable)
+						disposable.Dispose();
+				}
 				_isDisposed = true;
 			}
 		}

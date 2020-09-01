@@ -7,33 +7,33 @@ using dnlib.DotNet.Writer;
 
 namespace Zexil.DotNet.Emulation {
 	/// <summary>
-	/// Interpreter stub generator
+	/// [WIP] Interpreter stub linker TODO:
 	/// </summary>
-	public static class InterpreterStubGenerator {
+	public static class InterpreterStubLinker {
 		/// <summary>
-		/// Generate AnyCPU interpreter stub for <see cref="ExecutionEngine"/>
+		/// Links AnyCPU interpreter stub for <see cref="ExecutionEngine"/>
 		/// </summary>
 		/// <param name="module"></param>
 		/// <returns></returns>
-		public static byte[] Generate(ModuleDef module) {
+		public static byte[] Link(ModuleDef module) {
 			using (var stream = new MemoryStream()) {
 				var writerOptions = new ModuleWriterOptions(module);
 				writerOptions.MetadataOptions.Flags |= MetadataFlags.PreserveAll | MetadataFlags.KeepOldMaxStack;
 				writerOptions.Logger = DummyLogger.NoThrowInstance;
 				module.Write(stream, writerOptions);
-				return Generate(stream.ToArray());
+				return Link(stream.ToArray());
 			}
 		}
 
 		/// <summary>
-		/// Generate AnyCPU interpreter stub for <see cref="ExecutionEngine"/>
+		/// Links AnyCPU interpreter stub for <see cref="ExecutionEngine"/>
 		/// </summary>
 		/// <param name="data"></param>
 		/// <returns></returns>
-		public static byte[] Generate(byte[] data) {
+		public static byte[] Link(byte[] data) {
 			using (var stream = new MemoryStream())
 			using (var stubModule = ModuleDefMD.Load(data, new ModuleCreationOptions { TryToLoadPdbFromDisk = false })) {
-				GenerateInterpreterStubCore(stubModule);
+				LinkInterpreterStubCore(stubModule);
 				var writerOptions = new ModuleWriterOptions(stubModule);
 				writerOptions.MetadataOptions.Flags |= MetadataFlags.PreserveAll;
 				//writerOptions.Logger = DummyLogger.NoThrowInstance;
@@ -43,8 +43,8 @@ namespace Zexil.DotNet.Emulation {
 			return data;
 		}
 
-		private static void GenerateInterpreterStubCore(ModuleDef module) {
-			// TODO: redirect framework (considering)
+		private static void LinkInterpreterStubCore(ModuleDef module) {
+			// TODO: redirect to interpreter stub. redirect framework (considering)
 			var emptyBody = new CilBody(false, new List<Instruction> { OpCodes.Ret.ToInstruction() }, new List<ExceptionHandler>(), new List<Local>());
 
 			foreach (var method in module.EnumerateAllMethods()) {
