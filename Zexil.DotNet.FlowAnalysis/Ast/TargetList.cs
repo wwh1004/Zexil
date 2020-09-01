@@ -66,7 +66,7 @@ namespace Zexil.DotNet.FlowAnalysis.Ast {
 		void IList<IBasicBlock>.Insert(int index, IBasicBlock item) { Insert(index, (BasicBlock)item); }
 		void ICollection<IBasicBlock>.Add(IBasicBlock item) { Add((BasicBlock)item); }
 		bool ICollection<IBasicBlock>.Contains(IBasicBlock item) { return Contains((BasicBlock)item); }
-		void ICollection<IBasicBlock>.CopyTo(IBasicBlock[] array, int arrayIndex) { throw new NotSupportedException(); }
+		void ICollection<IBasicBlock>.CopyTo(IBasicBlock[] array, int arrayIndex) { if (array is BasicBlock[] array2) { CopyTo(array2, arrayIndex); } else { array2 = new BasicBlock[Count]; CopyTo(array2, 0); for (int i = 0; i < array2.Length; i++) array[arrayIndex + i] = array2[i]; } }
 		bool ICollection<IBasicBlock>.Remove(IBasicBlock item) { return Remove((BasicBlock)item); }
 		IEnumerator<IBasicBlock> IEnumerable<IBasicBlock>.GetEnumerator() { return GetEnumerator(); }
 		#endregion
@@ -124,8 +124,9 @@ namespace Zexil.DotNet.FlowAnalysis.Ast {
 			return _targets.Contains(item);
 		}
 
-		void ICollection<BasicBlock>.CopyTo(BasicBlock[] array, int arrayIndex) {
-			throw new NotSupportedException();
+		/// <inheritdoc />
+		public void CopyTo(BasicBlock[] array, int arrayIndex) {
+			_targets.CopyTo(array, arrayIndex);
 		}
 
 		/// <inheritdoc />

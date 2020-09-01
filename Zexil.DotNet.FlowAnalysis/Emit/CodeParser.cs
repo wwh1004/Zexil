@@ -133,14 +133,12 @@ namespace Zexil.DotNet.FlowAnalysis.Emit {
 				switch (lastInstruction.OpCode.FlowControl) {
 				case DNE.FlowControl.Branch: {
 					basicBlock.BranchOpcode = lastInstruction.OpCode;
-					basicBlock.FlowType = FlowControl.Branch;
 					basicBlock.FallThroughNoThrow = basicBlocks[(int)((Instruction)lastInstruction.Operand).Offset];
 					instructions.RemoveAt(lastInstructionIndex);
 					break;
 				}
 				case DNE.FlowControl.Cond_Branch: {
 					basicBlock.BranchOpcode = lastInstruction.OpCode;
-					basicBlock.FlowType = FlowControl.CondBranch;
 					if (i + 1 == basicBlocks.Length)
 						throw new InvalidMethodException();
 					basicBlock.FallThroughNoThrow = basicBlocks[i + 1];
@@ -164,7 +162,6 @@ namespace Zexil.DotNet.FlowAnalysis.Emit {
 				case DNE.FlowControl.Call:
 				case DNE.FlowControl.Next: {
 					basicBlock.BranchOpcode = OpCodes.Br;
-					basicBlock.FlowType = FlowControl.Branch;
 					if (i + 1 == basicBlocks.Length)
 						throw new InvalidMethodException();
 					basicBlock.FallThroughNoThrow = basicBlocks[i + 1];
@@ -172,13 +169,11 @@ namespace Zexil.DotNet.FlowAnalysis.Emit {
 				}
 				case DNE.FlowControl.Return: {
 					basicBlock.BranchOpcode = lastInstruction.OpCode;
-					basicBlock.FlowType = FlowControl.Return;
 					instructions.RemoveAt(lastInstructionIndex);
 					break;
 				}
 				case DNE.FlowControl.Throw: {
 					basicBlock.BranchOpcode = lastInstruction.OpCode;
-					basicBlock.FlowType = FlowControl.Throw;
 					instructions.RemoveAt(lastInstructionIndex);
 					break;
 				}

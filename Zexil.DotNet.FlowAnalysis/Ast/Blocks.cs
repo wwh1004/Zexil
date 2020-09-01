@@ -102,13 +102,13 @@ namespace Zexil.DotNet.FlowAnalysis.Ast {
 		/// <inheritdoc />
 		public FlowControl FlowType {
 			get => _flowControl & FlowControl.TypeMask;
-			set => _flowControl = value & FlowControl.TypeMask;
+			set => _flowControl = (value & FlowControl.TypeMask) | (_flowControl & FlowControl.AnnotationMask);
 		}
 
 		/// <inheritdoc />
 		public FlowControl FlowAnnotation {
 			get => _flowControl & FlowControl.AnnotationMask;
-			set => _flowControl = value & FlowControl.AnnotationMask;
+			set => _flowControl = (_flowControl & FlowControl.TypeMask) | (value & FlowControl.AnnotationMask);
 		}
 
 		/// <inheritdoc />

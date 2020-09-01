@@ -117,13 +117,13 @@ namespace Zexil.DotNet.FlowAnalysis.Emit {
 		/// <inheritdoc />
 		public FlowControl FlowType {
 			get => _flowControl & FlowControl.TypeMask;
-			set => _flowControl = value & FlowControl.TypeMask;
+			set => _flowControl = (value & FlowControl.TypeMask) | (_flowControl & FlowControl.AnnotationMask);
 		}
 
 		/// <inheritdoc />
 		public FlowControl FlowAnnotation {
 			get => _flowControl & FlowControl.AnnotationMask;
-			set => _flowControl = value & FlowControl.AnnotationMask;
+			set => _flowControl = (_flowControl & FlowControl.TypeMask) | (value & FlowControl.AnnotationMask);
 		}
 
 		/// <inheritdoc />
@@ -239,6 +239,8 @@ namespace Zexil.DotNet.FlowAnalysis.Emit {
 			_instructions = new List<Instruction>(instructions ?? throw new ArgumentNullException(nameof(instructions)));
 			_branchInstruction = branchInstruction ?? throw new ArgumentNullException(nameof(branchInstruction));
 			branchInstruction.Operand = null;
+			BranchOpcode = branchInstruction.OpCode;
+			// set flow control
 			_predecessors = new BbRefDict<BasicBlock>();
 			_successors = new BbRefDict<BasicBlock>();
 #if DEBUG
