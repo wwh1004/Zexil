@@ -105,6 +105,11 @@ namespace Zexil.DotNet.FlowAnalysis.Emit {
 					DNE.FlowControl.Return => FlowControl.Return,
 					DNE.FlowControl.Throw => FlowControl.Throw,
 					_ => throw new ArgumentOutOfRangeException(nameof(value))
+				} | value.Code switch
+				{
+					Code.Switch => FlowControl.Switch,
+					Code.Leave => FlowControl.Leave,
+					_ => 0
 				};
 			}
 		}

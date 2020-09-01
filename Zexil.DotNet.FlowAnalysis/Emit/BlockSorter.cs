@@ -91,7 +91,9 @@ namespace Zexil.DotNet.FlowAnalysis.Emit {
 					int targetCount = context.Targets.Count;
 					for (int i = targetCount - 1; i >= 0; i--)
 						stack.Push(context.Targets[i]);
-				} while (index != blocks.Count);
+				} while (stack.Count > 0);
+				if (index != blocks.Count)
+					throw new InvalidOperationException($"Contains not used blocks, please call {nameof(BlockCleaner.RemoveUnusedBlocks)} first.");
 			}
 		}
 
