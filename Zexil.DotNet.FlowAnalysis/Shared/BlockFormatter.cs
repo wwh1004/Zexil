@@ -31,6 +31,7 @@ namespace Zexil.DotNet.FlowAnalysis.Shared {
 		/// <summary>
 		/// Formats a block
 		/// </summary>
+		/// <param name="formatter"></param>
 		/// <param name="block"></param>
 		/// <returns></returns>
 		public static string Format_NoLock(BlockFormatter formatter, IBlock block) {
@@ -77,7 +78,7 @@ namespace Zexil.DotNet.FlowAnalysis.Shared {
 					break;
 				case BlockType.Catch: {
 					object? catchType = ((IHandlerBlock)block).CatchType;
-					AppendLine(!(catchType is null) ? $"catch {catchType}" : "catch");
+					AppendLine(!(catchType is null) ? $"catch {catchType}" : "catch null");
 					AppendLine("{");
 					break;
 				}

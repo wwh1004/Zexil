@@ -62,7 +62,7 @@ namespace Zexil.DotNet.FlowAnalysis.Emit {
 				else if (basicBlock.FlowType == FlowControl.CondBranch) {
 					branchInfo.Append(" | fall-through:" + FormatBlockId(basicBlock.FallThrough));
 					if (basicBlock.BranchOpcode.Code == Code.Switch)
-						branchInfo.Append($" | switch-targets:{{{string.Join(", ", ((IList<BasicBlock>)basicBlock.SwitchTargets).Select(t => FormatBlockId(t)))}}}");
+						branchInfo.Append($" | switch-targets:{{{string.Join(", ", ((IList<BasicBlock>)basicBlock.SwitchTargets).Select(FormatBlockId))}}}");
 					else
 						branchInfo.Append($" | cond-target:{FormatBlockId(basicBlock.CondTarget)}");
 				}
