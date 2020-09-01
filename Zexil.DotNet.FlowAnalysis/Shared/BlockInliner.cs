@@ -49,7 +49,7 @@ namespace Zexil.DotNet.FlowAnalysis.Shared {
 					var fallThrough = first;
 					do {
 						fallThrough = fallThrough.FallThrough;
-					} while (fallThrough.IsEmpty && fallThrough.FlowType == FlowControl.Branch && (fallThrough.FlowAnnotation & (FlowControl.Leave | FlowControl.Indirect)) == 0 && fallThrough.Scope == scopeBlock);
+					} while (fallThrough.IsEmpty && IsDirectBranch(fallThrough) && fallThrough.Scope == scopeBlock);
 					// Gets final target basic block
 					var fallThroughParent = fallThrough.Upward(scopeBlock);
 					// Gets parent of which scope is scopeBlock
