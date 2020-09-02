@@ -183,6 +183,8 @@ namespace Zexil.DotNet.Emulation.Emit {
 		}
 
 		object IInterpreter.InterpretFromStub(MethodDesc method, object[] arguments) {
+			return null;
+			// TODO
 			throw new NotImplementedException();
 		}
 

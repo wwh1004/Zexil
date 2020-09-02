@@ -10,9 +10,17 @@ namespace Zexil.DotNet.Emulation {
 		private static readonly Dictionary<int, WeakReference<ModuleDesc>> _modules = new Dictionary<int, WeakReference<ModuleDesc>>();
 		private static int _id;
 
-		internal static void Register(ModuleDesc module) {
-			int id = Interlocked.Increment(ref _id) - 1;
-			_modules.Add(id, new WeakReference<ModuleDesc>(module));
+		internal static int AllocateId() {
+			return Interlocked.Increment(ref _id) - 1;
+		}
+
+		/// <summary>
+		/// Register a module in interpret stub
+		/// </summary>
+		/// <param name="module"></param>
+		/// <param name="moduleId"></param>
+		public static void RegisterModule(ModuleDesc module, int moduleId) {
+			_modules.Add(moduleId, new WeakReference<ModuleDesc>(module));
 		}
 
 		/// <summary>
@@ -21,8 +29,10 @@ namespace Zexil.DotNet.Emulation {
 		/// <param name="moduleId"></param>
 		/// <param name="methodToken"></param>
 		/// <param name="arguments"></param>
+		/// <param name="typeInstantiation"></param>
+		/// <param name="methodInstantiation"></param>
 		/// <returns></returns>
-		public static object Dispatch(int moduleId, int methodToken, object[] arguments) {
+		public static object Dispatch(int moduleId, int methodToken, object[] arguments, Type[] typeInstantiation, Type[] methodInstantiation) {
 			if (arguments is null)
 				throw new ExecutionEngineException(new ArgumentNullException(nameof(arguments)));
 			if (!_modules.TryGetValue(moduleId, out var moduleWeakRef))
@@ -33,8 +43,18 @@ namespace Zexil.DotNet.Emulation {
 			if (interpreter is null)
 				throw new ExecutionEngineException(new InvalidOperationException("Default interpreter isn't set."));
 
-			var methodDesc = module.ResolveMethod(methodToken);
-			return interpreter.InterpretFromStub(methodDesc, arguments);
+			if (typeInstantiation is null && methodInstantiation is null)
+				return interpreter.InterpretFromStub(module.ResolveMethod(methodToken), arguments);
+
+			var method = module.ResolveMethod(methodToken);
+			var type = method.DeclaringType;
+			if (!(typeInstantiation is null)) {
+				type = type.MakeGenericType(typeInstantiation);
+				method = type.GetMethod(methodToken);
+			}
+			if (!(methodInstantiation is null))
+				method = method.MakeGenericMethod(methodInstantiation);
+			return interpreter.InterpretFromStub(method, arguments);
 		}
 	}
 }

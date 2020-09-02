@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 
 namespace Zexil.DotNet.Emulation {
@@ -31,6 +32,11 @@ namespace Zexil.DotNet.Emulation {
 		/// Loaded modules
 		/// </summary>
 		public IEnumerable<ModuleDesc> Modules => _modules;
+
+		/// <summary>
+		/// Manifest module (the first module in <see cref="Modules"/>)
+		/// </summary>
+		public ModuleDesc ManifestModule => _modules[0];
 
 		internal AssemblyDesc(ExecutionEngine executionEngine, Assembly reflAssembly, void* rawAssembly) {
 			_executionEngine = executionEngine;
@@ -146,6 +152,43 @@ namespace Zexil.DotNet.Emulation {
 			_methods = new List<MethodDesc>();
 		}
 
+		/// <summary>
+		/// Instantiates a generic type
+		/// </summary>
+		/// <param name="typeInstantiation"></param>
+		/// <returns></returns>
+		public TypeDesc MakeGenericType(params Type[] typeInstantiation) {
+			if (typeInstantiation is null)
+				throw new ExecutionEngineException(new ArgumentNullException(nameof(typeInstantiation)));
+
+			Type reflType;
+			try {
+				reflType = _reflType.MakeGenericType(typeInstantiation);
+			}
+			catch (Exception ex) {
+				throw new ExecutionEngineException(ex);
+			}
+			return _executionEngine.ResolveType(reflType);
+		}
+
+		/// <summary>
+		/// Get a method by token
+		/// </summary>
+		/// <param name="metadataToken"></param>
+		/// <returns></returns>
+		public MethodDesc GetMethod(int metadataToken) {
+			const BindingFlags BINDING_FLAGS = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly;
+
+			MethodBase reflMethod;
+			try {
+				reflMethod = _reflType.GetMethods(BINDING_FLAGS).FirstOrDefault(t => t.MetadataToken == metadataToken);
+			}
+			catch (Exception ex) {
+				throw new ExecutionEngineException(ex);
+			}
+			return !(reflMethod is null) ? _executionEngine.ResolveMethod(reflMethod) : null;
+		}
+
 		/// <inheritdoc/>
 		public override string ToString() {
 			return _reflType.ToString();
@@ -233,6 +276,27 @@ namespace Zexil.DotNet.Emulation {
 			_executionEngine = executionEngine;
 			_reflMethod = reflMethod;
 			_declaringType = executionEngine.ResolveType(reflMethod.DeclaringType);
+		}
+
+		/// <summary>
+		/// Instantiates a generic method
+		/// </summary>
+		/// <param name="methodInstantiation"></param>
+		/// <returns></returns>
+		public MethodDesc MakeGenericMethod(params Type[] methodInstantiation) {
+			if (methodInstantiation is null)
+				throw new ExecutionEngineException(new ArgumentNullException(nameof(methodInstantiation)));
+			if (!(_reflMethod is MethodInfo reflMethodInfo))
+				throw new ExecutionEngineException(new InvalidOperationException("Constructor can't be instantiated."));
+
+			MethodInfo reflMethod;
+			try {
+				reflMethod = reflMethodInfo.MakeGenericMethod(methodInstantiation);
+			}
+			catch (Exception ex) {
+				throw new ExecutionEngineException(ex);
+			}
+			return _executionEngine.ResolveMethod(reflMethod);
 		}
 
 		/// <inheritdoc/>

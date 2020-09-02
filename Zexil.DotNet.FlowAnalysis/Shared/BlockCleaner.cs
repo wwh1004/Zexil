@@ -10,6 +10,7 @@ namespace Zexil.DotNet.FlowAnalysis.Shared {
 		/// Removes all unused blocks
 		/// </summary>
 		/// <param name="methodBlock"></param>
+		/// <param name="eraser"></param>
 		/// <returns></returns>
 		public static int RemoveUnusedBlocks(IScopeBlock methodBlock, Action<IBasicBlock> eraser) {
 			var isVisiteds = new HashSet<IBlock>();

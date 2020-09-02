@@ -129,14 +129,15 @@ namespace Zexil.DotNet.Emulation {
 		/// Loads an assembly into <see cref="ExecutionEngine"/>
 		/// </summary>
 		/// <param name="assemblyData"></param>
+		/// <param name="originalAssemblyData"></param>
 		/// <returns></returns>
-		public AssemblyDesc LoadAssembly(byte[] assemblyData) {
+		public AssemblyDesc LoadAssembly(byte[] assemblyData, byte[] originalAssemblyData = null) {
 			if (assemblyData is null)
 				throw new ArgumentNullException(nameof(assemblyData));
 
 			try {
 				var assembly = Assembly.Load(assemblyData);
-				return LoadAssembly(assembly);
+				return LoadAssembly(assembly, originalAssemblyData);
 			}
 			catch (Exception ex) {
 				throw new ExecutionEngineException(ex);
@@ -147,14 +148,15 @@ namespace Zexil.DotNet.Emulation {
 		/// Loads an assembly into <see cref="ExecutionEngine"/>
 		/// </summary>
 		/// <param name="assemblyPath"></param>
+		/// <param name="originalAssemblyData"></param>
 		/// <returns></returns>
-		public AssemblyDesc LoadAssembly(string assemblyPath) {
+		public AssemblyDesc LoadAssembly(string assemblyPath, byte[] originalAssemblyData = null) {
 			if (string.IsNullOrEmpty(assemblyPath))
 				throw new ArgumentNullException(nameof(assemblyPath));
 
 			try {
 				var assembly = Assembly.LoadFile(Path.GetFullPath(assemblyPath));
-				return LoadAssembly(assembly);
+				return LoadAssembly(assembly, originalAssemblyData);
 			}
 			catch (Exception ex) {
 				throw new ExecutionEngineException(ex);
@@ -165,35 +167,20 @@ namespace Zexil.DotNet.Emulation {
 		/// Loads an assembly into <see cref="ExecutionEngine"/>
 		/// </summary>
 		/// <param name="assembly"></param>
+		/// <param name="originalAssemblyData"></param>
 		/// <returns></returns>
-		public AssemblyDesc LoadAssembly(Assembly assembly) {
+		public AssemblyDesc LoadAssembly(Assembly assembly, byte[] originalAssemblyData = null) {
 			if (assembly is null)
 				throw new ArgumentNullException(nameof(assembly));
 
-			var assemblyDesc = new AssemblyDesc(this, assembly, null);
-			_context._assemblies.Add(assembly, assemblyDesc);
-			foreach (var module in assembly.Modules)
-				ResolveModule(module);
-			return assemblyDesc;
-		}
-
-		/// <summary>
-		/// Loads an assembly into <see cref="ExecutionEngine"/> and enables <see cref="InterpreterStub"/>
-		/// </summary>
-		/// <param name="assemblyData"></param>
-		/// <param name="originalAssemblyData"></param>
-		/// <returns></returns>
-		public AssemblyDesc LoadAssembly(byte[] assemblyData, byte[] originalAssemblyData) {
-			if (assemblyData is null)
-				throw new ArgumentNullException(nameof(assemblyData));
-			if (originalAssemblyData is null)
-				throw new ArgumentNullException(nameof(originalAssemblyData));
-
 			try {
-				string path = Path.GetTempFileName();
-				File.WriteAllBytes(path, originalAssemblyData);
-				var assembly = Assembly.Load(assemblyData);
-				var assemblyDesc = new AssemblyDesc(this, assembly, Pal.MapFile(path, true));
+				void* rawAssembly = null;
+				if (!(originalAssemblyData is null)) {
+					string path = Path.GetTempFileName();
+					File.WriteAllBytes(path, originalAssemblyData);
+					rawAssembly = Pal.MapFile(path, true);
+				}
+				var assemblyDesc = new AssemblyDesc(this, assembly, rawAssembly);
 				_context._assemblies.Add(assembly, assemblyDesc);
 				foreach (var module in assembly.Modules)
 					ResolveModule(module);
@@ -233,8 +220,6 @@ namespace Zexil.DotNet.Emulation {
 			moduleDesc = new ModuleDesc(this, module);
 			_context._modules.Add(module, moduleDesc);
 			assemblyDesc._modules.Add(moduleDesc);
-			if (assemblyDesc.RawAssembly != null)
-				InterpreterStub.Register(moduleDesc);
 			return moduleDesc;
 		}
 
