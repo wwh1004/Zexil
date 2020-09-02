@@ -8,10 +8,14 @@ namespace Zexil.DotNet.Emulation {
 	/// </summary>
 	public static class InterpreterStub {
 		private static readonly Dictionary<int, WeakReference<ModuleDesc>> _modules = new Dictionary<int, WeakReference<ModuleDesc>>();
-		private static int _id;
+		private static int _moduleId;
 
-		internal static int AllocateId() {
-			return Interlocked.Increment(ref _id) - 1;
+		/// <summary>
+		/// Allocates module id for stub dispatching
+		/// </summary>
+		/// <returns></returns>
+		public static int AllocateModuleId() {
+			return Interlocked.Increment(ref _moduleId) - 1;
 		}
 
 		/// <summary>
@@ -44,7 +48,7 @@ namespace Zexil.DotNet.Emulation {
 				throw new ExecutionEngineException(new InvalidOperationException("Default interpreter isn't set."));
 
 			if (typeInstantiation is null && methodInstantiation is null)
-				return interpreter.InterpretFromStub(module.ResolveMethod(methodToken), arguments);
+				return interpreter.InterpretFromStub(module.ResolveMethod(methodToken), arguments, null, null);
 
 			var method = module.ResolveMethod(methodToken);
 			var type = method.DeclaringType;
@@ -54,7 +58,7 @@ namespace Zexil.DotNet.Emulation {
 			}
 			if (!(methodInstantiation is null))
 				method = method.MakeGenericMethod(methodInstantiation);
-			return interpreter.InterpretFromStub(method, arguments);
+			return interpreter.InterpretFromStub(method, arguments, typeInstantiation, methodInstantiation);
 		}
 	}
 }

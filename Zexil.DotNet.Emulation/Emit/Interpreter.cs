@@ -1,7 +1,6 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using dnlib.DotNet;
 using dnlib.DotNet.Emit;
 
 namespace Zexil.DotNet.Emulation.Emit {
@@ -79,13 +78,15 @@ namespace Zexil.DotNet.Emulation.Emit {
 	/// CIL instruction interpreter method context
 	/// </summary>
 	public sealed class InterpreterMethodContext {
-		private readonly MethodDef _method;
+		private readonly MethodDesc _method;
 		private readonly object[] _arguments;
+		private readonly Type[] _typeInstantiation;
+		private readonly Type[] _methodInstantiation;
 
 		/// <summary>
 		/// Interpreted method
 		/// </summary>
-		public MethodDef Method => _method;
+		public MethodDesc Method => _method;
 
 		/// <summary>
 		/// Arguments
@@ -93,12 +94,22 @@ namespace Zexil.DotNet.Emulation.Emit {
 		public object[] Arguments => _arguments;
 
 		/// <summary>
+		/// Type generic arguments
+		/// </summary>
+		public Type[] TypeInstantiation => _typeInstantiation;
+
+		/// <summary>
+		/// Method generic arguments
+		/// </summary>
+		public Type[] MethodInstantiation => _methodInstantiation;
+
+		/// <summary>
 		/// Constructor
 		/// </summary>
 		/// <param name="method"></param>
-		public InterpreterMethodContext(MethodDef method) {
+		public InterpreterMethodContext(MethodDesc method) {
 			_method = method ?? throw new ArgumentNullException(nameof(method));
-			_arguments = new object[method.Parameters.Count];
+			_arguments = Array.Empty<object>();
 		}
 
 		/// <summary>
@@ -106,16 +117,23 @@ namespace Zexil.DotNet.Emulation.Emit {
 		/// </summary>
 		/// <param name="method"></param>
 		/// <param name="arguments"></param>
-		public InterpreterMethodContext(MethodDef method, params object[] arguments) {
-			if (method is null)
-				throw new ArgumentNullException(nameof(method));
-			if (arguments is null)
-				throw new ArgumentNullException(nameof(arguments));
-			if (arguments.Length != method.Parameters.Count)
-				throw new ArgumentOutOfRangeException(nameof(arguments), "Not matched argument count.");
+		public InterpreterMethodContext(MethodDesc method, params object[] arguments) {
+			_method = method ?? throw new ArgumentNullException(nameof(method));
+			_arguments = arguments ?? throw new ArgumentNullException(nameof(arguments));
+		}
 
-			_method = method;
-			_arguments = arguments;
+		/// <summary>
+		/// Constructor
+		/// </summary>
+		/// <param name="method"></param>
+		/// <param name="arguments"></param>
+		/// <param name="typeInstantiation"></param>
+		/// <param name="methodInstantiation"></param>
+		public InterpreterMethodContext(MethodDesc method, object[] arguments, Type[] typeInstantiation, Type[] methodInstantiation) {
+			_method = method ?? throw new ArgumentNullException(nameof(method));
+			_arguments = arguments ?? throw new ArgumentNullException(nameof(arguments));
+			_typeInstantiation = typeInstantiation ?? Array.Empty<Type>();
+			_methodInstantiation = methodInstantiation ?? Array.Empty<Type>();
 		}
 	}
 
@@ -182,9 +200,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 			return null;
 		}
 
-		object IInterpreter.InterpretFromStub(MethodDesc method, object[] arguments) {
-			return null;
-			// TODO
+		object IInterpreter.InterpretFromStub(MethodDesc method, object[] arguments, Type[] typeInstantiation, Type[] methodInstantiation) {
 			throw new NotImplementedException();
 		}
 

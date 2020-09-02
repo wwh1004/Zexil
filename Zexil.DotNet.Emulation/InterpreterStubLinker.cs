@@ -50,8 +50,9 @@ namespace Zexil.DotNet.Emulation {
 		private static int LinkInterpreterStubCore(ModuleDef module) {
 			var cachedInstructionLists = new Dictionary<int, List<Instruction>>();
 			var emptyExceptionHandlers = new List<ExceptionHandler>();
-			var emptyLocals = new List<Local>();
-			int moduleId = InterpreterStub.AllocateId();
+			var emptyLocals = new LocalList();
+			var argsStoredLocals = new LocalList { new Local(new SZArraySig(module.CorLibTypes.Object)) };
+			int moduleId = InterpreterStub.AllocateModuleId();
 			var getTypeFromHandle = module.Import(typeof(Type).GetMethod("GetTypeFromHandle"));
 			var dispatch = module.Import(typeof(InterpreterStub).GetMethod("Dispatch"));
 
@@ -75,7 +76,15 @@ namespace Zexil.DotNet.Emulation {
 #endif
 
 				int cacheKey = parameters.Count | (typeInstantiation.Count << 16) | (methodInstantiation.Count << 24);
-				if (!cachedInstructionLists.TryGetValue(cacheKey, out var instructions)) {
+				foreach (var parameter in parameters) {
+					if (!parameter.Type.RemovePinnedAndModifiers().IsByRef)
+						continue;
+					cacheKey = -1;
+					break;
+				}
+				if (cacheKey != -1 && method.ReturnType.RemovePinnedAndModifiers().IsByRef)
+					cacheKey = -1;
+				if (cacheKey == -1 || !cachedInstructionLists.TryGetValue(cacheKey, out var instructions)) {
 					instructions = new List<Instruction> {
 						new Instruction(OpCodes.Ldc_I4, moduleId),
 						new Instruction(OpCodes.Ldc_I4, method.MDToken.ToInt32()),
@@ -83,6 +92,11 @@ namespace Zexil.DotNet.Emulation {
 						new Instruction(OpCodes.Newarr, module.CorLibTypes.Object.TypeDefOrRef)
 					};
 					// load moduleId, load methodToken
+					if (cacheKey == -1) {
+						instructions.Add(new Instruction(OpCodes.Dup));
+						instructions.Add(new Instruction(OpCodes.Stloc_0));
+					}
+					// store argument array if need
 					for (int i = 0; i < parameters.Count; i++)
 						EmitLoadArgument(instructions, parameters[i]);
 					// load arguments
@@ -98,22 +112,24 @@ namespace Zexil.DotNet.Emulation {
 					// load methodInstantiation
 					instructions.Add(new Instruction(OpCodes.Call, dispatch));
 					// call InterpreterStub.Dispatch
-					if (method.HasReturnType) {
-						if (method.ReturnType.IsValueType)
-							throw new NotImplementedException();
-					}
-					else {
+					for (int i = 0; i < parameters.Count; i++)
+						EmitSetArguments(instructions, parameters[i], module.CorLibTypes.IntPtr.TypeDefOrRef);
+					// set arguments
+					if (method.HasReturnType)
+						EmitSetReturnValue(instructions, method.ReturnType, module.CorLibTypes.IntPtr.TypeDefOrRef);
+					else
 						instructions.Add(new Instruction(OpCodes.Pop));
-					}
+					// set return value
 					instructions.Add(new Instruction(OpCodes.Ret));
 					// ret
-					cachedInstructionLists.Add(cacheKey, instructions);
+					if (cacheKey != -1)
+						cachedInstructionLists.Add(cacheKey, instructions);
 				}
 				else {
 					instructions = new List<Instruction>(instructions) { [1] = new Instruction(OpCodes.Ldc_I4, method.MDToken.ToInt32()) };
 					// patch methodToken
 				}
-				var body = new CilBody(false, instructions, emptyExceptionHandlers, emptyLocals);
+				var body = new CilBody(cacheKey == -1, instructions, emptyExceptionHandlers, cacheKey != -1 ? emptyLocals : argsStoredLocals);
 
 				if (!(method.Body is null))
 					method.Body = body;
@@ -137,23 +153,16 @@ namespace Zexil.DotNet.Emulation {
 		}
 
 		private static void EmitLoadArgument(List<Instruction> instructions, Parameter parameter) {
+			instructions.Add(new Instruction(OpCodes.Dup));
+			instructions.Add(new Instruction(OpCodes.Ldc_I4, parameter.Index));
+			instructions.Add(new Instruction(OpCodes.Ldarg, parameter));
 			var typeSig = parameter.Type.RemovePinnedAndModifiers();
 			bool isPointer = typeSig.IsByRef || typeSig.IsPointer;
 			if (isPointer)
 				typeSig = typeSig.Next.RemovePinnedAndModifiers();
-			if (typeSig is GenericInstSig genericInstSig)
-				typeSig = genericInstSig.GenericType;
-			Debug.Assert(typeSig is TypeDefOrRefSig || typeSig is GenericSig);
-
-			instructions.Add(new Instruction(OpCodes.Dup));
-			instructions.Add(new Instruction(OpCodes.Ldc_I4, parameter.Index));
+			Debug.Assert(typeSig is TypeDefOrRefSig || typeSig is GenericSig || typeSig is GenericInstSig);
 			if (typeSig.IsValueType) {
-				if (!isPointer) {
-					instructions.Add(new Instruction(OpCodes.Ldarg, parameter));
-					instructions.Add(new Instruction(OpCodes.Box, ((TypeDefOrRefSig)typeSig).TypeDefOrRef));
-				}
-				else {
-					instructions.Add(new Instruction(OpCodes.Ldarg, parameter));
+				if (isPointer) {
 					OpCode ldind;
 					switch (typeSig.ElementType) {
 					case ElementType.I1: ldind = OpCodes.Ldind_I1; break;
@@ -166,37 +175,22 @@ namespace Zexil.DotNet.Emulation {
 					case ElementType.R4: ldind = OpCodes.Ldind_R4; break;
 					case ElementType.R8: ldind = OpCodes.Ldind_R8; break;
 					case ElementType.I: case ElementType.U: ldind = OpCodes.Ldind_I; break;
-					default: throw new NotImplementedException($"Unhandled case: {{IsValueType=true, ElementType={typeSig.ElementType}}}");
+					default: throw new NotImplementedException($"EmitBox unhandled case: {{IsValueType=true, ElementType={typeSig.ElementType}}}");
 					}
 					instructions.Add(new Instruction(ldind));
-					instructions.Add(new Instruction(OpCodes.Box, ((TypeDefOrRefSig)typeSig).TypeDefOrRef));
-					throw new NotImplementedException();
-					// TODO: set args after calling
 				}
+				instructions.Add(new Instruction(OpCodes.Box, ((TypeDefOrRefSig)typeSig).TypeDefOrRef));
 			}
 			else if (typeSig.IsGenericParameter) {
 				var typeSpec = new TypeSpecUser(typeSig);
-				if (!isPointer) {
-					instructions.Add(new Instruction(OpCodes.Ldarg, parameter));
-					instructions.Add(new Instruction(OpCodes.Box, typeSpec));
-				}
-				else {
-					instructions.Add(new Instruction(OpCodes.Ldarg, parameter));
+				if (isPointer)
 					instructions.Add(new Instruction(OpCodes.Ldobj, typeSpec));
-					instructions.Add(new Instruction(OpCodes.Box, typeSpec));
-					throw new NotImplementedException();
-				}
+				instructions.Add(new Instruction(OpCodes.Box, typeSpec));
 			}
 			else {
 				Debug.Assert((typeSig.ElementType & (ElementType.Class | ElementType.Array | ElementType.SZArray)) != 0);
-				if (!isPointer) {
-					instructions.Add(new Instruction(OpCodes.Ldarg, parameter));
-				}
-				else {
-					instructions.Add(new Instruction(OpCodes.Ldarg, parameter));
+				if (isPointer)
 					instructions.Add(new Instruction(OpCodes.Ldind_Ref));
-					throw new NotImplementedException();
-				}
 			}
 			instructions.Add(new Instruction(OpCodes.Stelem_Ref));
 		}
@@ -225,6 +219,52 @@ namespace Zexil.DotNet.Emulation {
 				instructions.Add(new Instruction(OpCodes.Call, getTypeFromHandle));
 				instructions.Add(new Instruction(OpCodes.Stelem_Ref));
 			}
+		}
+
+		private static void EmitSetArguments(List<Instruction> instructions, Parameter parameter, ITypeDefOrRef nativeInt) {
+			var typeSig = parameter.Type.RemovePinnedAndModifiers();
+			bool isPointer = typeSig.IsByRef || typeSig.IsPointer;
+			if (!isPointer)
+				return;
+			typeSig = typeSig.Next.RemovePinnedAndModifiers();
+			instructions.Add(new Instruction(OpCodes.Ldarg, parameter));
+			instructions.Add(new Instruction(OpCodes.Ldloc_0));
+			instructions.Add(new Instruction(OpCodes.Ldc_I4, parameter.Index));
+			instructions.Add(new Instruction(OpCodes.Ldelem_Ref));
+			if (typeSig.IsValueType) {
+				instructions.Add(new Instruction(OpCodes.Unbox_Any, ((TypeDefOrRefSig)typeSig).TypeDefOrRef));
+				OpCode stind;
+				switch (typeSig.ElementType) {
+				case ElementType.I1: case ElementType.U1: case ElementType.Boolean: stind = OpCodes.Stind_I1; break;
+				case ElementType.I2: case ElementType.U2: case ElementType.Char: stind = OpCodes.Stind_I2; break;
+				case ElementType.I4: case ElementType.U4: stind = OpCodes.Stind_I4; break;
+				case ElementType.I8: case ElementType.U8: stind = OpCodes.Stind_I8; break;
+				case ElementType.R4: stind = OpCodes.Stind_R4; break;
+				case ElementType.R8: stind = OpCodes.Stind_R8; break;
+				case ElementType.I: case ElementType.U: stind = OpCodes.Stind_I; break;
+				default: throw new NotImplementedException($"EmitUnbox unhandled case: {{IsValueType=true, ElementType={typeSig.ElementType}}}");
+				}
+				instructions.Add(new Instruction(stind));
+			}
+			else if (typeSig.IsGenericParameter) {
+				var typeSpec = new TypeSpecUser(typeSig);
+				instructions.Add(new Instruction(OpCodes.Unbox_Any, typeSpec));
+				instructions.Add(new Instruction(OpCodes.Stobj, typeSpec));
+			}
+			else {
+				instructions.Add(new Instruction(OpCodes.Stind_Ref));
+			}
+		}
+
+		private static void EmitSetReturnValue(List<Instruction> instructions, TypeSig typeSig, ITypeDefOrRef nativeInt) {
+			typeSig = typeSig.RemovePinnedAndModifiers();
+			bool isPointer = typeSig.IsByRef || typeSig.IsPointer;
+			if (isPointer)
+				instructions.Add(new Instruction(OpCodes.Unbox_Any, nativeInt));
+			else if (typeSig.IsValueType)
+				instructions.Add(new Instruction(OpCodes.Unbox_Any, ((TypeDefOrRefSig)typeSig).TypeDefOrRef));
+			else if (typeSig.IsGenericParameter)
+				instructions.Add(new Instruction(OpCodes.Unbox_Any, new TypeSpecUser(typeSig)));
 		}
 	}
 }
