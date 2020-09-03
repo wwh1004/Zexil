@@ -49,20 +49,32 @@ namespace Zexil.DotNet.Emulation {
 
 		private sealed class InterpreterStubLinkerCore {
 			private static readonly List<ExceptionHandler> EmptyExceptionHandlers = new List<ExceptionHandler>();
+			private static readonly List<Local> EmptyLocals = new List<Local>();
 			private readonly ModuleDef _module;
+			private readonly IType _type;
 			private readonly IMethod _getTypeFromHandle;
 			private readonly IMethod _dispatch;
 			private readonly int _moduleId;
 			private List<Instruction> _instructions;
-			private LocalList _locals;
 
 			public InterpreterStubLinkerCore(ModuleDef module) {
 				_module = module;
+				_type = _module.CorLibTypes.GetTypeRef("System", "Type");
 				_getTypeFromHandle = _module.Import(typeof(Type).GetMethod("GetTypeFromHandle"));
 				_dispatch = _module.Import(typeof(InterpreterStub).GetMethod("Dispatch"));
 				_moduleId = InterpreterStub.AllocateModuleId();
 			}
 
+			/// <summary>
+			/// Type conversation (arguments and return value are the same):
+			/// refType  -> no conv
+			/// refType* -> conv_i
+			/// valType  -> box
+			/// valType* -> conv_i
+			/// genType  -> box
+			/// genType* -> conv_i
+			/// </summary>
+			/// <returns></returns>
 			public int Link() {
 				foreach (var method in _module.EnumerateAllMethods()) {
 					var parameters = method.Parameters;
@@ -84,8 +96,6 @@ namespace Zexil.DotNet.Emulation {
 #endif
 
 					_instructions = new List<Instruction>();
-					_locals = new LocalList { new Local(new SZArraySig(_module.CorLibTypes.Object)) };
-
 					EmitInitCall(method, parameters);
 					// load moduleId, load methodToken
 					EmitLoadArguments(parameters);
@@ -96,16 +106,16 @@ namespace Zexil.DotNet.Emulation {
 					// load methodInstantiation
 					EmitInstruction(OpCodes.Call, _dispatch);
 					// call InterpreterStub.Dispatch
-					EmitSetArgumentsIfNeed(parameters);
-					// set arguments
 					EmitSetReturnValue(method);
 					// set return value
 					EmitInstruction(OpCodes.Ret);
 					// ret
-					var body = new CilBody(true, _instructions, EmptyExceptionHandlers, _locals);
+					var body = new CilBody(false, _instructions, EmptyExceptionHandlers, EmptyLocals);
 
-					if (!(method.Body is null))
+					if (!(method.Body is null)) {
+						method.FreeMethodBody();
 						method.Body = body;
+					}
 					method.Attributes &= ~MethodAttributes.UnmanagedExport;
 					if ((method.ImplAttributes & (MethodImplAttributes.Native | MethodImplAttributes.Unmanaged)) == (MethodImplAttributes.Native | MethodImplAttributes.Unmanaged)) {
 						method.Body = body;
@@ -130,8 +140,6 @@ namespace Zexil.DotNet.Emulation {
 				EmitInstruction(OpCodes.Ldc_I4, method.MDToken.ToInt32());
 				EmitInstruction(OpCodes.Ldc_I4, parameters.Count);
 				EmitInstruction(OpCodes.Newarr, _module.CorLibTypes.Object.TypeDefOrRef);
-				EmitInstruction(OpCodes.Dup);
-				EmitInstruction(OpCodes.Stloc_0);
 			}
 
 			private void EmitLoadArguments(ParameterList parameters) {
@@ -143,53 +151,34 @@ namespace Zexil.DotNet.Emulation {
 				EmitInstruction(OpCodes.Dup);
 				EmitInstruction(OpCodes.Ldc_I4, parameter.Index);
 				EmitInstruction(OpCodes.Ldarg, parameter);
-				var typeSig = parameter.Type.RemovePinnedAndModifiers();
+				var typeSig = parameter.Type.RemoveModifiers();
 				bool isPointer = typeSig.IsByRef || typeSig.IsPointer;
 				if (isPointer)
-					typeSig = typeSig.Next.RemovePinnedAndModifiers();
+					typeSig = typeSig.Next.RemoveModifiers();
 				Debug.Assert(typeSig is TypeDefOrRefSig || typeSig is GenericSig || typeSig is GenericInstSig);
-				if (typeSig.IsValueType) {
-					if (isPointer) {
-						OpCode ldind;
-						switch (typeSig.ElementType) {
-						case ElementType.I1: ldind = OpCodes.Ldind_I1; break;
-						case ElementType.U1: case ElementType.Boolean: ldind = OpCodes.Ldind_U1; break;
-						case ElementType.I2: ldind = OpCodes.Ldind_I2; break;
-						case ElementType.U2: case ElementType.Char: ldind = OpCodes.Ldind_U2; break;
-						case ElementType.I4: ldind = OpCodes.Ldind_I4; break;
-						case ElementType.U4: ldind = OpCodes.Ldind_U4; break;
-						case ElementType.I8: case ElementType.U8: ldind = OpCodes.Ldind_I8; break;
-						case ElementType.R4: ldind = OpCodes.Ldind_R4; break;
-						case ElementType.R8: ldind = OpCodes.Ldind_R8; break;
-						case ElementType.I: case ElementType.U: ldind = OpCodes.Ldind_I; break;
-						default: throw new NotImplementedException($"EmitBox unhandled case: {{IsValueType=true, ElementType={typeSig.ElementType}}}");
-						}
-						EmitInstruction(ldind);
-					}
-					EmitInstruction(OpCodes.Box, ((TypeDefOrRefSig)typeSig).TypeDefOrRef);
-				}
-				else if (typeSig.IsGenericParameter) {
-					var typeSpec = new TypeSpecUser(typeSig);
-					if (isPointer)
-						EmitInstruction(OpCodes.Ldobj, typeSpec);
-					EmitInstruction(OpCodes.Box, typeSpec);
+				if (!isPointer) {
+					if (typeSig.IsValueType)
+						EmitInstruction(OpCodes.Box, ((TypeDefOrRefSig)typeSig).TypeDefOrRef);
+					else if (typeSig.IsGenericParameter)
+						EmitInstruction(OpCodes.Box, new TypeSpecUser(typeSig));
+					else
+						Debug.Assert((typeSig.ElementType & (ElementType.Class | ElementType.Array | ElementType.SZArray)) != 0);
 				}
 				else {
-					Debug.Assert((typeSig.ElementType & (ElementType.Class | ElementType.Array | ElementType.SZArray)) != 0);
-					if (isPointer)
-						EmitInstruction(OpCodes.Ldind_Ref);
+					EmitInstruction(OpCodes.Conv_I);
+					EmitInstruction(OpCodes.Box, _module.CorLibTypes.IntPtr.TypeDefOrRef);
 				}
 				EmitInstruction(OpCodes.Stelem_Ref);
 			}
 
 			private void EmitLoadTypeArgument(TypeDef type, IList<GenericParam> typeInstantiation) {
-				if (typeInstantiation.Count > 0) {
+				if (typeInstantiation.Count == 0) {
 					EmitInstruction(OpCodes.Ldnull);
 					return;
 				}
 
 				EmitInstruction(OpCodes.Ldc_I4, typeInstantiation.Count);
-				EmitInstruction(OpCodes.Newarr, _module.CorLibTypes.Object.TypeDefOrRef);
+				EmitInstruction(OpCodes.Newarr, _type);
 				for (int i = 0; i < typeInstantiation.Count; i++) {
 					int number = typeInstantiation[i].Number;
 					EmitInstruction(OpCodes.Dup);
@@ -201,13 +190,13 @@ namespace Zexil.DotNet.Emulation {
 			}
 
 			private void EmitLoadMethodArgument(MethodDef method, IList<GenericParam> methodInstantiation) {
-				if (methodInstantiation.Count > 0) {
+				if (methodInstantiation.Count == 0) {
 					EmitInstruction(OpCodes.Ldnull);
 					return;
 				}
 
 				EmitInstruction(OpCodes.Ldc_I4, methodInstantiation.Count);
-				EmitInstruction(OpCodes.Newarr, _module.CorLibTypes.Object.TypeDefOrRef);
+				EmitInstruction(OpCodes.Newarr, _type);
 				for (int i = 0; i < methodInstantiation.Count; i++) {
 					int number = methodInstantiation[i].Number;
 					EmitInstruction(OpCodes.Dup);
@@ -218,54 +207,13 @@ namespace Zexil.DotNet.Emulation {
 				}
 			}
 
-			private void EmitSetArgumentsIfNeed(ParameterList parameters) {
-				for (int i = 0; i < parameters.Count; i++)
-					EmitSetArgumentIfNeed(parameters[i]);
-			}
-
-			private void EmitSetArgumentIfNeed(Parameter parameter) {
-				var typeSig = parameter.Type.RemovePinnedAndModifiers();
-				bool isPointer = typeSig.IsByRef || typeSig.IsPointer;
-				if (!isPointer)
-					return;
-
-				typeSig = typeSig.Next.RemovePinnedAndModifiers();
-				EmitInstruction(OpCodes.Ldarg, parameter);
-				EmitInstruction(OpCodes.Ldloc, _locals[0]);
-				EmitInstruction(OpCodes.Ldc_I4, parameter.Index);
-				EmitInstruction(OpCodes.Ldelem_Ref);
-				if (typeSig.IsValueType) {
-					EmitInstruction(OpCodes.Unbox_Any, ((TypeDefOrRefSig)typeSig).TypeDefOrRef);
-					OpCode stind;
-					switch (typeSig.ElementType) {
-					case ElementType.I1: case ElementType.U1: case ElementType.Boolean: stind = OpCodes.Stind_I1; break;
-					case ElementType.I2: case ElementType.U2: case ElementType.Char: stind = OpCodes.Stind_I2; break;
-					case ElementType.I4: case ElementType.U4: stind = OpCodes.Stind_I4; break;
-					case ElementType.I8: case ElementType.U8: stind = OpCodes.Stind_I8; break;
-					case ElementType.R4: stind = OpCodes.Stind_R4; break;
-					case ElementType.R8: stind = OpCodes.Stind_R8; break;
-					case ElementType.I: case ElementType.U: stind = OpCodes.Stind_I; break;
-					default: throw new NotImplementedException($"EmitUnbox unhandled case: {{IsValueType=true, ElementType={typeSig.ElementType}}}");
-					}
-					EmitInstruction(stind);
-				}
-				else if (typeSig.IsGenericParameter) {
-					var typeSpec = new TypeSpecUser(typeSig);
-					EmitInstruction(OpCodes.Unbox_Any, typeSpec);
-					EmitInstruction(OpCodes.Stobj, typeSpec);
-				}
-				else {
-					EmitInstruction(OpCodes.Stind_Ref);
-				}
-			}
-
 			private void EmitSetReturnValue(MethodDef method) {
 				if (!method.HasReturnType) {
 					EmitInstruction(OpCodes.Pop);
 					return;
 				}
 
-				var typeSig = method.ReturnType.RemovePinnedAndModifiers();
+				var typeSig = method.ReturnType.RemoveModifiers();
 				bool isPointer = typeSig.IsByRef || typeSig.IsPointer;
 				if (isPointer)
 					EmitInstruction(OpCodes.Unbox_Any, _module.CorLibTypes.IntPtr.TypeDefOrRef);
@@ -273,14 +221,16 @@ namespace Zexil.DotNet.Emulation {
 					EmitInstruction(OpCodes.Unbox_Any, ((TypeDefOrRefSig)typeSig).TypeDefOrRef);
 				else if (typeSig.IsGenericParameter)
 					EmitInstruction(OpCodes.Unbox_Any, new TypeSpecUser(typeSig));
+				else
+					Debug.Assert(typeSig is TypeDefOrRefSig);
 			}
 
 			private void EmitInstruction(OpCode opCode) {
-				new Instruction(opCode);
+				_instructions.Add(new Instruction(opCode));
 			}
 
 			private void EmitInstruction(OpCode opCode, object operand) {
-				new Instruction(opCode, operand);
+				_instructions.Add(new Instruction(opCode, operand));
 			}
 		}
 	}
