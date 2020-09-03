@@ -91,15 +91,9 @@ namespace Zexil.DotNet.Emulation {
 					for (int i = 0; i < parameters.Count; i++)
 						EmitLoadArgument(parameters[i]);
 					// load arguments
-					if (typeInstantiation.Count > 0)
-						EmitLoadTypeArgument(type, typeInstantiation);
-					else
-						EmitInstruction(OpCodes.Ldnull);
+					EmitLoadTypeArgument(type, typeInstantiation);
 					// load typeInstantiation
-					if (methodInstantiation.Count > 0)
-						EmitLoadMethodArgument(method, methodInstantiation);
-					else
-						EmitInstruction(OpCodes.Ldnull);
+					EmitLoadMethodArgument(method, methodInstantiation);
 					// load methodInstantiation
 					EmitInstruction(OpCodes.Call, _dispatch);
 					// call InterpreterStub.Dispatch
@@ -189,6 +183,11 @@ namespace Zexil.DotNet.Emulation {
 			}
 
 			private void EmitLoadTypeArgument(TypeDef type, IList<GenericParam> typeInstantiation) {
+				if (typeInstantiation.Count > 0) {
+					EmitInstruction(OpCodes.Ldnull);
+					return;
+				}
+
 				EmitInstruction(OpCodes.Ldc_I4, typeInstantiation.Count);
 				EmitInstruction(OpCodes.Newarr, _module.CorLibTypes.Object.TypeDefOrRef);
 				for (int i = 0; i < typeInstantiation.Count; i++) {
@@ -202,6 +201,11 @@ namespace Zexil.DotNet.Emulation {
 			}
 
 			private void EmitLoadMethodArgument(MethodDef method, IList<GenericParam> methodInstantiation) {
+				if (methodInstantiation.Count > 0) {
+					EmitInstruction(OpCodes.Ldnull);
+					return;
+				}
+
 				EmitInstruction(OpCodes.Ldc_I4, methodInstantiation.Count);
 				EmitInstruction(OpCodes.Newarr, _module.CorLibTypes.Object.TypeDefOrRef);
 				for (int i = 0; i < methodInstantiation.Count; i++) {
@@ -219,6 +223,7 @@ namespace Zexil.DotNet.Emulation {
 				bool isPointer = typeSig.IsByRef || typeSig.IsPointer;
 				if (!isPointer)
 					return;
+
 				typeSig = typeSig.Next.RemovePinnedAndModifiers();
 				EmitInstruction(OpCodes.Ldarg, parameter);
 				EmitInstruction(OpCodes.Ldloc, _locals[0]);
