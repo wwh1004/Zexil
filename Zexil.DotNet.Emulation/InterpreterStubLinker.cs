@@ -221,7 +221,7 @@ namespace Zexil.DotNet.Emulation {
 					return;
 				typeSig = typeSig.Next.RemovePinnedAndModifiers();
 				EmitInstruction(OpCodes.Ldarg, parameter);
-				EmitInstruction(OpCodes.Ldloc_0);
+				EmitInstruction(OpCodes.Ldloc, _locals[0]);
 				EmitInstruction(OpCodes.Ldc_I4, parameter.Index);
 				EmitInstruction(OpCodes.Ldelem_Ref);
 				if (typeSig.IsValueType) {
