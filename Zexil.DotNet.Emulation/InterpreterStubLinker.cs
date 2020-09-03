@@ -88,8 +88,7 @@ namespace Zexil.DotNet.Emulation {
 
 					EmitInitCall(method, parameters);
 					// load moduleId, load methodToken
-					for (int i = 0; i < parameters.Count; i++)
-						EmitLoadArgument(parameters[i]);
+					EmitLoadArguments(parameters);
 					// load arguments
 					EmitLoadTypeArgument(type, typeInstantiation);
 					// load typeInstantiation
@@ -97,13 +96,9 @@ namespace Zexil.DotNet.Emulation {
 					// load methodInstantiation
 					EmitInstruction(OpCodes.Call, _dispatch);
 					// call InterpreterStub.Dispatch
-					for (int i = 0; i < parameters.Count; i++)
-						EmitSetArgumentIfNeed(parameters[i]);
+					EmitSetArgumentsIfNeed(parameters);
 					// set arguments
-					if (method.HasReturnType)
-						EmitSetReturnValue(method.ReturnType);
-					else
-						EmitInstruction(OpCodes.Pop);
+					EmitSetReturnValue(method);
 					// set return value
 					EmitInstruction(OpCodes.Ret);
 					// ret
@@ -137,6 +132,11 @@ namespace Zexil.DotNet.Emulation {
 				EmitInstruction(OpCodes.Newarr, _module.CorLibTypes.Object.TypeDefOrRef);
 				EmitInstruction(OpCodes.Dup);
 				EmitInstruction(OpCodes.Stloc_0);
+			}
+
+			private void EmitLoadArguments(ParameterList parameters) {
+				for (int i = 0; i < parameters.Count; i++)
+					EmitLoadArgument(parameters[i]);
 			}
 
 			private void EmitLoadArgument(Parameter parameter) {
@@ -218,6 +218,11 @@ namespace Zexil.DotNet.Emulation {
 				}
 			}
 
+			private void EmitSetArgumentsIfNeed(ParameterList parameters) {
+				for (int i = 0; i < parameters.Count; i++)
+					EmitSetArgumentIfNeed(parameters[i]);
+			}
+
 			private void EmitSetArgumentIfNeed(Parameter parameter) {
 				var typeSig = parameter.Type.RemovePinnedAndModifiers();
 				bool isPointer = typeSig.IsByRef || typeSig.IsPointer;
@@ -254,8 +259,13 @@ namespace Zexil.DotNet.Emulation {
 				}
 			}
 
-			private void EmitSetReturnValue(TypeSig typeSig) {
-				typeSig = typeSig.RemovePinnedAndModifiers();
+			private void EmitSetReturnValue(MethodDef method) {
+				if (!method.HasReturnType) {
+					EmitInstruction(OpCodes.Pop);
+					return;
+				}
+
+				var typeSig = method.ReturnType.RemovePinnedAndModifiers();
 				bool isPointer = typeSig.IsByRef || typeSig.IsPointer;
 				if (isPointer)
 					EmitInstruction(OpCodes.Unbox_Any, _module.CorLibTypes.IntPtr.TypeDefOrRef);
