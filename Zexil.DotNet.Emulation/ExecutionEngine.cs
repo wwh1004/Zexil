@@ -8,19 +8,19 @@ namespace Zexil.DotNet.Emulation {
 	/// Exception thrown by <see cref="ExecutionEngine"/>
 	/// </summary>
 	public class ExecutionEngineException : Exception {
-		/// <inheritdoc/>
+		/// <inheritdoc />
 		public ExecutionEngineException() {
 		}
 
-		/// <inheritdoc/>
+		/// <inheritdoc />
 		public ExecutionEngineException(string message) : base(message) {
 		}
 
-		/// <inheritdoc/>
+		/// <inheritdoc />
 		public ExecutionEngineException(Exception inner) : base(inner.Message, inner) {
 		}
 
-		/// <inheritdoc/>
+		/// <inheritdoc />
 		public ExecutionEngineException(string message, Exception inner) : base(message, inner) {
 		}
 	}
@@ -70,7 +70,7 @@ namespace Zexil.DotNet.Emulation {
 		internal ExecutionEngineContext() {
 		}
 
-		/// <inheritdoc/>
+		/// <inheritdoc />
 		public void Dispose() {
 			if (!_isDisposed) {
 				foreach (var assembly in _assemblies.Values)
@@ -181,7 +181,6 @@ namespace Zexil.DotNet.Emulation {
 					rawAssembly = Pal.MapFile(path, true);
 				}
 				var assemblyDesc = new AssemblyDesc(this, assembly, rawAssembly);
-				_context._assemblies.Add(assembly, assemblyDesc);
 				foreach (var module in assembly.Modules)
 					ResolveModule(module);
 				return assemblyDesc;
@@ -218,7 +217,6 @@ namespace Zexil.DotNet.Emulation {
 				return moduleDesc;
 			var assemblyDesc = ResolveAssembly(module.Assembly);
 			moduleDesc = new ModuleDesc(this, module);
-			_context._modules.Add(module, moduleDesc);
 			assemblyDesc._modules.Add(moduleDesc);
 			return moduleDesc;
 		}
@@ -236,7 +234,6 @@ namespace Zexil.DotNet.Emulation {
 				return typeDesc;
 			var moduleDesc = ResolveModule(type.Module);
 			typeDesc = new TypeDesc(this, type);
-			_context._types.Add(type, typeDesc);
 			moduleDesc._types.Add(typeDesc);
 			return typeDesc;
 		}
@@ -254,7 +251,6 @@ namespace Zexil.DotNet.Emulation {
 				return fieldDesc;
 			var typeDesc = ResolveType(field.DeclaringType);
 			fieldDesc = new FieldDesc(this, field);
-			_context._fields.Add(field, fieldDesc);
 			typeDesc._fields.Add(fieldDesc);
 			return fieldDesc;
 		}
@@ -272,12 +268,11 @@ namespace Zexil.DotNet.Emulation {
 				return methodDesc;
 			var typeDesc = ResolveType(method.DeclaringType);
 			methodDesc = new MethodDesc(this, method);
-			_context._methods.Add(method, methodDesc);
 			typeDesc._methods.Add(methodDesc);
 			return methodDesc;
 		}
 
-		/// <inheritdoc/>
+		/// <inheritdoc />
 		public void Dispose() {
 			if (!_isDisposed) {
 				_context.Dispose();
@@ -289,7 +284,7 @@ namespace Zexil.DotNet.Emulation {
 			}
 		}
 
-		/// <inheritdoc/>
+		/// <inheritdoc />
 		public override string ToString() {
 			return $"ExecutionEngine {_bitness} bit";
 		}

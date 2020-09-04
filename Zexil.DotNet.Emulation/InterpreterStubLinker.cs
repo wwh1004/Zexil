@@ -167,6 +167,7 @@ namespace Zexil.DotNet.Emulation {
 				else {
 					EmitInstruction(OpCodes.Conv_I);
 					EmitInstruction(OpCodes.Box, _module.CorLibTypes.IntPtr.TypeDefOrRef);
+					// TODO: add pinned local to prevent gc moving object for reference type and add GC.KeepAlive in pair
 				}
 				EmitInstruction(OpCodes.Stelem_Ref);
 			}

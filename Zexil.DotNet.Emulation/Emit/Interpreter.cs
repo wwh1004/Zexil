@@ -1,6 +1,9 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
+using System.Runtime.CompilerServices;
+using dnlib.DotNet;
 using dnlib.DotNet.Emit;
 
 namespace Zexil.DotNet.Emulation.Emit {
@@ -14,12 +17,10 @@ namespace Zexil.DotNet.Emulation.Emit {
 		public const uint DefaultStackSize = 0x800000;
 
 		private readonly ExecutionEngine _executionEngine;
-		private readonly List<IntPtr> _stackBases = new List<IntPtr>();
-		[ThreadStatic]
-		private byte* _stackBase;
-		// 8MB stack for each thread
-		[ThreadStatic]
-		private byte* _stack;
+		private readonly Stack<IntPtr> _stacks = new Stack<IntPtr>();
+#if DEBUG
+		private int _maxStack;
+#endif
 		private bool _isDisposed;
 
 		/// <summary>
@@ -27,48 +28,43 @@ namespace Zexil.DotNet.Emulation.Emit {
 		/// </summary>
 		public ExecutionEngine ExecutionEngine => _executionEngine;
 
-		/// <summary>
-		/// Stack base pointer (default is 8MB size for each thread)
-		/// </summary>
-		public byte* StackBase {
-			get {
-				if (_stackBase == null) {
-					_stackBase = (byte*)Pal.AllocMemory(DefaultStackSize, false);
-					lock (((ICollection)_stackBases).SyncRoot)
-						_stackBases.Add((IntPtr)_stackBase);
-				}
-				return _stackBase;
-			}
-		}
-
-		/// <summary>
-		/// Stack pointer (default is 8MB size for each thread)
-		/// </summary>
-		public byte* Stack {
-			get {
-				if (_stack == null)
-					_stack = StackBase;
-				return _stack;
-			}
-			set {
-				byte* stackBase = StackBase;
-				if (value < stackBase || value > stackBase + DefaultStackSize)
-					throw new ExecutionEngineException(new ArgumentOutOfRangeException());
-
-				_stack = value;
-			}
-		}
-
 		internal InterpreterContext(ExecutionEngine executionEngine) {
 			_executionEngine = executionEngine;
 		}
 
-		/// <inheritdoc/>
+		internal void* AcquireStack() {
+			lock (((ICollection)_stacks).SyncRoot) {
+				if (_stacks.Count == 0) {
+#if DEBUG
+					_maxStack++;
+#endif
+					void* stack = Pal.AllocMemory(0x400, false);
+					_stacks.Push((IntPtr)stack);
+					return stack;
+				}
+				else {
+					return (void*)_stacks.Pop();
+				}
+			}
+		}
+
+		internal void ReleaseStack(void* stack) {
+			lock (((ICollection)_stacks).SyncRoot)
+				_stacks.Push((IntPtr)stack);
+		}
+
+		/// <inheritdoc />
 		public void Dispose() {
 			if (!_isDisposed) {
-				foreach (var stackBase in _stackBases)
-					Pal.FreeMemory((void*)stackBase);
-				_stackBases.Clear();
+#if DEBUG
+				if (_stacks.Count < _maxStack)
+					throw new InvalidOperationException($"Contains {_maxStack - _stacks.Count} unfreed stack");
+				else if (_stacks.Count > _maxStack)
+					throw new InvalidOperationException($"Contains {_stacks.Count - _maxStack } memory block that were incorrectly freed");
+#endif
+				foreach (var stack in _stacks)
+					Pal.FreeMemory((void*)stack);
+				_stacks.Clear();
 				_isDisposed = true;
 			}
 		}
@@ -77,11 +73,14 @@ namespace Zexil.DotNet.Emulation.Emit {
 	/// <summary>
 	/// CIL instruction interpreter method context
 	/// </summary>
-	public sealed class InterpreterMethodContext {
+	public sealed unsafe class InterpreterMethodContext : IDisposable {
 		private readonly MethodDesc _method;
 		private readonly object[] _arguments;
-		private readonly Type[] _typeInstantiation;
-		private readonly Type[] _methodInstantiation;
+		private InterpreterContext _context;
+		private byte* _stack;
+		private MethodDef _methodDef;
+		private byte*[] _pinnedArguments;
+		private bool _isDisposed;
 
 		/// <summary>
 		/// Interpreted method
@@ -96,44 +95,58 @@ namespace Zexil.DotNet.Emulation.Emit {
 		/// <summary>
 		/// Type generic arguments
 		/// </summary>
-		public Type[] TypeInstantiation => _typeInstantiation;
+		public TypeDesc[] TypeInstantiation => _method.DeclaringType.Instantiation;
 
 		/// <summary>
 		/// Method generic arguments
 		/// </summary>
-		public Type[] MethodInstantiation => _methodInstantiation;
+		public TypeDesc[] MethodInstantiation => _method.Instantiation;
+
+		internal byte* Stack => _stack;
 
 		/// <summary>
-		/// Constructor
+		/// Related <see cref="dnlib.DotNet.MethodDef"/>
 		/// </summary>
-		/// <param name="method"></param>
-		public InterpreterMethodContext(MethodDesc method) {
-			_method = method ?? throw new ArgumentNullException(nameof(method));
-			_arguments = Array.Empty<object>();
+		public MethodDef MethodDef => _methodDef;
+
+		internal byte*[] PinnedArguments => _pinnedArguments;
+
+		internal InterpreterMethodContext() {
 		}
 
-		/// <summary>
-		/// Constructor
-		/// </summary>
-		/// <param name="method"></param>
-		/// <param name="arguments"></param>
-		public InterpreterMethodContext(MethodDesc method, params object[] arguments) {
+		internal InterpreterMethodContext(MethodDesc method, params object[] arguments) {
 			_method = method ?? throw new ArgumentNullException(nameof(method));
 			_arguments = arguments ?? throw new ArgumentNullException(nameof(arguments));
 		}
 
-		/// <summary>
-		/// Constructor
-		/// </summary>
-		/// <param name="method"></param>
-		/// <param name="arguments"></param>
-		/// <param name="typeInstantiation"></param>
-		/// <param name="methodInstantiation"></param>
-		public InterpreterMethodContext(MethodDesc method, object[] arguments, Type[] typeInstantiation, Type[] methodInstantiation) {
-			_method = method ?? throw new ArgumentNullException(nameof(method));
-			_arguments = arguments ?? throw new ArgumentNullException(nameof(arguments));
-			_typeInstantiation = typeInstantiation ?? Array.Empty<Type>();
-			_methodInstantiation = methodInstantiation ?? Array.Empty<Type>();
+		internal void ResolveContext(InterpreterContext context, ModuleDef moduleDef) {
+			_context = context;
+			_stack = (byte*)context.AcquireStack();
+			if (_method is null)
+				return;
+			_methodDef = (MethodDef)moduleDef.ResolveToken(_method.MetadataToken);
+			_pinnedArguments = new byte*[_arguments.Length];
+			for (int i = 0; i < _arguments.Length; i++) {
+				object argument = _arguments[i];
+				if (argument is IntPtr ptr) {
+					// argument is a byref type or just a value type IntPtr, but we don't care. both of them can be direct converted to pinned argument.
+					// for byref reference type, we regard them as already pinned.
+					_pinnedArguments[i] = (byte*)ptr;
+				}
+				else {
+					// argument is a boxed type or a reference type. we get unsafe pointer of it.
+					_pinnedArguments[i] = *(byte**)Unsafe.AsPointer(ref argument);
+				}
+			}
+			// TODO: unwind arguments
+		}
+
+		/// <inheritdoc />
+		public void Dispose() {
+			if (!_isDisposed) {
+				_context.ReleaseStack(_stack);
+				_isDisposed = true;
+			}
 		}
 	}
 
@@ -150,6 +163,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 		}
 
 		private readonly InterpreterContext _context;
+		private InterpretFromStubHandler _interpretFromStubUser;
 		private bool _isDisposed;
 
 		/// <summary>
@@ -157,26 +171,71 @@ namespace Zexil.DotNet.Emulation.Emit {
 		/// </summary>
 		public InterpreterContext Context => _context;
 
+		/// <inheritdoc />
+		public InterpretFromStubHandler InterpretFromStubUser {
+			get => _interpretFromStubUser;
+			set => _interpretFromStubUser = value;
+		}
+
 		internal Interpreter(ExecutionEngine executionEngine) {
 			_context = new InterpreterContext(executionEngine);
 		}
 
 		/// <summary>
-		/// Interprets a CIL instruction
+		/// Creates method-irrelated context
 		/// </summary>
-		/// <param name="instruction"></param>
 		/// <returns></returns>
-		public Exception Interpret(Instruction instruction) {
-			if (instruction is null)
-				throw new ArgumentNullException(nameof(instruction));
+		public InterpreterMethodContext CreateMethodContext() {
+			var methodContext = new InterpreterMethodContext();
+			methodContext.ResolveContext(_context, null);
+			return methodContext;
+		}
 
-			try {
-				InterpretImpl(instruction, null);
-			}
-			catch (WrappedException ex) {
-				return ex.InnerException;
-			}
-			return null;
+		/// <summary>
+		/// Create method context with specified <see cref="MethodDesc"/>
+		/// </summary>
+		/// <param name="moduleDef"></param>
+		/// <param name="method"></param>
+		/// <param name="arguments"></param>
+		/// <returns></returns>
+		public InterpreterMethodContext CreateMethodContext(ModuleDef moduleDef, MethodDesc method, params object[] arguments) {
+			if (moduleDef is null)
+				throw new ArgumentNullException(nameof(moduleDef));
+			if (method is null)
+				throw new ArgumentNullException(nameof(method));
+			if (arguments is null)
+				throw new ArgumentNullException(nameof(arguments));
+
+			var methodContext = new InterpreterMethodContext(method, arguments);
+			methodContext.ResolveContext(_context, moduleDef);
+			return methodContext;
+		}
+
+		/// <summary>
+		/// Create method context with specified <see cref="MethodDesc"/>
+		/// </summary>
+		/// <param name="moduleDef"></param>
+		/// <param name="methodDef"></param>
+		/// <param name="arguments"></param>
+		/// <returns></returns>
+		public InterpreterMethodContext CreateMethodContext(ModuleDef moduleDef, MethodDef methodDef, params object[] arguments) {
+			if (moduleDef is null)
+				throw new ArgumentNullException(nameof(moduleDef));
+			if (methodDef is null)
+				throw new ArgumentNullException(nameof(methodDef));
+			if (methodDef.HasGenericParameters || methodDef.DeclaringType.HasGenericParameters)
+				throw new NotSupportedException($"Creating method context by {nameof(MethodDef)} does NOT support generic method or method in generic type.");
+			if (arguments is null)
+				throw new ArgumentNullException(nameof(arguments));
+
+			var eeContext = _context.ExecutionEngine.Context;
+			var module = eeContext.Modules.FirstOrDefault(t => t.ScopeName == moduleDef.ScopeName && t.Assembly.FullName == moduleDef.Assembly.FullName);
+			if (module is null)
+				throw new InvalidOperationException("Specified module isn't loaded.");
+			var method = module.ResolveMethod(methodDef.MDToken.ToInt32());
+			var methodContext = new InterpreterMethodContext(method, arguments);
+			methodContext.ResolveContext(_context, moduleDef);
+			return methodContext;
 		}
 
 		/// <summary>
@@ -192,7 +251,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 				throw new ArgumentNullException(nameof(methodContext));
 
 			try {
-				InterpretImpl(instruction, null);
+				InterpretImpl(instruction, methodContext);
 			}
 			catch (WrappedException ex) {
 				return ex.InnerException;
@@ -200,11 +259,12 @@ namespace Zexil.DotNet.Emulation.Emit {
 			return null;
 		}
 
-		object IInterpreter.InterpretFromStub(MethodDesc method, object[] arguments, Type[] typeInstantiation, Type[] methodInstantiation) {
+		/// <inheritdoc />
+		public object InterpretFromStub(MethodDesc method, object[] arguments) {
 			throw new NotImplementedException();
 		}
 
-		/// <inheritdoc/>
+		/// <inheritdoc />
 		public void Dispose() {
 			if (!_isDisposed) {
 				_context.Dispose();

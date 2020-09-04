@@ -47,18 +47,11 @@ namespace Zexil.DotNet.Emulation {
 			if (interpreter is null)
 				throw new ExecutionEngineException(new InvalidOperationException("Default interpreter isn't set."));
 
-			if (typeInstantiation is null && methodInstantiation is null)
-				return interpreter.InterpretFromStub(module.ResolveMethod(methodToken), arguments, null, null);
-
 			var method = module.ResolveMethod(methodToken);
-			var type = method.DeclaringType;
-			if (!(typeInstantiation is null)) {
-				type = type.MakeGenericType(typeInstantiation);
-				method = type.GetMethod(methodToken);
-			}
-			if (!(methodInstantiation is null))
-				method = method.MakeGenericMethod(methodInstantiation);
-			return interpreter.InterpretFromStub(method, arguments, typeInstantiation, methodInstantiation);
+			if (!(typeInstantiation is null) || !(methodInstantiation is null))
+				method = method.Instantiate(typeInstantiation, methodInstantiation);
+			var interpretFromStubUser = interpreter.InterpretFromStubUser;
+			return !(interpretFromStubUser is null) ? interpretFromStubUser(method, arguments) : interpreter.InterpretFromStub(method, arguments);
 		}
 	}
 }
