@@ -129,12 +129,12 @@ namespace Zexil.DotNet.FlowAnalysis.Shared {
 
 		/// <summary />
 		protected virtual string FormatPredecessors(IBasicBlock basicBlock) {
-			return string.Join(", ", basicBlock.Predecessors.Keys.Select(FormatBlockId));
+			return string.Join(", ", basicBlock.Predecessors.Keys.Select(t => FormatBlockId(t)));
 		}
 
 		/// <summary />
 		protected virtual string FormatSuccessors(IBasicBlock basicBlock) {
-			return string.Join(", ", basicBlock.Successors.Keys.Select(FormatBlockId));
+			return string.Join(", ", basicBlock.Successors.Keys.Select(t => FormatBlockId(t)));
 		}
 
 		/// <summary />

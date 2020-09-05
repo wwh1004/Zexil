@@ -12,8 +12,9 @@ namespace Zexil.DotNet.Emulation {
 	/// genType  -> box
 	/// genType* -> conv_i
 	///
-	/// For byref argument, <see cref="InterpreterStubLinker"/> should generate IL to pin byref object if it is a reference type and for byref return,
-	/// <see cref="IInterpreter"/> should take measures to prevent GC moving object in a very short time if it is a reference type otherwise native int will pointer to a invalid memory region
+	/// For byref argument, <see cref="InterpreterStubLinker"/> should generate IL to pin byref object if it is a reference type
+	/// and for byref return, <see cref="IInterpreter"/> should take measures to prevent GC moving object in a very short time
+	/// if it is a reference type otherwise native int will pointer to a invalid memory region
 	/// </summary>
 	/// <param name="method"></param>
 	/// <param name="arguments"></param>
@@ -41,8 +42,9 @@ namespace Zexil.DotNet.Emulation {
 		/// genType  -> box
 		/// genType* -> conv_i
 		///
-		/// For byref argument, <see cref="InterpreterStubLinker"/> should generate IL to pin byref object if it is a reference type and for byref return,
-		/// <see cref="IInterpreter"/> should take measures to prevent GC moving object in a very short time if it is a reference type otherwise native int will pointer to a invalid memory region
+		/// For byref argument, <see cref="InterpreterStubLinker"/> should generate IL to pin byref object if it is a reference type
+		/// and for byref return, <see cref="IInterpreter"/> should take measures to prevent GC moving object in a very short time
+		/// if it is a reference type otherwise native int will pointer to a invalid memory region
 		/// </summary>
 		/// <param name="method"></param>
 		/// <param name="arguments"></param>

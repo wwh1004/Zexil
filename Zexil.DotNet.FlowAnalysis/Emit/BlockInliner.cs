@@ -16,19 +16,7 @@ namespace Zexil.DotNet.FlowAnalysis.Emit {
 			if (methodBlock.Type != BlockType.Method)
 				throw new ArgumentException($"{nameof(methodBlock)} is not a method block");
 
-			return Shared.BlockInliner.Inline(methodBlock, Redirect, Concat, Erase);
-
-			static void Redirect(IBasicBlock basicBlock, IBasicBlock newTarget) {
-				((BasicBlock)basicBlock).Redirect((BasicBlock)newTarget);
-			}
-
-			static void Concat(IBasicBlock first, IBasicBlock second) {
-				((BasicBlock)first).Concat((BasicBlock)second);
-			}
-
-			static void Erase(IBasicBlock basicBlock) {
-				((BasicBlock)basicBlock).Erase();
-			}
+			return Shared.BlockInliner.Inline(methodBlock, (x, y) => ((BasicBlock)x).Redirect((BasicBlock)y), (x, y) => ((BasicBlock)x).Concat((BasicBlock)y), t => ((BasicBlock)t).Erase());
 		}
 	}
 }

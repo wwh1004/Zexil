@@ -37,8 +37,6 @@ namespace Zexil.DotNet.Emulation {
 		/// <param name="methodInstantiation"></param>
 		/// <returns></returns>
 		public static object Dispatch(int moduleId, int methodToken, object[] arguments, Type[] typeInstantiation, Type[] methodInstantiation) {
-			if (arguments is null)
-				throw new ExecutionEngineException(new ArgumentNullException(nameof(arguments)));
 			if (!_modules.TryGetValue(moduleId, out var moduleWeakRef))
 				throw new ExecutionEngineException(new InvalidOperationException());
 			if (!moduleWeakRef.TryGetTarget(out var module))

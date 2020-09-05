@@ -109,6 +109,14 @@ namespace Zexil.DotNet.Emulation.Emit {
 		/// </summary>
 		public MethodDef MethodDef => _methodDef;
 
+		/// <summary>
+		/// refType  -> pointer to clr class "Object"
+		/// refType* -> secondary pointer to clr class "Object"
+		/// valType  -> pointer to first instance field
+		/// valType* -> pointer to first instance field
+		/// genType  -> depend on it is a reference type or value type
+		/// genType* -> depend on it is a reference type or value type
+		/// </summary>
 		internal byte*[] PinnedArguments => _pinnedArguments;
 
 		internal InterpreterMethodContext() {
@@ -124,6 +132,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 			_stack = (byte*)context.AcquireStack();
 			if (_method is null)
 				return;
+
 			_methodDef = (MethodDef)moduleDef.ResolveToken(_method.MetadataToken);
 			_pinnedArguments = new byte*[_arguments.Length];
 			for (int i = 0; i < _arguments.Length; i++) {
@@ -133,9 +142,13 @@ namespace Zexil.DotNet.Emulation.Emit {
 					// for byref reference type, we regard them as already pinned.
 					_pinnedArguments[i] = (byte*)ptr;
 				}
-				else {
-					// argument is a boxed type or a reference type. we get unsafe pointer of it.
-					_pinnedArguments[i] = *(byte**)Unsafe.AsPointer(ref argument);
+				else if (_method.Parameters[i].IsValueType) {
+					// argument is a boxed type.
+					byte* pinnedArguments = *(byte**)Unsafe.AsPointer(ref argument);
+					// we get unsafe pointer of it.
+					pinnedArguments += sizeof(void*);
+					// skip m_pMethTab
+					_pinnedArguments[i] = pinnedArguments;
 				}
 			}
 			// TODO: unwind arguments

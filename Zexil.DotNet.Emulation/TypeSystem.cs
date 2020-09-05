@@ -6,6 +6,86 @@ using System.Reflection.Emit;
 
 namespace Zexil.DotNet.Emulation {
 	/// <summary>
+	/// See CorHdr.h/CorElementType (copied from dnlib)
+	/// </summary>
+	public enum CorElementType : byte {
+		/// <summary />
+		End = 0x00,
+		/// <summary>System.Void</summary>
+		Void = 0x01,
+		/// <summary>System.Boolean</summary>
+		Boolean = 0x02,
+		/// <summary>System.Char</summary>
+		Char = 0x03,
+		/// <summary>System.SByte</summary>
+		I1 = 0x04,
+		/// <summary>System.Byte</summary>
+		U1 = 0x05,
+		/// <summary>System.Int16</summary>
+		I2 = 0x06,
+		/// <summary>System.UInt16</summary>
+		U2 = 0x07,
+		/// <summary>System.Int32</summary>
+		I4 = 0x08,
+		/// <summary>System.UInt32</summary>
+		U4 = 0x09,
+		/// <summary>System.Int64</summary>
+		I8 = 0x0A,
+		/// <summary>System.UInt64</summary>
+		U8 = 0x0B,
+		/// <summary>System.Single</summary>
+		R4 = 0x0C,
+		/// <summary>System.Double</summary>
+		R8 = 0x0D,
+		/// <summary>System.String</summary>
+		String = 0x0E,
+		/// <summary>Pointer type (*)</summary>
+		Ptr = 0x0F,
+		/// <summary>ByRef type (&amp;)</summary>
+		ByRef = 0x10,
+		/// <summary>Value type</summary>
+		ValueType = 0x11,
+		/// <summary>Reference type</summary>
+		Class = 0x12,
+		/// <summary>Type generic parameter</summary>
+		Var = 0x13,
+		/// <summary>Multidimensional array ([*], [,], [,,], ...)</summary>
+		Array = 0x14,
+		/// <summary>Generic instance type</summary>
+		GenericInst = 0x15,
+		/// <summary>Typed byref</summary>
+		TypedByRef = 0x16,
+		/// <summary>Value array (don't use)</summary>
+		ValueArray = 0x17,
+		/// <summary>System.IntPtr</summary>
+		I = 0x18,
+		/// <summary>System.UIntPtr</summary>
+		U = 0x19,
+		/// <summary>native real (don't use)</summary>
+		R = 0x1A,
+		/// <summary>Function pointer</summary>
+		FnPtr = 0x1B,
+		/// <summary>System.Object</summary>
+		Object = 0x1C,
+		/// <summary>Single-dimension, zero lower bound array ([])</summary>
+		SZArray = 0x1D,
+		/// <summary>Method generic parameter</summary>
+		MVar = 0x1E,
+		/// <summary>Required C modifier</summary>
+		CModReqd = 0x1F,
+		/// <summary>Optional C modifier</summary>
+		CModOpt = 0x20,
+		/// <summary>Used internally by the CLR (don't use)</summary>
+		Internal = 0x21,
+		/// <summary>Module (don't use)</summary>
+		Module = 0x3F,
+		/// <summary>Sentinel (method sigs only)</summary>
+		Sentinel = 0x41,
+		/// <summary>Pinned type (locals only)</summary>
+		Pinned = 0x45
+	}
+
+	/// <summary>
 	/// Runtime assembly
 	/// </summary>
 	public sealed unsafe class AssemblyDesc {
@@ -144,13 +224,17 @@ namespace Zexil.DotNet.Emulation {
 	/// Runtime type
 	/// </summary>
 	public sealed class TypeDesc {
+		private static readonly MethodInfo _getCorElementType = typeof(RuntimeTypeHandle).GetMethod("GetCorElementType", BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static);
+
 		private readonly ExecutionEngine _executionEngine;
 		private readonly Type _reflType;
 		private readonly ModuleDesc _module;
 		private readonly int _metadataToken;
 		private readonly TypeDesc[] _instantiation;
-		private readonly bool _isValueType;
+		private readonly CorElementType _elementType;
+		private readonly bool _isCOMObject;
 		private readonly int _size;
+		private readonly int _genericParameterIndex;
 		internal readonly List<FieldDesc> _fields;
 		internal readonly List<MethodDesc> _methods;
 
@@ -180,14 +264,59 @@ namespace Zexil.DotNet.Emulation {
 		public TypeDesc[] Instantiation => _instantiation;
 
 		/// <summary>
+		/// CorElementType
+		/// </summary>
+		public CorElementType ElementType => _elementType;
+
+		/// <summary>
+		/// Is ByRef type
+		/// </summary>
+		public bool IsByRef => _elementType == CorElementType.ByRef;
+
+		/// <summary>
+		/// Is pointer type
+		/// </summary>
+		public bool IsPointer => _elementType == CorElementType.Ptr;
+
+		/// <summary>
+		/// Is primitive type
+		/// </summary>
+		public bool IsPrimitive => (_elementType >= CorElementType.Boolean && _elementType <= CorElementType.R8) || _elementType == CorElementType.I || _elementType == CorElementType.U;
+
+		/// <summary>
 		/// Is value type
 		/// </summary>
-		public bool IsValueType => _isValueType;
+		public bool IsValueType => _elementType >= CorElementType.Boolean && _elementType <= CorElementType.R;
+
+		/// <summary>
+		/// Is generic parameter
+		/// </summary>
+		public bool IsGenericParameter => _elementType == CorElementType.Var || _elementType == CorElementType.MVar;
+
+		/// <summary>
+		/// Is generic type parameter
+		/// </summary>
+		public bool IsGenericTypeParameter => _elementType == CorElementType.Var;
+
+		/// <summary>
+		/// Is generic method parameter
+		/// </summary>
+		public bool IsGenericMethodParameter => _elementType == CorElementType.MVar;
+
+		/// <summary>
+		/// Is a COM object
+		/// </summary>
+		public bool IsCOMObject => _isCOMObject;
 
 		/// <summary>
 		/// Type size (equals to sizeof(T))
 		/// </summary>
 		public int Size => _size;
+
+		/// <summary>
+		/// Generic parameter index
+		/// </summary>
+		public int GenericParameterIndex => _genericParameterIndex;
 
 		/// <summary>
 		/// Loaded fields
@@ -205,9 +334,11 @@ namespace Zexil.DotNet.Emulation {
 			_reflType = reflType;
 			_module = executionEngine.ResolveModule(reflType.Module);
 			_metadataToken = reflType.MetadataToken;
-			_instantiation = reflType.IsGenericType ? reflType.GetGenericArguments().Select(executionEngine.ResolveType).ToArray() : Array.Empty<TypeDesc>();
-			_isValueType = _reflType.IsValueType;
-			_size = _isValueType ? SizeOf(reflType) : IntPtr.Size * 2;
+			_instantiation = reflType.IsGenericType ? reflType.GetGenericArguments().Select(t => executionEngine.ResolveType(t)).ToArray() : Array.Empty<TypeDesc>();
+			_elementType = GetCorElementType();
+			_isCOMObject = _reflType.IsCOMObject;
+			_size = IsValueType ? SizeOf(reflType) : IntPtr.Size * 2;
+			_genericParameterIndex = IsGenericParameter ? reflType.GenericParameterPosition : 0;
 			_fields = new List<FieldDesc>();
 			_methods = new List<MethodDesc>();
 		}
@@ -249,12 +380,36 @@ namespace Zexil.DotNet.Emulation {
 			return !(reflMethod is null) ? _executionEngine.ResolveMethod(reflMethod) : null;
 		}
 
+		/// <summary>
+		/// Gets actual generic parameter if <see cref="IsGenericParameter"/>
+		/// </summary>
+		/// <param name="typeInstantiation"></param>
+		/// <param name="methodInstantiation"></param>
+		/// <returns></returns>
+		public TypeDesc ResolveInstantiation(TypeDesc[] typeInstantiation, TypeDesc[] methodInstantiation) {
+			if (IsGenericTypeParameter && typeInstantiation is null)
+				throw new ArgumentNullException(nameof(typeInstantiation));
+			if (IsGenericMethodParameter && methodInstantiation is null)
+				throw new ArgumentNullException(nameof(methodInstantiation));
+
+			switch (_elementType) {
+			case CorElementType.Var: return typeInstantiation[_genericParameterIndex];
+			case CorElementType.MVar: return methodInstantiation[_genericParameterIndex];
+			default: return this;
+			}
+		}
+
 		private static int SizeOf(Type type) {
 			var dynamicMethod = new DynamicMethod(string.Empty, typeof(int), null, true);
 			var generator = dynamicMethod.GetILGenerator();
 			generator.Emit(OpCodes.Sizeof, type);
 			generator.Emit(OpCodes.Ret);
 			return (int)dynamicMethod.Invoke(null, null);
+		}
+
+		private CorElementType GetCorElementType() {
+			object boxedValue = !CLREnvironment.IsFramework2x ? _getCorElementType.Invoke(null, new object[] { _reflType }) : _getCorElementType.Invoke(_reflType.TypeHandle, null);
+			return (CorElementType)(byte)boxedValue;
 		}
 
 		/// <inheritdoc />
@@ -346,6 +501,7 @@ namespace Zexil.DotNet.Emulation {
 		private readonly TypeDesc _declaringType;
 		private readonly TypeDesc[] _instantiation;
 		private readonly bool _isStatic;
+		private readonly TypeDesc[] _parameters;
 
 		/// <summary>
 		/// Bound execution engine
@@ -382,14 +538,30 @@ namespace Zexil.DotNet.Emulation {
 		/// </summary>
 		public bool IsStatic => _isStatic;
 
+		/// <summary>
+		/// Method parameters including "this" pointer
+		/// </summary>
+		public TypeDesc[] Parameters => _parameters;
+
 		internal MethodDesc(ExecutionEngine executionEngine, MethodBase reflMethod) {
 			executionEngine.Context._methods.Add(reflMethod, this);
 			_executionEngine = executionEngine;
 			_reflMethod = reflMethod;
 			_metadataToken = reflMethod.MetadataToken;
-			_instantiation = reflMethod.IsGenericMethod ? reflMethod.GetGenericArguments().Select(executionEngine.ResolveType).ToArray() : Array.Empty<TypeDesc>();
+			_instantiation = reflMethod.IsGenericMethod ? reflMethod.GetGenericArguments().Select(t => executionEngine.ResolveType(t)).ToArray() : Array.Empty<TypeDesc>();
 			_declaringType = executionEngine.ResolveType(reflMethod.DeclaringType);
 			_isStatic = reflMethod.IsStatic;
+			_parameters = GetParameters();
+		}
+
+		private TypeDesc[] GetParameters() {
+			var reflParameters = _reflMethod.GetParameters();
+			var parameters = new List<TypeDesc>(reflParameters.Length + 1);
+			if (!_isStatic)
+				parameters.Add(_declaringType);
+			foreach (var reflParameter in reflParameters)
+				parameters.Add(_executionEngine.ResolveType(reflParameter.ParameterType));
+			return parameters.ToArray();
 		}
 
 		/// <summary>
