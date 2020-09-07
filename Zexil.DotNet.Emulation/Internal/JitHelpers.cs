@@ -18,6 +18,7 @@ namespace Zexil.DotNet.Emulation.Internal {
 			return ref Unsafe.As<RawSZArrayData>(array).Data;
 		}
 
+#pragma warning disable CS0649
 		private sealed class RawData {
 			public byte Data;
 		}
@@ -26,5 +27,6 @@ namespace Zexil.DotNet.Emulation.Internal {
 			public IntPtr Count;
 			public byte Data;
 		}
+#pragma warning restore CS0649
 	}
 }

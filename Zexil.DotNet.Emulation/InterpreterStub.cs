@@ -6,7 +6,7 @@ namespace Zexil.DotNet.Emulation {
 	/// <summary>
 	/// Interpreter stub for callback and more
 	/// </summary>
-	public static class InterpreterStub {
+	public static unsafe class InterpreterStub {
 		private static readonly Dictionary<int, WeakReference<ModuleDesc>> _modules = new Dictionary<int, WeakReference<ModuleDesc>>();
 		private static int _moduleId;
 
@@ -35,8 +35,7 @@ namespace Zexil.DotNet.Emulation {
 		/// <param name="arguments"></param>
 		/// <param name="typeInstantiation"></param>
 		/// <param name="methodInstantiation"></param>
-		/// <returns></returns>
-		public static object Dispatch(int moduleId, int methodToken, object[] arguments, Type[] typeInstantiation, Type[] methodInstantiation) {
+		public static void Dispatch(int moduleId, int methodToken, void*[] arguments, Type[] typeInstantiation, Type[] methodInstantiation) {
 			if (!_modules.TryGetValue(moduleId, out var moduleWeakRef))
 				throw new InvalidOperationException();
 			if (!moduleWeakRef.TryGetTarget(out var module))
@@ -49,7 +48,10 @@ namespace Zexil.DotNet.Emulation {
 			if (!(typeInstantiation is null) || !(methodInstantiation is null))
 				method = method.Instantiate(typeInstantiation, methodInstantiation);
 			var interpretFromStubUser = interpreter.InterpretFromStubUser;
-			return !(interpretFromStubUser is null) ? interpretFromStubUser(method, arguments) : interpreter.InterpretFromStub(method, arguments);
+			if (!(interpretFromStubUser is null))
+				interpretFromStubUser(method, arguments);
+			else
+				interpreter.InterpretFromStub(method, arguments);
 		}
 	}
 }

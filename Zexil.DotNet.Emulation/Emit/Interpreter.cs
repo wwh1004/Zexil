@@ -2,7 +2,6 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using dnlib.DotNet;
 using dnlib.DotNet.Emit;
 using Zexil.DotNet.Emulation.Internal;
@@ -76,11 +75,10 @@ namespace Zexil.DotNet.Emulation.Emit {
 	/// </summary>
 	public sealed unsafe class InterpreterMethodContext : IDisposable {
 		private readonly MethodDesc _method;
-		private readonly object[] _arguments;
+		private readonly void*[] _arguments;
 		private InterpreterContext _context;
 		private byte* _stack;
 		private MethodDef _methodDef;
-		private byte*[] _pinnedArguments;
 		private bool _isDisposed;
 
 		/// <summary>
@@ -90,8 +88,15 @@ namespace Zexil.DotNet.Emulation.Emit {
 
 		/// <summary>
 		/// Arguments
+		/// 
+		/// refType  -> pointer to clr class "Object"
+		/// refType* -> secondary pointer to clr class "Object"
+		/// valType  -> pointer to first instance field
+		/// valType* -> pointer to first instance field
+		/// genType  -> depend on it is a reference type or value type
+		/// genType* -> depend on it is a reference type or value type
 		/// </summary>
-		public object[] Arguments => _arguments;
+		public void*[] Arguments => _arguments;
 
 		/// <summary>
 		/// Type generic arguments
@@ -110,20 +115,10 @@ namespace Zexil.DotNet.Emulation.Emit {
 		/// </summary>
 		public MethodDef MethodDef => _methodDef;
 
-		/// <summary>
-		/// refType  -> pointer to clr class "Object"
-		/// refType* -> secondary pointer to clr class "Object"
-		/// valType  -> pointer to first instance field
-		/// valType* -> pointer to first instance field
-		/// genType  -> depend on it is a reference type or value type
-		/// genType* -> depend on it is a reference type or value type
-		/// </summary>
-		internal byte*[] PinnedArguments => _pinnedArguments;
-
 		internal InterpreterMethodContext() {
 		}
 
-		internal InterpreterMethodContext(MethodDesc method, params object[] arguments) {
+		internal InterpreterMethodContext(MethodDesc method, params void*[] arguments) {
 			_method = method ?? throw new ArgumentNullException(nameof(method));
 			_arguments = arguments ?? throw new ArgumentNullException(nameof(arguments));
 		}
@@ -135,23 +130,6 @@ namespace Zexil.DotNet.Emulation.Emit {
 				return;
 
 			_methodDef = (MethodDef)moduleDef.ResolveToken(_method.MetadataToken);
-			_pinnedArguments = new byte*[_arguments.Length];
-			for (int i = 0; i < _arguments.Length; i++) {
-				object argument = _arguments[i];
-				if (argument is IntPtr ptr) {
-					// argument is a byref type or just a value type IntPtr, but we don't care. both of them can be direct converted to pinned argument.
-					// for byref reference type, we regard them as already pinned.
-					_pinnedArguments[i] = (byte*)ptr;
-				}
-				else if (_method.Parameters[i].IsValueType) {
-					// argument is a boxed type.
-					byte* pinnedArguments = *(byte**)Unsafe.AsPointer(ref argument);
-					// we get unsafe pointer of it.
-					pinnedArguments += sizeof(void*);
-					// skip m_pMethTab
-					_pinnedArguments[i] = pinnedArguments;
-				}
-			}
 		}
 
 		/// <inheritdoc />
@@ -167,7 +145,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 	/// CIL instruction interpreter which provides methods to emulate method execution.
 	/// TODO: support thread local storage
 	/// </summary>
-	public sealed partial class Interpreter : IInterpreter, IDisposable {
+	public sealed unsafe partial class Interpreter : IInterpreter, IDisposable {
 		private readonly InterpreterContext _context;
 		private InterpretFromStubHandler _interpretFromStubUser;
 		private bool _isDisposed;
@@ -204,7 +182,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 		/// <param name="method"></param>
 		/// <param name="arguments"></param>
 		/// <returns></returns>
-		public InterpreterMethodContext CreateMethodContext(ModuleDef moduleDef, MethodDesc method, params object[] arguments) {
+		public InterpreterMethodContext CreateMethodContext(ModuleDef moduleDef, MethodDesc method, params void*[] arguments) {
 			if (moduleDef is null)
 				throw new ArgumentNullException(nameof(moduleDef));
 			if (method is null)
@@ -224,7 +202,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 		/// <param name="methodDef"></param>
 		/// <param name="arguments"></param>
 		/// <returns></returns>
-		public InterpreterMethodContext CreateMethodContext(ModuleDef moduleDef, MethodDef methodDef, params object[] arguments) {
+		public InterpreterMethodContext CreateMethodContext(ModuleDef moduleDef, MethodDef methodDef, params void*[] arguments) {
 			if (moduleDef is null)
 				throw new ArgumentNullException(nameof(moduleDef));
 			if (methodDef is null)
@@ -249,27 +227,17 @@ namespace Zexil.DotNet.Emulation.Emit {
 		/// </summary>
 		/// <param name="instruction"></param>
 		/// <param name="methodContext"></param>
-		/// <returns></returns>
-		public Exception Interpret(Instruction instruction, InterpreterMethodContext methodContext) {
+		public void Interpret(Instruction instruction, InterpreterMethodContext methodContext) {
 			if (instruction is null)
 				throw new ArgumentNullException(nameof(instruction));
 			if (methodContext is null)
 				throw new ArgumentNullException(nameof(methodContext));
 
-			try {
-				InterpretImpl(instruction, methodContext);
-			}
-			catch (ExecutionEngineException eeex) {
-				throw; 
-			}
-			catch (Exception ex) {
-				return ex;
-			}
-			return null;
+			InterpretImpl(instruction, methodContext);
 		}
 
 		/// <inheritdoc />
-		public object InterpretFromStub(MethodDesc method, object[] arguments) {
+		public void InterpretFromStub(MethodDesc method, void*[] arguments) {
 			throw new NotImplementedException();
 		}
 

@@ -18,8 +18,7 @@ namespace Zexil.DotNet.Emulation {
 	/// </summary>
 	/// <param name="method"></param>
 	/// <param name="arguments"></param>
-	/// <returns></returns>
-	public delegate void InterpretFromStubHandler(MethodDesc method, void*[] arguments);
+	public unsafe delegate void InterpretFromStubHandler(MethodDesc method, void*[] arguments);
 
 	/// <summary>
 	/// Interpreter interface
@@ -48,7 +47,6 @@ namespace Zexil.DotNet.Emulation {
 		/// </summary>
 		/// <param name="method"></param>
 		/// <param name="arguments"></param>
-		/// <returns></returns>
 		void InterpretFromStub(MethodDesc method, void*[] arguments);
 	}
 }
