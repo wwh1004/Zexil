@@ -189,21 +189,19 @@ namespace Zexil.DotNet.Emulation {
 					}
 				}
 				else {
-					// **Updated**: currently we can use some unsafe apis so we can only pin byref type
-
-					//if (typeSig.IsValueType) {
-					//	// valType
-					//	return;
-					//}
-					//else {
-					//	// T/refType
-					//	// for T, it is also a fucking case, we don't know whether it is a value type or not, maybe we should regard it as reference type
-					//	var local = new Local(new PinnedSig(typeSig));
-					//	// T/refType pinned
-					//	_locals.Add(local);
-					//	EmitInstruction(OpCodes.Ldarg, parameter);
-					//	EmitInstruction(OpCodes.Stloc, local);
-					//}
+					if (typeSig.IsValueType) {
+						// valType
+						return;
+					}
+					else {
+						// T/refType
+						// for T, it is also a fucking case, we don't know whether it is a value type or not, maybe we should regard it as reference type
+						var local = new Local(new PinnedSig(typeSig));
+						// T/refType pinned
+						_locals.Add(local);
+						EmitInstruction(OpCodes.Ldarg, parameter);
+						EmitInstruction(OpCodes.Stloc, local);
+					}
 				}
 			}
 

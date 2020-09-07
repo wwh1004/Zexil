@@ -3,7 +3,7 @@ using System.ComponentModel;
 using System.Runtime.InteropServices;
 using Microsoft.Win32.SafeHandles;
 
-namespace Zexil.DotNet.Emulation {
+namespace Zexil.DotNet.Emulation.Internal {
 	/// <summary>
 	/// Platform Adaptation Layer
 	/// </summary>

@@ -31,5 +31,9 @@ namespace Zexil.DotNet.Emulation.Emit {
 				break;
 			}
 		}
+
+		private void InterpretArithmetic(InterpreterMethodContext methodContext) {
+
+		}
 	}
 }

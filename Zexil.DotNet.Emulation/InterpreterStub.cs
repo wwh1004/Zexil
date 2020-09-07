@@ -38,12 +38,12 @@ namespace Zexil.DotNet.Emulation {
 		/// <returns></returns>
 		public static object Dispatch(int moduleId, int methodToken, object[] arguments, Type[] typeInstantiation, Type[] methodInstantiation) {
 			if (!_modules.TryGetValue(moduleId, out var moduleWeakRef))
-				throw new ExecutionEngineException(new InvalidOperationException());
+				throw new InvalidOperationException();
 			if (!moduleWeakRef.TryGetTarget(out var module))
-				throw new ExecutionEngineException(new ObjectDisposedException(nameof(ExecutionEngine)));
+				throw new ObjectDisposedException(nameof(ExecutionEngine));
 			var interpreter = module.ExecutionEngine.InterpreterManager.DefaultInterpreter;
 			if (interpreter is null)
-				throw new ExecutionEngineException(new InvalidOperationException("Default interpreter isn't set."));
+				throw new InvalidOperationException("Default interpreter isn't set.");
 
 			var method = module.ResolveMethod(methodToken);
 			if (!(typeInstantiation is null) || !(methodInstantiation is null))

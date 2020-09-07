@@ -1,7 +1,7 @@
 using System;
 using System.Reflection;
 
-namespace Zexil.DotNet.Emulation {
+namespace Zexil.DotNet.Emulation.Internal {
 	internal enum CLRFlavor {
 		Framework,
 		Core

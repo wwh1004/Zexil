@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
+using Zexil.DotNet.Emulation.Internal;
 
 namespace Zexil.DotNet.Emulation {
 	/// <summary>
@@ -350,15 +351,9 @@ namespace Zexil.DotNet.Emulation {
 		/// <returns></returns>
 		public TypeDesc Instantiate(params Type[] typeInstantiation) {
 			if (typeInstantiation is null)
-				throw new ExecutionEngineException(new ArgumentNullException(nameof(typeInstantiation)));
+				throw new ArgumentNullException(nameof(typeInstantiation));
 
-			Type reflType;
-			try {
-				reflType = _reflType.MakeGenericType(typeInstantiation);
-			}
-			catch (Exception ex) {
-				throw new ExecutionEngineException(ex);
-			}
+			var reflType = _reflType.MakeGenericType(typeInstantiation);
 			return _executionEngine.ResolveType(reflType);
 		}
 
@@ -370,13 +365,7 @@ namespace Zexil.DotNet.Emulation {
 		public MethodDesc FindMethod(int metadataToken) {
 			const BindingFlags BINDING_FLAGS = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly;
 
-			MethodBase reflMethod;
-			try {
-				reflMethod = _reflType.GetMethods(BINDING_FLAGS).FirstOrDefault(t => t.MetadataToken == metadataToken);
-			}
-			catch (Exception ex) {
-				throw new ExecutionEngineException(ex);
-			}
+			var reflMethod = _reflType.GetMethods(BINDING_FLAGS).FirstOrDefault(t => t.MetadataToken == metadataToken);
 			return !(reflMethod is null) ? _executionEngine.ResolveMethod(reflMethod) : null;
 		}
 
@@ -571,17 +560,11 @@ namespace Zexil.DotNet.Emulation {
 		/// <returns></returns>
 		public MethodDesc Instantiate(params Type[] methodInstantiation) {
 			if (methodInstantiation is null)
-				throw new ExecutionEngineException(new ArgumentNullException(nameof(methodInstantiation)));
+				throw new ArgumentNullException(nameof(methodInstantiation));
 			if (!(_reflMethod is MethodInfo reflMethodInfo))
-				throw new ExecutionEngineException(new InvalidOperationException("Constructor can't be instantiated."));
+				throw new InvalidOperationException("Constructor can't be instantiated.");
 
-			MethodInfo reflMethod;
-			try {
-				reflMethod = reflMethodInfo.MakeGenericMethod(methodInstantiation);
-			}
-			catch (Exception ex) {
-				throw new ExecutionEngineException(ex);
-			}
+			var reflMethod = reflMethodInfo.MakeGenericMethod(methodInstantiation);
 			return _executionEngine.ResolveMethod(reflMethod);
 		}
 

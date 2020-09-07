@@ -1,31 +1,28 @@
 using System;
 using System.Runtime.CompilerServices;
 
-namespace Zexil.DotNet.Emulation {
+namespace Zexil.DotNet.Emulation.Internal {
 	internal static class JitHelpers {
-		private const uint BIT_SBLK_GC_RESERVE = 0x20000000;
-
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static ref byte GetRawData(this object obj) {
 			return ref Unsafe.As<RawData>(obj).Data;
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static ref byte GetRawSzArrayData(this Array array) {
-			return ref Unsafe.As<RawSzArrayData>(array).Data;
+		public static uint GetSZArrayLength(this Array array) {
+			return (uint)Unsafe.As<RawSZArrayData>(array).Count;
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static void SetGCBit(object obj) {
-			ref uint m_SyncBlock = ref Unsafe.As<byte, uint>(ref Unsafe.Subtract(ref GetRawData(obj), IntPtr.Size + sizeof(uint)));
-			m_SyncBlock |= BIT_SBLK_GC_RESERVE;
+		public static ref byte GetRawSZArrayData(this Array array) {
+			return ref Unsafe.As<RawSZArrayData>(array).Data;
 		}
 
 		private sealed class RawData {
 			public byte Data;
 		}
 
-		private class RawSzArrayData {
+		private sealed class RawSZArrayData {
 			public IntPtr Count;
 			public byte Data;
 		}

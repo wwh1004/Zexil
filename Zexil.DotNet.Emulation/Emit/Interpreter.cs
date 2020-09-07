@@ -5,6 +5,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using dnlib.DotNet;
 using dnlib.DotNet.Emit;
+using Zexil.DotNet.Emulation.Internal;
 
 namespace Zexil.DotNet.Emulation.Emit {
 	/// <summary>
@@ -151,7 +152,6 @@ namespace Zexil.DotNet.Emulation.Emit {
 					_pinnedArguments[i] = pinnedArguments;
 				}
 			}
-			// TODO: unwind arguments
 		}
 
 		/// <inheritdoc />
@@ -168,13 +168,6 @@ namespace Zexil.DotNet.Emulation.Emit {
 	/// TODO: support thread local storage
 	/// </summary>
 	public sealed partial class Interpreter : IInterpreter, IDisposable {
-#pragma warning disable CA1032 // Implement standard exception constructors
-		private sealed class WrappedException : Exception {
-#pragma warning restore CA1032 // Implement standard exception constructors
-			public WrappedException(Exception exception) : base(string.Empty, exception) {
-			}
-		}
-
 		private readonly InterpreterContext _context;
 		private InterpretFromStubHandler _interpretFromStubUser;
 		private bool _isDisposed;
@@ -266,8 +259,11 @@ namespace Zexil.DotNet.Emulation.Emit {
 			try {
 				InterpretImpl(instruction, methodContext);
 			}
-			catch (WrappedException ex) {
-				return ex.InnerException;
+			catch (ExecutionEngineException eeex) {
+				throw; 
+			}
+			catch (Exception ex) {
+				return ex;
 			}
 			return null;
 		}

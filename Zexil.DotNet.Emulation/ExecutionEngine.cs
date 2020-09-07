@@ -2,29 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
+using Zexil.DotNet.Emulation.Internal;
 
 namespace Zexil.DotNet.Emulation {
-	/// <summary>
-	/// Exception thrown by <see cref="ExecutionEngine"/>
-	/// </summary>
-	public class ExecutionEngineException : Exception {
-		/// <inheritdoc />
-		public ExecutionEngineException() {
-		}
-
-		/// <inheritdoc />
-		public ExecutionEngineException(string message) : base(message) {
-		}
-
-		/// <inheritdoc />
-		public ExecutionEngineException(Exception inner) : base(inner.Message, inner) {
-		}
-
-		/// <inheritdoc />
-		public ExecutionEngineException(string message, Exception inner) : base(message, inner) {
-		}
-	}
-
 	/// <summary>
 	/// CLR context
 	/// </summary>
@@ -73,10 +53,11 @@ namespace Zexil.DotNet.Emulation {
 		/// <inheritdoc />
 		public void Dispose() {
 			if (!_isDisposed) {
-				foreach (var assembly in _assemblies.Values)
-					Pal.UnmapFile(assembly.RawAssembly);
 				_assemblies.Clear();
+				_modules.Clear();
 				_types.Clear();
+				_fields.Clear();
+				_methods.Clear();
 				_isDisposed = true;
 			}
 		}
@@ -135,13 +116,8 @@ namespace Zexil.DotNet.Emulation {
 			if (assemblyData is null)
 				throw new ArgumentNullException(nameof(assemblyData));
 
-			try {
-				var assembly = Assembly.Load(assemblyData);
-				return LoadAssembly(assembly, originalAssemblyData);
-			}
-			catch (Exception ex) {
-				throw new ExecutionEngineException(ex);
-			}
+			var assembly = Assembly.Load(assemblyData);
+			return LoadAssembly(assembly, originalAssemblyData);
 		}
 
 		/// <summary>
@@ -154,13 +130,8 @@ namespace Zexil.DotNet.Emulation {
 			if (string.IsNullOrEmpty(assemblyPath))
 				throw new ArgumentNullException(nameof(assemblyPath));
 
-			try {
-				var assembly = Assembly.LoadFile(Path.GetFullPath(assemblyPath));
-				return LoadAssembly(assembly, originalAssemblyData);
-			}
-			catch (Exception ex) {
-				throw new ExecutionEngineException(ex);
-			}
+			var assembly = Assembly.LoadFile(Path.GetFullPath(assemblyPath));
+			return LoadAssembly(assembly, originalAssemblyData);
 		}
 
 		/// <summary>
@@ -173,21 +144,16 @@ namespace Zexil.DotNet.Emulation {
 			if (assembly is null)
 				throw new ArgumentNullException(nameof(assembly));
 
-			try {
-				void* rawAssembly = null;
-				if (!(originalAssemblyData is null)) {
-					string path = Path.GetTempFileName();
-					File.WriteAllBytes(path, originalAssemblyData);
-					rawAssembly = Pal.MapFile(path, true);
-				}
-				var assemblyDesc = new AssemblyDesc(this, assembly, rawAssembly);
-				foreach (var module in assembly.Modules)
-					ResolveModule(module);
-				return assemblyDesc;
+			void* rawAssembly = null;
+			if (!(originalAssemblyData is null)) {
+				string path = Path.GetTempFileName();
+				File.WriteAllBytes(path, originalAssemblyData);
+				rawAssembly = Pal.MapFile(path, true);
 			}
-			catch (Exception ex) {
-				throw new ExecutionEngineException(ex);
-			}
+			var assemblyDesc = new AssemblyDesc(this, assembly, rawAssembly);
+			foreach (var module in assembly.Modules)
+				ResolveModule(module);
+			return assemblyDesc;
 		}
 
 		/// <summary>
@@ -197,11 +163,11 @@ namespace Zexil.DotNet.Emulation {
 		/// <returns></returns>
 		public AssemblyDesc ResolveAssembly(Assembly assembly) {
 			if (assembly is null)
-				throw new ExecutionEngineException(new ArgumentNullException(nameof(assembly)));
+				throw new ArgumentNullException(nameof(assembly));
 
 			if (_context._assemblies.TryGetValue(assembly, out var assemblyDesc))
 				return assemblyDesc;
-			throw new ExecutionEngineException(new ArgumentOutOfRangeException(nameof(assembly), $"{assembly} is not loaded by {nameof(ExecutionEngine)}"));
+			throw new ArgumentOutOfRangeException(nameof(assembly), $"{assembly} is not loaded by {nameof(ExecutionEngine)}");
 		}
 
 		/// <summary>
@@ -211,7 +177,7 @@ namespace Zexil.DotNet.Emulation {
 		/// <returns></returns>
 		public ModuleDesc ResolveModule(Module module) {
 			if (module is null)
-				throw new ExecutionEngineException(new ArgumentNullException(nameof(module)));
+				throw new ArgumentNullException(nameof(module));
 
 			if (_context._modules.TryGetValue(module, out var moduleDesc))
 				return moduleDesc;
@@ -228,7 +194,7 @@ namespace Zexil.DotNet.Emulation {
 		/// <returns></returns>
 		public TypeDesc ResolveType(Type type) {
 			if (type is null)
-				throw new ExecutionEngineException(new ArgumentNullException(nameof(type)));
+				throw new ArgumentNullException(nameof(type));
 
 			if (_context._types.TryGetValue(type, out var typeDesc))
 				return typeDesc;
@@ -245,7 +211,7 @@ namespace Zexil.DotNet.Emulation {
 		/// <returns></returns>
 		public FieldDesc ResolveField(FieldInfo field) {
 			if (field is null)
-				throw new ExecutionEngineException(new ArgumentNullException(nameof(field)));
+				throw new ArgumentNullException(nameof(field));
 
 			if (_context._fields.TryGetValue(field, out var fieldDesc))
 				return fieldDesc;
@@ -262,7 +228,7 @@ namespace Zexil.DotNet.Emulation {
 		/// <returns></returns>
 		public MethodDesc ResolveMethod(MethodBase method) {
 			if (method is null)
-				throw new ExecutionEngineException(new ArgumentNullException(nameof(method)));
+				throw new ArgumentNullException(nameof(method));
 
 			if (_context._methods.TryGetValue(method, out var methodDesc))
 				return methodDesc;
@@ -275,6 +241,8 @@ namespace Zexil.DotNet.Emulation {
 		/// <inheritdoc />
 		public void Dispose() {
 			if (!_isDisposed) {
+				foreach (var assembly in _context._assemblies.Values)
+					Pal.UnmapFile(assembly.RawAssembly);
 				_context.Dispose();
 				foreach (var interpreter in _interpreterManager.Interpreters) {
 					if (interpreter is IDisposable disposable)
