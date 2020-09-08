@@ -25,7 +25,7 @@ namespace Zexil.DotNet.Emulation {
 		public Type DefaultInterpreterType {
 			get => _defaultInterpreterType;
 			set {
-				if (!(value is null) && !value.IsAssignableFrom(typeof(IInterpreter)))
+				if (!(value is null) && !typeof(IInterpreter).IsAssignableFrom(value))
 					throw new ArgumentOutOfRangeException(nameof(value));
 
 				_defaultInterpreterType = value;
