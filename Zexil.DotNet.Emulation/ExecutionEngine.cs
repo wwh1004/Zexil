@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using Zexil.DotNet.Emulation.Internal;
 
@@ -244,7 +245,7 @@ namespace Zexil.DotNet.Emulation {
 				foreach (var assembly in _context._assemblies.Values)
 					Pal.UnmapFile(assembly.RawAssembly);
 				_context.Dispose();
-				foreach (var interpreter in _interpreterManager.Interpreters) {
+				foreach (var interpreter in _interpreterManager.Interpreters.SelectMany(t => t.Values)) {
 					if (interpreter is IDisposable disposable)
 						disposable.Dispose();
 				}

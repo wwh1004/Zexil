@@ -7,14 +7,13 @@ namespace Zexil.DotNet.Emulation {
 	/// Type conversation (arguments and return value are the same):
 	/// refType  -> no conv
 	/// refType* -> conv_i
-	/// valType  -> box
+	/// valType  -> ldarga
 	/// valType* -> conv_i
-	/// genType  -> box
+	/// genType  -> ldarga (we should dereference in runtime if it is reference type)
 	/// genType* -> conv_i
 	///
-	/// For byref argument, <see cref="InterpreterStubLinker"/> should generate IL to pin byref object if it is a reference type
-	/// and for byref return, <see cref="IInterpreter"/> should take measures to prevent GC moving object in a very short time
-	/// if it is a reference type otherwise native int will pointer to a invalid memory region
+	/// Calling conversation
+	/// arguments = method arguments + method return buffer (if method has return value)
 	/// </summary>
 	/// <param name="method"></param>
 	/// <param name="arguments"></param>
@@ -36,14 +35,13 @@ namespace Zexil.DotNet.Emulation {
 		/// Type conversation (arguments and return value are the same):
 		/// refType  -> no conv
 		/// refType* -> conv_i
-		/// valType  -> box
+		/// valType  -> ldarga
 		/// valType* -> conv_i
-		/// genType  -> box
+		/// genType  -> ldarga (we should dereference in runtime if it is reference type)
 		/// genType* -> conv_i
 		///
-		/// For byref argument, <see cref="InterpreterStubLinker"/> should generate IL to pin byref object if it is a reference type
-		/// and for byref return, <see cref="IInterpreter"/> should take measures to prevent GC moving object in a very short time
-		/// if it is a reference type otherwise native int will pointer to a invalid memory region
+		/// Calling conversation
+		/// arguments = method arguments + method return buffer (if method has return value)
 		/// </summary>
 		/// <param name="method"></param>
 		/// <param name="arguments"></param>

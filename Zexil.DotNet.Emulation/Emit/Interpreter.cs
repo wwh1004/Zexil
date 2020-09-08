@@ -17,10 +17,8 @@ namespace Zexil.DotNet.Emulation.Emit {
 		public const uint DefaultStackSize = 0x800000;
 
 		private readonly ExecutionEngine _executionEngine;
-		private readonly Stack<IntPtr> _stacks = new Stack<IntPtr>();
-#if DEBUG
-		private int _maxStack;
-#endif
+		private readonly Dictionary<MethodDesc, Cache<InterpreterMethodContext>> _methodContexts = new Dictionary<MethodDesc, Cache<InterpreterMethodContext>>();
+		private readonly Cache<IntPtr> _stacks = Cache<IntPtr>.Create();
 		private bool _isDisposed;
 
 		/// <summary>
@@ -32,40 +30,85 @@ namespace Zexil.DotNet.Emulation.Emit {
 			_executionEngine = executionEngine;
 		}
 
-		internal void* AcquireStack() {
-			lock (((ICollection)_stacks).SyncRoot) {
-				if (_stacks.Count == 0) {
-#if DEBUG
-					_maxStack++;
-#endif
-					void* stack = Pal.AllocMemory(0x400, false);
-					_stacks.Push((IntPtr)stack);
-					return stack;
-				}
-				else {
-					return (void*)_stacks.Pop();
-				}
+		internal InterpreterMethodContext AcquireMethodContext(MethodDesc method, ModuleDef moduleDef) {
+			if (!_methodContexts.TryGetValue(method, out var cache)) {
+				cache = Cache<InterpreterMethodContext>.Create();
+				_methodContexts.Add(method, cache);
 			}
+			if (cache.TryAcquire(out var methodContext))
+				return methodContext;
+			return new InterpreterMethodContext(this, method, moduleDef);
+		}
+
+		internal void ReleaseMethodContext(InterpreterMethodContext methodContext) {
+			_methodContexts[methodContext.Method].Release(methodContext);
+		}
+
+		internal void* AcquireStack() {
+			if (_stacks.TryAcquire(out var stack))
+				return (void*)stack;
+			return Pal.AllocMemory(0x400, false);
 		}
 
 		internal void ReleaseStack(void* stack) {
-			lock (((ICollection)_stacks).SyncRoot)
-				_stacks.Push((IntPtr)stack);
+			_stacks.Release((IntPtr)stack);
 		}
 
 		/// <inheritdoc />
 		public void Dispose() {
 			if (!_isDisposed) {
-#if DEBUG
-				if (_stacks.Count < _maxStack)
-					throw new InvalidOperationException($"Contains {_maxStack - _stacks.Count} unfreed stack");
-				else if (_stacks.Count > _maxStack)
-					throw new InvalidOperationException($"Contains {_stacks.Count - _maxStack } memory block that were incorrectly freed");
-#endif
-				foreach (var stack in _stacks)
+				foreach (var methodContext in _methodContexts.Values.SelectMany(t => t.Values))
+					methodContext.Dispose();
+				_methodContexts.Clear();
+				foreach (var stack in _stacks.Values)
 					Pal.FreeMemory((void*)stack);
 				_stacks.Clear();
 				_isDisposed = true;
+			}
+		}
+
+		private struct Cache<T> {
+			private Stack<T> _values;
+#if DEBUG
+			private int _maxValues;
+#endif
+
+			public IEnumerable<T> Values => _values;
+
+			public static Cache<T> Create() {
+				var cache = new Cache<T> {
+					_values = new Stack<T>()
+				};
+				return cache;
+			}
+
+			public bool TryAcquire(out T value) {
+				if (_values.Count == 0) {
+#if DEBUG
+					_maxValues++;
+#endif
+					value = default;
+					return false;
+				}
+				else {
+					value = _values.Pop();
+					return true;
+				}
+			}
+
+			public void Release(T value) {
+				_values.Push(value);
+			}
+
+			public void Clear() {
+#if DEBUG
+				if (_values.Count < _maxValues)
+					throw new InvalidOperationException($"Contains {_maxValues - _values.Count} unreleased value");
+				else if (_values.Count > _maxValues)
+					throw new InvalidOperationException($"Contains {_values.Count - _maxValues } value that were incorrectly released");
+#endif
+
+				_values.Clear();
 			}
 		}
 	}
@@ -74,29 +117,17 @@ namespace Zexil.DotNet.Emulation.Emit {
 	/// CIL instruction interpreter method context
 	/// </summary>
 	public sealed unsafe class InterpreterMethodContext : IDisposable {
+		#region Static Context
+		private readonly InterpreterContext _context;
 		private readonly MethodDesc _method;
-		private readonly void*[] _arguments;
-		private InterpreterContext _context;
-		private byte* _stack;
-		private MethodDef _methodDef;
-		private bool _isDisposed;
+		private readonly MethodDef _methodDef;
+		private readonly TypeDesc[] _argumentTypes;
+		private readonly TypeDesc[] _localTypes;
 
 		/// <summary>
 		/// Interpreted method
 		/// </summary>
 		public MethodDesc Method => _method;
-
-		/// <summary>
-		/// Arguments
-		/// 
-		/// refType  -> pointer to clr class "Object"
-		/// refType* -> secondary pointer to clr class "Object"
-		/// valType  -> pointer to first instance field
-		/// valType* -> pointer to first instance field
-		/// genType  -> depend on it is a reference type or value type
-		/// genType* -> depend on it is a reference type or value type
-		/// </summary>
-		public void*[] Arguments => _arguments;
 
 		/// <summary>
 		/// Type generic arguments
@@ -108,36 +139,125 @@ namespace Zexil.DotNet.Emulation.Emit {
 		/// </summary>
 		public TypeDesc[] MethodInstantiation => _method.Instantiation;
 
-		internal byte* Stack => _stack;
-
 		/// <summary>
 		/// Related <see cref="dnlib.DotNet.MethodDef"/>
 		/// </summary>
 		public MethodDef MethodDef => _methodDef;
 
-		internal InterpreterMethodContext() {
-		}
+		/// <summary>
+		/// Argument types
+		/// </summary>
+		public TypeDesc[] ArgumentTypes => _argumentTypes;
 
-		internal InterpreterMethodContext(MethodDesc method, params void*[] arguments) {
-			_method = method ?? throw new ArgumentNullException(nameof(method));
-			_arguments = arguments ?? throw new ArgumentNullException(nameof(arguments));
-		}
+		/// <summary>
+		/// Local variable types
+		/// </summary>
+		public TypeDesc[] LocalTypes => _localTypes;
+		#endregion
 
-		internal void ResolveContext(InterpreterContext context, ModuleDef moduleDef) {
+		#region Dynamic Context
+		private void*[] _arguments;
+		private void*[] _locals;
+		private byte* _stack;
+		private byte* _currentStack;
+		private bool _isDisposed;
+
+		/// <summary>
+		/// Arguments (includes return buffer)
+		/// 
+		/// Type conversation (arguments and return value are the same):
+		/// refType  -> no conv
+		/// refType* -> conv_i
+		/// valType  -> ldarga
+		/// valType* -> conv_i
+		/// genType  -> ldarga (we should dereference in runtime if it is reference type)
+		/// genType* -> conv_i
+		///
+		/// Calling conversation
+		/// arguments = method arguments + method return buffer (if method has return value)
+		/// </summary>
+		public void*[] Arguments => _arguments;
+
+		/// <summary>
+		/// Local variables
+		/// </summary>
+		public void*[] Locals => _locals;
+
+		/// <summary>
+		/// Return buffer (pointer to return value)
+		/// </summary>
+		public void* ReturnBuffer => _method.HasReturnType ? _arguments[_arguments.Length - 1] : null;
+
+		/// <summary>
+		/// Stack
+		/// </summary>
+		public byte* Stack => _stack;
+
+		/// <summary>
+		/// Current stack
+		/// </summary>
+		public byte* CurrentStack {
+			get => _currentStack;
+			set {
+#if DEBUG
+				if (value < _stack || value >= _stack + InterpreterContext.DefaultStackSize)
+					throw new OutOfMemoryException();
+#endif
+				_currentStack = value;
+			}
+		}
+		#endregion
+
+		/// <summary>
+		/// Without <see cref="Method"/> argument, <see cref="InterpreterMethodContext"/>
+		/// </summary>
+		/// <param name="context"></param>
+		internal InterpreterMethodContext(InterpreterContext context) {
 			_context = context;
-			_stack = (byte*)context.AcquireStack();
-			if (_method is null)
-				return;
+		}
 
-			_methodDef = (MethodDef)moduleDef.ResolveToken(_method.MetadataToken);
+		internal InterpreterMethodContext(InterpreterContext context, MethodDesc method, ModuleDef moduleDef) {
+			_context = context;
+			_method = method;
+			_methodDef = (MethodDef)moduleDef.ResolveToken(method.MetadataToken);
+			_argumentTypes = method.Parameters;
+			if (_methodDef.HasBody) {
+				var localDefs = _methodDef.Body.Variables;
+				// TODO: localDefs to localTypes
+				_localTypes = Array.Empty<TypeDesc>();
+			}
+			else {
+				_localTypes = Array.Empty<TypeDesc>();
+			}
+		}
+
+		internal void ResolveDynamicContext(void*[] arguments) {
+			if (!(_method is null)) {
+				if (arguments is null)
+					throw new ArgumentNullException(nameof(arguments));
+				if (arguments.Length != _method.Parameters.Length + (_method.HasReturnType ? 1 : 0))
+					throw new ArgumentException(nameof(arguments));
+
+				_arguments = arguments;
+				_locals = new void*[_localTypes.Length];
+			}
+			_stack = (byte*)_context.AcquireStack();
+			_isDisposed = false;
 		}
 
 		/// <inheritdoc />
 		public void Dispose() {
-			if (!_isDisposed) {
-				_context.ReleaseStack(_stack);
-				_isDisposed = true;
+			if (_isDisposed)
+				return;
+
+			if (!(_method is null)) {
+				_arguments = null;
+				_locals = null;
+				_context.ReleaseMethodContext(this);
 			}
+			_context.ReleaseStack(_stack);
+			_stack = null;
+			_isDisposed = true;
 		}
 	}
 
@@ -170,8 +290,8 @@ namespace Zexil.DotNet.Emulation.Emit {
 		/// </summary>
 		/// <returns></returns>
 		public InterpreterMethodContext CreateMethodContext() {
-			var methodContext = new InterpreterMethodContext();
-			methodContext.ResolveContext(_context, null);
+			var methodContext = new InterpreterMethodContext(_context);
+			methodContext.ResolveDynamicContext(null);
 			return methodContext;
 		}
 
@@ -190,8 +310,8 @@ namespace Zexil.DotNet.Emulation.Emit {
 			if (arguments is null)
 				throw new ArgumentNullException(nameof(arguments));
 
-			var methodContext = new InterpreterMethodContext(method, arguments);
-			methodContext.ResolveContext(_context, moduleDef);
+			var methodContext = _context.AcquireMethodContext(method, moduleDef);
+			methodContext.ResolveDynamicContext(arguments);
 			return methodContext;
 		}
 
@@ -217,8 +337,8 @@ namespace Zexil.DotNet.Emulation.Emit {
 			if (module is null)
 				throw new InvalidOperationException("Specified module isn't loaded.");
 			var method = module.ResolveMethod(methodDef.MDToken.ToInt32());
-			var methodContext = new InterpreterMethodContext(method, arguments);
-			methodContext.ResolveContext(_context, moduleDef);
+			var methodContext = _context.AcquireMethodContext(method, moduleDef);
+			methodContext.ResolveDynamicContext(arguments);
 			return methodContext;
 		}
 

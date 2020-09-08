@@ -1,28 +1,39 @@
 using System;
 using System.Collections.Generic;
+using System.Reflection;
+using System.Threading;
 
 namespace Zexil.DotNet.Emulation {
 	/// <summary>
-	/// Interpreter manager
+	/// Interpreter manager (thread local and thread safe)
 	/// </summary>
 	public sealed class InterpreterManager {
 		private readonly ExecutionEngine _executionEngine;
-		private readonly Dictionary<Type, IInterpreter> _interpreters;
-		private IInterpreter _defaultInterpreter;
+		private readonly Dictionary<Type, ThreadLocal<IInterpreter>> _interpreters = new Dictionary<Type, ThreadLocal<IInterpreter>>();
+		private Type _defaultInterpreterType;
 
-		internal IEnumerable<IInterpreter> Interpreters => _interpreters.Values;
+		internal IEnumerable<ThreadLocal<IInterpreter>> Interpreters => _interpreters.Values;
 
 		/// <summary>
 		/// Default interpreter
 		/// </summary>
-		public IInterpreter DefaultInterpreter {
-			get => _defaultInterpreter;
-			set => _defaultInterpreter = value;
+		public IInterpreter DefaultInterpreter => !(_defaultInterpreterType is null) ? GetImpl(_defaultInterpreterType) : throw new InvalidOperationException($"{nameof(DefaultInterpreterType)} is null");
+
+		/// <summary>
+		/// Default interpreter type
+		/// </summary>
+		public Type DefaultInterpreterType {
+			get => _defaultInterpreterType;
+			set {
+				if (!(value is null) && !value.IsAssignableFrom(typeof(IInterpreter)))
+					throw new ArgumentOutOfRangeException(nameof(value));
+
+				_defaultInterpreterType = value;
+			}
 		}
 
 		internal InterpreterManager(ExecutionEngine executionEngine) {
 			_executionEngine = executionEngine ?? throw new ArgumentNullException(nameof(executionEngine));
-			_interpreters = new Dictionary<Type, IInterpreter>();
 		}
 
 		/// <summary>
@@ -31,15 +42,33 @@ namespace Zexil.DotNet.Emulation {
 		/// <typeparam name="TInterpreter"></typeparam>
 		/// <returns></returns>
 		public TInterpreter Get<TInterpreter>() where TInterpreter : IInterpreter {
-			var type = typeof(TInterpreter);
-			if (_interpreters.TryGetValue(type, out var interpreter))
-				return (TInterpreter)interpreter;
-			if (type == typeof(Emit.Interpreter))
-				interpreter = new Emit.Interpreter(_executionEngine);
-			else
-				throw new NotSupportedException();
-			_interpreters.Add(type, interpreter);
-			return (TInterpreter)interpreter;
+			return (TInterpreter)GetImpl(typeof(TInterpreter));
+		}
+
+		/// <summary>
+		/// Get the interpreter by type
+		/// </summary>
+		/// <param name="interpreterType"></param>
+		/// <returns></returns>
+		public IInterpreter Get(Type interpreterType) {
+			if (interpreterType is null)
+				throw new ArgumentNullException(nameof(interpreterType));
+			if (!interpreterType.IsAssignableFrom(typeof(IInterpreter)))
+				throw new ArgumentOutOfRangeException(nameof(interpreterType));
+
+			return GetImpl(interpreterType);
+		}
+
+		private IInterpreter GetImpl(Type interpreterType) {
+			const BindingFlags BINDING_FLAGS = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.CreateInstance;
+
+			if (_interpreters.TryGetValue(interpreterType, out var interpreter))
+				return interpreter.Value;
+			interpreter = new ThreadLocal<IInterpreter>(true) {
+				Value = (IInterpreter)Activator.CreateInstance(interpreterType, BINDING_FLAGS, null, new object[] { _executionEngine }, null)
+			};
+			_interpreters.Add(interpreterType, interpreter);
+			return interpreter.Value;
 		}
 	}
 }

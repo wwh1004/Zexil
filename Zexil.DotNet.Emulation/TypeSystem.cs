@@ -491,6 +491,7 @@ namespace Zexil.DotNet.Emulation {
 		private readonly TypeDesc[] _instantiation;
 		private readonly bool _isStatic;
 		private readonly TypeDesc[] _parameters;
+		private readonly TypeDesc _returnType;
 
 		/// <summary>
 		/// Bound execution engine
@@ -532,6 +533,16 @@ namespace Zexil.DotNet.Emulation {
 		/// </summary>
 		public TypeDesc[] Parameters => _parameters;
 
+		/// <summary>
+		/// Method return type
+		/// </summary>
+		public TypeDesc ReturnType => _returnType;
+
+		/// <summary>
+		/// Does method have return type
+		/// </summary>
+		public bool HasReturnType => _returnType.ElementType != CorElementType.Void;
+
 		internal MethodDesc(ExecutionEngine executionEngine, MethodBase reflMethod) {
 			executionEngine.Context._methods.Add(reflMethod, this);
 			_executionEngine = executionEngine;
@@ -541,6 +552,7 @@ namespace Zexil.DotNet.Emulation {
 			_declaringType = executionEngine.ResolveType(reflMethod.DeclaringType);
 			_isStatic = reflMethod.IsStatic;
 			_parameters = GetParameters();
+			_returnType = executionEngine.ResolveType((reflMethod is MethodInfo methodInfo) ? methodInfo.ReturnType : typeof(void));
 		}
 
 		private TypeDesc[] GetParameters() {
