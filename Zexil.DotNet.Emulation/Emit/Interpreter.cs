@@ -238,7 +238,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 
 		/// <inheritdoc />
 		public void InterpretFromStub(MethodDesc method, void*[] arguments) {
-			throw new NotImplementedException();
+			//throw new NotImplementedException();
 		}
 
 		/// <inheritdoc />

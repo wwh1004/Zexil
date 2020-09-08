@@ -282,12 +282,12 @@ namespace Zexil.DotNet.Emulation {
 		/// <summary>
 		/// Is primitive type
 		/// </summary>
-		public bool IsPrimitive => (_elementType >= CorElementType.Boolean && _elementType <= CorElementType.R8) || _elementType == CorElementType.I || _elementType == CorElementType.U;
+		public bool IsPrimitive => (_elementType >= CorElementType.Boolean && _elementType <= CorElementType.R8) || (_elementType >= CorElementType.I && _elementType <= CorElementType.R);
 
 		/// <summary>
 		/// Is value type
 		/// </summary>
-		public bool IsValueType => _elementType >= CorElementType.Boolean && _elementType <= CorElementType.R;
+		public bool IsValueType => (_elementType >= CorElementType.Boolean && _elementType <= CorElementType.R8) || (_elementType >= CorElementType.ValueArray && _elementType <= CorElementType.R) || _elementType == CorElementType.ValueType;
 
 		/// <summary>
 		/// Is generic parameter
@@ -338,7 +338,7 @@ namespace Zexil.DotNet.Emulation {
 			_instantiation = reflType.IsGenericType ? reflType.GetGenericArguments().Select(t => executionEngine.ResolveType(t)).ToArray() : Array.Empty<TypeDesc>();
 			_elementType = GetCorElementType();
 			_isCOMObject = _reflType.IsCOMObject;
-			_size = IsValueType ? SizeOf(reflType) : IntPtr.Size * 2;
+			_size = IsValueType ? SizeOf(reflType) : IntPtr.Size;
 			_genericParameterIndex = IsGenericParameter ? reflType.GenericParameterPosition : 0;
 			_fields = new List<FieldDesc>();
 			_methods = new List<MethodDesc>();

@@ -55,7 +55,8 @@ namespace Zexil.DotNet.Emulation {
 			private readonly IMethod _dispatch;
 			private readonly int _moduleId;
 			private List<Instruction> _instructions;
-			private LocalList _locals;
+			private List<Local> _pinnedArguments;
+			private Local _returnBuffer;
 
 			public InterpreterStubLinkerCore(ModuleDef module) {
 				_module = module;
@@ -69,10 +70,13 @@ namespace Zexil.DotNet.Emulation {
 			/// Type conversation (arguments and return value are the same):
 			/// refType  -> no conv
 			/// refType* -> conv_i
-			/// valType  -> box
+			/// valType  -> ldarga
 			/// valType* -> conv_i
-			/// genType  -> box
+			/// genType  -> ldarga (we should dereference in runtime if it is reference type)
 			/// genType* -> conv_i
+			///
+			/// Calling conversation
+			/// arguments = method arguments + method return buffer (if method has return value)
 			/// </summary>
 			/// <returns></returns>
 			public int Link() {
@@ -96,26 +100,32 @@ namespace Zexil.DotNet.Emulation {
 #endif
 
 					_instructions = new List<Instruction>();
-					_locals = new LocalList();
-					EmitPinArgumentsIfNeed(parameters);
-					// pin arguments if need
+					_pinnedArguments = new List<Local>();
+					_returnBuffer = null;
+					EmitPinArguments(parameters);
+					// pin arguments
 					EmitInitCall(method, parameters);
 					// load moduleId, load methodToken
 					EmitLoadArguments(parameters);
 					// load arguments
+					EmitLoadReturnBuffer(method);
+					// load return buffer
 					EmitLoadTypeArgument(type, typeInstantiation);
 					// load typeInstantiation
 					EmitLoadMethodArgument(method, methodInstantiation);
 					// load methodInstantiation
 					EmitInstruction(OpCodes.Call, _dispatch);
 					// call InterpreterStub.Dispatch
-					EmitSetReturnValue(method);
-					// set return value
-					EmitUnpinArgumentsIfNeed();
-					// unpin arguments if need
+					EmitUnpinArguments();
+					// unpin arguments
+					EmitGetReturnValue(method);
+					// get return value
 					EmitInstruction(OpCodes.Ret);
 					// ret
-					var body = new CilBody(false, _instructions, EmptyExceptionHandlers, _locals);
+					var locals = new LocalList(_pinnedArguments);
+					if (!(_returnBuffer is null))
+						locals.Add(_returnBuffer);
+					var body = new CilBody(true, _instructions, EmptyExceptionHandlers, locals);
 
 					if (!(method.Body is null)) {
 						method.FreeMethodBody();
@@ -140,26 +150,60 @@ namespace Zexil.DotNet.Emulation {
 				return _moduleId;
 			}
 
-			private void EmitPinArgumentsIfNeed(ParameterList parameters) {
-				foreach (var parameter in parameters)
-					EmitPinArgumentIfNeed(parameter);
+			#region emit return buffer
+			private void EmitLoadReturnBuffer(MethodDef method) {
+				if (!method.HasReturnType)
+					return;
+
+				var typeSig = method.ReturnType.RemoveModifiers();
+				bool isManaged = !typeSig.IsValueType && !typeSig.IsPointer;
+				_returnBuffer = new Local(isManaged ? new PinnedSig(typeSig) : typeSig);
+				EmitInstruction(OpCodes.Dup);
+				EmitInstruction(OpCodes.Ldc_I4, method.Parameters.Count);
+				EmitInstruction(OpCodes.Ldloca, _returnBuffer);
+				EmitInstruction(OpCodes.Conv_I);
+				EmitInstruction(OpCodes.Stelem_I);
+#if DEBUG
+				EmitInstruction(OpCodes.Ldstr, "EmitLoadReturnBuffer end");
+				EmitInstruction(OpCodes.Pop);
+#endif
 			}
 
-			private void EmitPinArgumentIfNeed(Parameter parameter) {
+			private void EmitGetReturnValue(MethodDef method) {
+				if (!method.HasReturnType)
+					return;
+
+				EmitInstruction(OpCodes.Ldloc, _returnBuffer);
+#if DEBUG
+				EmitInstruction(OpCodes.Ldstr, "EmitGetReturnValue end");
+				EmitInstruction(OpCodes.Pop);
+#endif
+			}
+			#endregion
+
+			#region emit (un)pin arguments
+			private void EmitPinArguments(ParameterList parameters) {
+				foreach (var parameter in parameters)
+					EmitPinArgument(parameter);
+#if DEBUG
+				EmitInstruction(OpCodes.Ldstr, "EmitPinArguments end");
+				EmitInstruction(OpCodes.Pop);
+#endif
+			}
+
+			private void EmitPinArgument(Parameter parameter) {
 				var typeSig = parameter.Type.RemoveModifiers();
-				bool isUnmanagedPointer = typeSig.IsPointer;
-				bool isManagedPointer = typeSig.IsByRef;
-				if (isUnmanagedPointer)
+				if (typeSig.IsPointer)
 					return;
 				// type* is no GC type
 
-				if (isManagedPointer) {
+				if (typeSig.IsByRef) {
 					typeSig = typeSig.Next.RemoveModifiers();
 					if (typeSig.IsValueType) {
 						// valType&
 						var local = new Local(new PinnedSig(new ByRefSig(typeSig)));
-						// valType& pinned 
-						_locals.Add(local);
+						// valType& pinned
+						_pinnedArguments.Add(local);
 						EmitInstruction(OpCodes.Ldarg, parameter);
 						EmitInstruction(OpCodes.Stloc, local);
 					}
@@ -167,13 +211,13 @@ namespace Zexil.DotNet.Emulation {
 						// T&
 						// a really fucking case, we don't know whether it is a value type or not, maybe we should regard it as both value type and reference type
 						var local = new Local(new PinnedSig(new ByRefSig(typeSig)));
-						// T& pinned 
-						_locals.Add(local);
+						// T& pinned
+						_pinnedArguments.Add(local);
 						EmitInstruction(OpCodes.Ldarg, parameter);
 						EmitInstruction(OpCodes.Stloc, local);
 						local = new Local(new PinnedSig(typeSig));
 						// T pinned
-						_locals.Add(local);
+						_pinnedArguments.Add(local);
 						EmitInstruction(OpCodes.Ldarg, parameter);
 						EmitInstruction(OpCodes.Ldobj, typeSig.ToTypeDefOrRef());
 						EmitInstruction(OpCodes.Stloc, local);
@@ -182,7 +226,7 @@ namespace Zexil.DotNet.Emulation {
 						// refType&
 						var local = new Local(new PinnedSig(typeSig));
 						// refType pinned
-						_locals.Add(local);
+						_pinnedArguments.Add(local);
 						EmitInstruction(OpCodes.Ldarg, parameter);
 						EmitInstruction(OpCodes.Ldobj, typeSig.ToTypeDefOrRef());
 						EmitInstruction(OpCodes.Stloc, local);
@@ -198,42 +242,66 @@ namespace Zexil.DotNet.Emulation {
 						// for T, it is also a fucking case, we don't know whether it is a value type or not, maybe we should regard it as reference type
 						var local = new Local(new PinnedSig(typeSig));
 						// T/refType pinned
-						_locals.Add(local);
+						_pinnedArguments.Add(local);
 						EmitInstruction(OpCodes.Ldarg, parameter);
 						EmitInstruction(OpCodes.Stloc, local);
 					}
 				}
 			}
 
+			private void EmitUnpinArguments() {
+				foreach (var local in _pinnedArguments) {
+#if DEBUG
+					Debug.Assert(!local.Type.IsValueType);
+#endif
+					var typeSig = local.Type.Next;
+					if (typeSig.IsGenericParameter) {
+						EmitInstruction(OpCodes.Ldloca, local);
+						EmitInstruction(OpCodes.Initobj, typeSig.ToTypeDefOrRef());
+					}
+					else {
+						EmitInstruction(OpCodes.Ldnull);
+						EmitInstruction(OpCodes.Stloc, local);
+					}
+				}
+#if DEBUG
+				EmitInstruction(OpCodes.Ldstr, "EmitUnpinArguments end");
+				EmitInstruction(OpCodes.Pop);
+#endif
+			}
+			#endregion
+
+			#region emit call
 			private void EmitInitCall(MethodDef method, ParameterList parameters) {
 				EmitInstruction(OpCodes.Ldc_I4, _moduleId);
 				EmitInstruction(OpCodes.Ldc_I4, method.MDToken.ToInt32());
-				EmitInstruction(OpCodes.Ldc_I4, parameters.Count);
-				EmitInstruction(OpCodes.Newarr, _module.CorLibTypes.Object.TypeDefOrRef);
+				EmitInstruction(OpCodes.Ldc_I4, parameters.Count + (method.HasReturnType ? 1 : 0));
+				EmitInstruction(OpCodes.Newarr, new PtrSig(_module.CorLibTypes.Void).ToTypeDefOrRef());
+#if DEBUG
+				EmitInstruction(OpCodes.Ldstr, "EmitInitCall end");
+				EmitInstruction(OpCodes.Pop);
+#endif
 			}
 
 			private void EmitLoadArguments(ParameterList parameters) {
 				foreach (var parameter in parameters)
 					EmitLoadArgument(parameter);
+#if DEBUG
+				EmitInstruction(OpCodes.Ldstr, "EmitLoadArguments end");
+				EmitInstruction(OpCodes.Pop);
+#endif
 			}
 
 			private void EmitLoadArgument(Parameter parameter) {
 				EmitInstruction(OpCodes.Dup);
 				EmitInstruction(OpCodes.Ldc_I4, parameter.Index);
-				EmitInstruction(OpCodes.Ldarg, parameter);
 				var typeSig = parameter.Type.RemoveModifiers();
-				bool isPointer = typeSig.IsByRef || typeSig.IsPointer;
-				if (isPointer)
-					typeSig = typeSig.Next.RemoveModifiers();
-				Debug.Assert(typeSig is TypeDefOrRefSig || typeSig is GenericSig || typeSig is GenericInstSig);
-				if (isPointer) {
-					EmitInstruction(OpCodes.Conv_I);
-					EmitInstruction(OpCodes.Box, _module.CorLibTypes.IntPtr.TypeDefOrRef);
-				}
-				else if (typeSig.IsValueType || typeSig.IsGenericParameter) {
-					EmitInstruction(OpCodes.Box, typeSig.ToTypeDefOrRef());
-				}
-				EmitInstruction(OpCodes.Stelem_Ref);
+				if (typeSig.IsValueType || typeSig.IsGenericParameter)
+					EmitInstruction(OpCodes.Ldarga, parameter);
+				else
+					EmitInstruction(OpCodes.Ldarg, parameter);
+				EmitInstruction(OpCodes.Conv_I);
+				EmitInstruction(OpCodes.Stelem_I);
 			}
 
 			private void EmitLoadTypeArgument(TypeDef type, IList<GenericParam> typeInstantiation) {
@@ -252,6 +320,10 @@ namespace Zexil.DotNet.Emulation {
 					EmitInstruction(OpCodes.Call, _getTypeFromHandle);
 					EmitInstruction(OpCodes.Stelem_Ref);
 				}
+#if DEBUG
+				EmitInstruction(OpCodes.Ldstr, "EmitLoadTypeArgument end");
+				EmitInstruction(OpCodes.Pop);
+#endif
 			}
 
 			private void EmitLoadMethodArgument(MethodDef method, IList<GenericParam> methodInstantiation) {
@@ -270,38 +342,12 @@ namespace Zexil.DotNet.Emulation {
 					EmitInstruction(OpCodes.Call, _getTypeFromHandle);
 					EmitInstruction(OpCodes.Stelem_Ref);
 				}
+#if DEBUG
+				EmitInstruction(OpCodes.Ldstr, "EmitLoadMethodArgument end");
+				EmitInstruction(OpCodes.Pop);
+#endif
 			}
-
-			private void EmitSetReturnValue(MethodDef method) {
-				if (!method.HasReturnType) {
-					EmitInstruction(OpCodes.Pop);
-					return;
-				}
-
-				var typeSig = method.ReturnType.RemoveModifiers();
-				bool isPointer = typeSig.IsByRef || typeSig.IsPointer;
-				if (isPointer)
-					EmitInstruction(OpCodes.Unbox_Any, _module.CorLibTypes.IntPtr.TypeDefOrRef);
-				else if (typeSig.IsValueType || typeSig.IsGenericParameter)
-					EmitInstruction(OpCodes.Unbox_Any, typeSig.ToTypeDefOrRef());
-				else
-					Debug.Assert(typeSig is TypeDefOrRefSig);
-			}
-
-			private void EmitUnpinArgumentsIfNeed() {
-				foreach (var local in _locals) {
-					Debug.Assert(local.Type is PinnedSig);
-					var typeSig = local.Type.Next;
-					if (typeSig.IsGenericParameter) {
-						EmitInstruction(OpCodes.Ldloca, local);
-						EmitInstruction(OpCodes.Initobj, typeSig.ToTypeDefOrRef());
-					}
-					else {
-						EmitInstruction(OpCodes.Ldnull);
-						EmitInstruction(OpCodes.Stloc, local);
-					}
-				}
-			}
+			#endregion
 
 			private void EmitInstruction(OpCode opCode) {
 				_instructions.Add(new Instruction(opCode));
