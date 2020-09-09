@@ -17,7 +17,7 @@ namespace Zexil.DotNet.Emulation {
 		/// <summary>
 		/// Default interpreter
 		/// </summary>
-		public IInterpreter DefaultInterpreter => !(_defaultInterpreterType is null) ? GetImpl(_defaultInterpreterType) : throw new InvalidOperationException($"{nameof(DefaultInterpreterType)} is null");
+		public IInterpreter DefaultInterpreter => !(_defaultInterpreterType is null) ? GetImpl(_defaultInterpreterType) : null;
 
 		/// <summary>
 		/// Default interpreter type

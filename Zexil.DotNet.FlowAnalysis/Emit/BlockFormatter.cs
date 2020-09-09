@@ -49,7 +49,7 @@ namespace Zexil.DotNet.FlowAnalysis.Emit {
 					$"ofs:IL_{basicBlock.OriginalOffset:X4}" +
 					$"{(basicBlock.IsEmpty ? ", empty" : string.Empty)}" +
 					$"{(basicBlock.Predecessors.Count == 0 ? ", noref" : string.Empty)}" +
-					$"{((basicBlock.Flags & BlockFlags.Erased) == BlockFlags.Erased ? ", erased" : string.Empty)}");
+					$"{((basicBlock.Flags & BlockFlags.Erased) != 0 ? ", erased" : string.Empty)}");
 #endif
 				for (int i = 0; i < basicBlock.Instructions.Count; i++)
 					AppendLine(basicBlock.Instructions[i].ToString());

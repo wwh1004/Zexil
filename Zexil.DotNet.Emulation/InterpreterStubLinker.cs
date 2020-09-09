@@ -296,10 +296,19 @@ namespace Zexil.DotNet.Emulation {
 				EmitInstruction(OpCodes.Dup);
 				EmitInstruction(OpCodes.Ldc_I4, parameter.Index);
 				var typeSig = parameter.Type.RemoveModifiers();
-				if (typeSig.IsValueType || typeSig.IsGenericParameter)
+				if (typeSig.IsGenericParameter) {
 					EmitInstruction(OpCodes.Ldarga, parameter);
-				else
+					EmitInstruction(OpCodes.Conv_I);
+					EmitInstruction(OpCodes.Ldc_I4, 1);
+					EmitInstruction(OpCodes.Conv_I);
+					EmitInstruction(OpCodes.Or);
+				}
+				else if (typeSig.IsValueType) {
+					EmitInstruction(OpCodes.Ldarga, parameter);
+				}
+				else {
 					EmitInstruction(OpCodes.Ldarg, parameter);
+				}
 				EmitInstruction(OpCodes.Conv_I);
 				EmitInstruction(OpCodes.Stelem_I);
 			}

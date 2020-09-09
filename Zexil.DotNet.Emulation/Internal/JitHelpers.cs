@@ -2,7 +2,12 @@ using System;
 using System.Runtime.CompilerServices;
 
 namespace Zexil.DotNet.Emulation.Internal {
-	internal static class JitHelpers {
+	internal static unsafe class JitHelpers {
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static T As<T>(void* source) where T : class {
+			return Unsafe.AsRef<T>(&source);
+		}
+
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static ref byte GetRawData(this object obj) {
 			return ref Unsafe.As<RawData>(obj).Data;

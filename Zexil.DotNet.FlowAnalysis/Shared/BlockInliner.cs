@@ -18,7 +18,7 @@ namespace Zexil.DotNet.FlowAnalysis.Shared {
 			int count = 0;
 			foreach (var block in methodBlock.Enumerate<IBlock>()) {
 				if (block is IBasicBlock basicBlock) {
-					if ((basicBlock.Flags & BlockFlags.NoInlining) == BlockFlags.NoInlining)
+					if ((basicBlock.Flags & BlockFlags.NoInlining) != 0)
 						continue;
 
 					if (basicBlock.IsEmpty && IsDirectBranch(basicBlock)) {
@@ -32,7 +32,7 @@ namespace Zexil.DotNet.FlowAnalysis.Shared {
 							continue;
 						// Can't be inlined if has more than one predecessors or has no predecessor (not used basic block) or basic block is the first in current scope
 						var predecessor = basicBlock.Predecessors.Keys.First();
-						if (!IsDirectBranch(predecessor) || predecessor.Scope != basicBlock.Scope || (predecessor.Flags & BlockFlags.NoInlining) == BlockFlags.NoInlining)
+						if (!IsDirectBranch(predecessor) || predecessor.Scope != basicBlock.Scope || (predecessor.Flags & BlockFlags.NoInlining) != 0)
 							continue;
 						// Only br basic block and in the same scope then we can inline.
 						concat(predecessor, basicBlock);

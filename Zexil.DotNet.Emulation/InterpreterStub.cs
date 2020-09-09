@@ -47,6 +47,32 @@ namespace Zexil.DotNet.Emulation {
 			var method = module.ResolveMethod(methodToken);
 			if (!(typeInstantiation is null) || !(methodInstantiation is null))
 				method = method.Instantiate(typeInstantiation, methodInstantiation);
+
+			int length = arguments.Length;
+			if (method.HasReturnType)
+				length -= 1;
+			for (int i = 0; i < length; i++) {
+				if (sizeof(void*) == 4) {
+					int argument = (int)arguments[i];
+					if ((argument & 1) == 1) {
+						// it is a genType, we should deference if it is a reference type in runtime
+						argument &= ~1;
+						if (!method.Parameters[i].IsValueType)
+							argument = *(int*)argument;
+						arguments[i] = (void*)argument;
+					}
+				}
+				else {
+					long argument = (long)arguments[i];
+					if ((argument & 1) == 1) {
+						argument &= ~1;
+						if (!method.Parameters[i].IsValueType)
+							argument = *(long*)argument;
+						arguments[i] = (void*)argument;
+					}
+				}
+			}
+
 			var interpretFromStubUser = interpreter.InterpretFromStubUser;
 			if (!(interpretFromStubUser is null))
 				interpretFromStubUser(method, arguments);

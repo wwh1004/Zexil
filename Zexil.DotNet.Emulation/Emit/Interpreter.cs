@@ -1,5 +1,4 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using dnlib.DotNet;
@@ -164,17 +163,6 @@ namespace Zexil.DotNet.Emulation.Emit {
 
 		/// <summary>
 		/// Arguments (includes return buffer)
-		/// 
-		/// Type conversation (arguments and return value are the same):
-		/// refType  -> no conv
-		/// refType* -> conv_i
-		/// valType  -> ldarga
-		/// valType* -> conv_i
-		/// genType  -> ldarga (we should dereference in runtime if it is reference type)
-		/// genType* -> conv_i
-		///
-		/// Calling conversation
-		/// arguments = method arguments + method return buffer (if method has return value)
 		/// </summary>
 		public void*[] Arguments => _arguments;
 
@@ -358,7 +346,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 
 		/// <inheritdoc />
 		public void InterpretFromStub(MethodDesc method, void*[] arguments) {
-			//throw new NotImplementedException();
+			throw new NotImplementedException();
 		}
 
 		/// <inheritdoc />

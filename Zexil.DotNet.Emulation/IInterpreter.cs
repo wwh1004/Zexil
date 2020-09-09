@@ -9,7 +9,7 @@ namespace Zexil.DotNet.Emulation {
 	/// refType* -> conv_i
 	/// valType  -> ldarga
 	/// valType* -> conv_i
-	/// genType  -> ldarga (we should dereference in runtime if it is reference type)
+	/// genType  -> (ldarga | 0x0001) (we should dereference in runtime if it is reference type, for fatser, we mark the address)
 	/// genType* -> conv_i
 	///
 	/// Calling conversation
@@ -37,7 +37,7 @@ namespace Zexil.DotNet.Emulation {
 		/// refType* -> conv_i
 		/// valType  -> ldarga
 		/// valType* -> conv_i
-		/// genType  -> ldarga (we should dereference in runtime if it is reference type)
+		/// genType  -> (ldarga | 0x0001) (we should dereference in runtime if it is reference type, for fatser, we mark the address)
 		/// genType* -> conv_i
 		///
 		/// Calling conversation
