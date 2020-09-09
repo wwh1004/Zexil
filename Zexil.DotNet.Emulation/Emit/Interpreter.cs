@@ -197,7 +197,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 		#endregion
 
 		/// <summary>
-		/// Without <see cref="Method"/> argument, <see cref="InterpreterMethodContext"/>
+		/// Without <see cref="Method"/> argument, <see cref="InterpreterMethodContext"/> shouldn't be cached.
 		/// </summary>
 		/// <param name="context"></param>
 		internal InterpreterMethodContext(InterpreterContext context) {
@@ -220,6 +220,9 @@ namespace Zexil.DotNet.Emulation.Emit {
 		}
 
 		internal void ResolveDynamicContext(void*[] arguments) {
+			if (!_isDisposed)
+				throw new InvalidOperationException();
+
 			if (!(_method is null)) {
 				if (arguments is null)
 					throw new ArgumentNullException(nameof(arguments));
@@ -233,10 +236,9 @@ namespace Zexil.DotNet.Emulation.Emit {
 			_isDisposed = false;
 		}
 
-		/// <inheritdoc />
-		public void Dispose() {
+		internal void ReleaseDynamicContext() {
 			if (_isDisposed)
-				return;
+				throw new InvalidOperationException();
 
 			if (!(_method is null)) {
 				_arguments = null;
@@ -246,6 +248,12 @@ namespace Zexil.DotNet.Emulation.Emit {
 			_context.ReleaseStack(_stack);
 			_stack = null;
 			_isDisposed = true;
+		}
+
+		/// <inheritdoc />
+		public void Dispose() {
+			if (!_isDisposed)
+				ReleaseDynamicContext();
 		}
 	}
 
