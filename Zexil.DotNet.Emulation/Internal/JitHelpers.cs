@@ -4,8 +4,13 @@ using System.Runtime.CompilerServices;
 namespace Zexil.DotNet.Emulation.Internal {
 	internal static unsafe class JitHelpers {
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static T As<T>(void* source) where T : class {
-			return Unsafe.AsRef<T>(&source);
+		public static T As<T>(void* ptr) where T : class {
+			return Unsafe.AsRef<T>(&ptr);
+		}
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static void* AsPointer<T>(T obj) where T : class {
+			return *(void**)Unsafe.AsPointer(ref obj);
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
