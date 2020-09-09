@@ -10,7 +10,7 @@ namespace Zexil.DotNet.Emulation {
 	/// <summary>
 	/// See CorHdr.h/CorElementType (copied from dnlib)
 	/// </summary>
-	public enum CorElementType : byte {
+	public enum ElementType : byte {
 		/// <summary />
 		End = 0x00,
 		/// <summary>System.Void</summary>
@@ -106,8 +106,9 @@ namespace Zexil.DotNet.Emulation {
 		}
 
 		/// <summary>
-		/// Assembly
+		/// Reflection assembly
 		/// </summary>
+		[Obsolete("This property is just for quick test.")]
 		public Assembly ReflAssembly {
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
 			get => _reflAssembly;
@@ -179,8 +180,9 @@ namespace Zexil.DotNet.Emulation {
 		}
 
 		/// <summary>
-		/// Module
+		/// Reflection module
 		/// </summary>
+		[Obsolete("This property is just for quick test.")]
 		public Module ReflModule {
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
 			get => _reflModule;
@@ -269,7 +271,7 @@ namespace Zexil.DotNet.Emulation {
 		private readonly ModuleDesc _module;
 		private readonly int _metadataToken;
 		private readonly TypeDesc[] _instantiation;
-		private readonly CorElementType _elementType;
+		private readonly ElementType _elementType;
 		private readonly bool _isCOMObject;
 		private readonly int _size;
 		private readonly int _genericParameterIndex;
@@ -288,6 +290,7 @@ namespace Zexil.DotNet.Emulation {
 		/// <summary>
 		/// Reflection type
 		/// </summary>
+		[Obsolete("This property is just for quick test.")]
 		public Type ReflType {
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
 			get => _reflType;
@@ -320,7 +323,7 @@ namespace Zexil.DotNet.Emulation {
 		/// <summary>
 		/// CorElementType
 		/// </summary>
-		public CorElementType ElementType {
+		public ElementType ElementType {
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
 			get => _elementType;
 		}
@@ -330,7 +333,7 @@ namespace Zexil.DotNet.Emulation {
 		/// </summary>
 		public bool IsByRef {
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => _elementType == CorElementType.ByRef;
+			get => _elementType == ElementType.ByRef;
 		}
 
 		/// <summary>
@@ -338,7 +341,7 @@ namespace Zexil.DotNet.Emulation {
 		/// </summary>
 		public bool IsPointer {
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => _elementType == CorElementType.Ptr;
+			get => _elementType == ElementType.Ptr;
 		}
 
 		/// <summary>
@@ -346,7 +349,7 @@ namespace Zexil.DotNet.Emulation {
 		/// </summary>
 		public bool IsPrimitive {
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => (_elementType >= CorElementType.Boolean && _elementType <= CorElementType.R8) || (_elementType >= CorElementType.I && _elementType <= CorElementType.R);
+			get => (_elementType >= ElementType.Boolean && _elementType <= ElementType.R8) || (_elementType >= ElementType.I && _elementType <= ElementType.R);
 		}
 
 		/// <summary>
@@ -354,7 +357,7 @@ namespace Zexil.DotNet.Emulation {
 		/// </summary>
 		public bool IsValueType {
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => (_elementType >= CorElementType.Boolean && _elementType <= CorElementType.R8) || (_elementType >= CorElementType.ValueArray && _elementType <= CorElementType.R) || _elementType == CorElementType.ValueType;
+			get => (_elementType >= ElementType.Boolean && _elementType <= ElementType.R8) || (_elementType >= ElementType.ValueArray && _elementType <= ElementType.R) || _elementType == ElementType.ValueType;
 		}
 
 		/// <summary>
@@ -362,7 +365,7 @@ namespace Zexil.DotNet.Emulation {
 		/// </summary>
 		public bool IsGenericParameter {
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => _elementType == CorElementType.Var || _elementType == CorElementType.MVar;
+			get => _elementType == ElementType.Var || _elementType == ElementType.MVar;
 		}
 
 		/// <summary>
@@ -370,7 +373,7 @@ namespace Zexil.DotNet.Emulation {
 		/// </summary>
 		public bool IsGenericTypeParameter {
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => _elementType == CorElementType.Var;
+			get => _elementType == ElementType.Var;
 		}
 
 		/// <summary>
@@ -378,7 +381,7 @@ namespace Zexil.DotNet.Emulation {
 		/// </summary>
 		public bool IsGenericMethodParameter {
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => _elementType == CorElementType.MVar;
+			get => _elementType == ElementType.MVar;
 		}
 
 		/// <summary>
@@ -490,8 +493,8 @@ namespace Zexil.DotNet.Emulation {
 				throw new ArgumentNullException(nameof(methodInstantiation));
 
 			switch (_elementType) {
-			case CorElementType.Var: return typeInstantiation[_genericParameterIndex];
-			case CorElementType.MVar: return methodInstantiation[_genericParameterIndex];
+			case ElementType.Var: return typeInstantiation[_genericParameterIndex];
+			case ElementType.MVar: return methodInstantiation[_genericParameterIndex];
 			default: return this;
 			}
 		}
@@ -504,9 +507,9 @@ namespace Zexil.DotNet.Emulation {
 			return (int)dynamicMethod.Invoke(null, null);
 		}
 
-		private CorElementType GetCorElementType() {
+		private ElementType GetCorElementType() {
 			object boxedValue = !CLREnvironment.IsFramework2x ? _getCorElementType.Invoke(null, new object[] { _reflType }) : _getCorElementType.Invoke(_reflType.TypeHandle, null);
-			return (CorElementType)(byte)boxedValue;
+			return (ElementType)(byte)boxedValue;
 		}
 
 		private void ResolveAndSortAllMethods() {
@@ -555,6 +558,7 @@ namespace Zexil.DotNet.Emulation {
 		/// <summary>
 		/// Reflection field
 		/// </summary>
+		[Obsolete("This property is just for quick test.")]
 		public FieldInfo ReflField {
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
 			get => _reflField;
@@ -662,6 +666,7 @@ namespace Zexil.DotNet.Emulation {
 		/// <summary>
 		/// Reflection method
 		/// </summary>
+		[Obsolete("This property is just for quick test.")]
 		public MethodBase ReflMethod {
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
 			get => _reflMethod;
@@ -776,7 +781,7 @@ namespace Zexil.DotNet.Emulation {
 		/// </summary>
 		public bool HasReturnType {
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => _returnType.ElementType != CorElementType.Void;
+			get => _returnType.ElementType != ElementType.Void;
 		}
 
 		internal MethodDesc(ExecutionEngine executionEngine, MethodBase reflMethod) {

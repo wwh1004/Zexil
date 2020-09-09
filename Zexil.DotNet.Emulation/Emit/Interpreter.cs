@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using dnlib.DotNet;
 using dnlib.DotNet.Emit;
 using Zexil.DotNet.Emulation.Internal;
@@ -11,13 +12,19 @@ namespace Zexil.DotNet.Emulation.Emit {
 	/// </summary>
 	public sealed unsafe class InterpreterContext : IDisposable {
 		/// <summary>
-		/// Default stack size
+		/// Stack size
 		/// </summary>
-		public const uint DefaultStackSize = 0x800000;
+		public const uint StackSize = 0x400;
+
+		/// <summary>
+		/// Type stack size
+		/// </summary>
+		public const uint TypeStackSize = StackSize / 4;
 
 		private readonly ExecutionEngine _executionEngine;
 		private readonly Dictionary<MethodDesc, Cache<InterpreterMethodContext>> _methodContexts = new Dictionary<MethodDesc, Cache<InterpreterMethodContext>>();
 		private readonly Cache<IntPtr> _stacks = Cache<IntPtr>.Create();
+		private readonly Cache<IntPtr> _typeStacks = Cache<IntPtr>.Create();
 		private bool _isDisposed;
 
 		/// <summary>
@@ -46,11 +53,21 @@ namespace Zexil.DotNet.Emulation.Emit {
 		internal void* AcquireStack() {
 			if (_stacks.TryAcquire(out var stack))
 				return (void*)stack;
-			return Pal.AllocMemory(0x400, false);
+			return Pal.AllocMemory(StackSize, false);
 		}
 
 		internal void ReleaseStack(void* stack) {
 			_stacks.Release((IntPtr)stack);
+		}
+
+		internal void* AcquireTypeStack() {
+			if (_typeStacks.TryAcquire(out var stack))
+				return (void*)stack;
+			return Pal.AllocMemory(TypeStackSize, false);
+		}
+
+		internal void ReleaseTypeStack(void* stack) {
+			_typeStacks.Release((IntPtr)stack);
 		}
 
 		/// <inheritdoc />
@@ -159,39 +176,79 @@ namespace Zexil.DotNet.Emulation.Emit {
 		private void*[] _locals;
 		private byte* _stack;
 		private byte* _currentStack;
+		private ElementType* _typeStack;
+		private ElementType* _currentTypeStack;
 		private bool _isDisposed;
 
 		/// <summary>
 		/// Arguments (includes return buffer)
 		/// </summary>
-		public void*[] Arguments => _arguments;
+		public void*[] Arguments {
+			[MethodImpl(MethodImplOptions.AggressiveInlining)]
+			get => _arguments;
+		}
 
 		/// <summary>
 		/// Local variables
 		/// </summary>
-		public void*[] Locals => _locals;
+		public void*[] Locals {
+			[MethodImpl(MethodImplOptions.AggressiveInlining)]
+			get => _locals;
+		}
 
 		/// <summary>
 		/// Return buffer (pointer to return value)
 		/// </summary>
-		public void* ReturnBuffer => _method.HasReturnType ? _arguments[_arguments.Length - 1] : null;
+		public void* ReturnBuffer {
+			[MethodImpl(MethodImplOptions.AggressiveInlining)]
+			get => _method.HasReturnType ? _arguments[_arguments.Length - 1] : null;
+		}
 
 		/// <summary>
 		/// Stack
 		/// </summary>
-		public byte* Stack => _stack;
+		public byte* Stack {
+			[MethodImpl(MethodImplOptions.AggressiveInlining)]
+			get => _stack;
+		}
 
 		/// <summary>
 		/// Current stack
 		/// </summary>
 		public byte* CurrentStack {
+			[MethodImpl(MethodImplOptions.AggressiveInlining)]
 			get => _currentStack;
+			[MethodImpl(MethodImplOptions.AggressiveInlining)]
 			set {
 #if DEBUG
-				if (value < _stack || value >= _stack + InterpreterContext.DefaultStackSize)
+				if (value < _stack || value >= _stack + InterpreterContext.StackSize)
 					throw new OutOfMemoryException();
 #endif
 				_currentStack = value;
+			}
+		}
+
+		/// <summary>
+		/// Type stack
+		/// </summary>
+		public ElementType* TypeStack {
+			[MethodImpl(MethodImplOptions.AggressiveInlining)]
+			get => _typeStack;
+		}
+
+		/// <summary>
+		/// Current type stack
+		/// </summary>
+		public ElementType* CurrentTypeStack {
+			[MethodImpl(MethodImplOptions.AggressiveInlining)]
+			get => _currentTypeStack;
+			[MethodImpl(MethodImplOptions.AggressiveInlining)]
+			set {
+#if DEBUG
+				if (value < _typeStack || value >= _typeStack + InterpreterContext.TypeStackSize)
+					throw new OutOfMemoryException();
+#endif
+				_currentTypeStack = value;
 			}
 		}
 		#endregion
@@ -233,6 +290,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 				_locals = new void*[_localTypes.Length];
 			}
 			_stack = (byte*)_context.AcquireStack();
+			_typeStack = (ElementType*)_context.AcquireTypeStack();
 			_isDisposed = false;
 		}
 
@@ -246,7 +304,11 @@ namespace Zexil.DotNet.Emulation.Emit {
 				_context.ReleaseMethodContext(this);
 			}
 			_context.ReleaseStack(_stack);
+			_context.ReleaseTypeStack(_typeStack);
 			_stack = null;
+			_currentStack = null;
+			_typeStack = null;
+			_currentTypeStack = null;
 			_isDisposed = true;
 		}
 
