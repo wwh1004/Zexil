@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using dnlib.DotNet;
 using dnlib.DotNet.Emit;
@@ -94,9 +93,9 @@ namespace Zexil.DotNet.Emulation {
 
 #if DEBUG
 					for (int i = 0; i < typeInstantiation.Count; i++)
-						Debug.Assert(typeInstantiation[i].Number == i);
+						System.Diagnostics.Debug.Assert(typeInstantiation[i].Number == i);
 					for (int i = 0; i < methodInstantiation.Count; i++)
-						Debug.Assert(methodInstantiation[i].Number == i);
+						System.Diagnostics.Debug.Assert(methodInstantiation[i].Number == i);
 #endif
 
 					_instructions = new List<Instruction>();
@@ -252,7 +251,7 @@ namespace Zexil.DotNet.Emulation {
 			private void EmitUnpinArguments() {
 				foreach (var local in _pinnedArguments) {
 #if DEBUG
-					Debug.Assert(!local.Type.IsValueType);
+					System.Diagnostics.Debug.Assert(!local.Type.IsValueType);
 #endif
 					var typeSig = local.Type.Next;
 					if (typeSig.IsGenericParameter) {
