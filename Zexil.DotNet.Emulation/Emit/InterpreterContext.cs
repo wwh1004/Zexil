@@ -26,7 +26,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 		private bool _isDisposed;
 
 		/// <summary>
-		/// Bound execution engine (exists if current instance is not created by user)
+		/// Bound execution engine
 		/// </summary>
 		public ExecutionEngine ExecutionEngine => _executionEngine;
 
@@ -77,6 +77,9 @@ namespace Zexil.DotNet.Emulation.Emit {
 				foreach (var stack in _stacks.Values)
 					Pal.FreeMemory((void*)stack);
 				_stacks.Clear();
+				foreach (var typeStack in _typeStacks.Values)
+					Pal.FreeMemory((void*)typeStack);
+				_typeStacks.Clear();
 				_isDisposed = true;
 			}
 		}
@@ -84,7 +87,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 		private struct Cache<T> {
 			private Stack<T> _values;
 #if DEBUG
-			private int _maxValues;
+			private object _maxValues;
 #endif
 
 			public IEnumerable<T> Values => _values;
@@ -93,13 +96,16 @@ namespace Zexil.DotNet.Emulation.Emit {
 				var cache = new Cache<T> {
 					_values = new Stack<T>()
 				};
+#if DEBUG
+				cache._maxValues = 0;
+#endif
 				return cache;
 			}
 
 			public bool TryAcquire(out T value) {
 				if (_values.Count == 0) {
 #if DEBUG
-					_maxValues++;
+					System.Runtime.CompilerServices.Unsafe.Unbox<int>(_maxValues)++;
 #endif
 					value = default;
 					return false;
@@ -116,10 +122,10 @@ namespace Zexil.DotNet.Emulation.Emit {
 
 			public void Clear() {
 #if DEBUG
-				if (_values.Count < _maxValues)
-					throw new InvalidOperationException($"Contains {_maxValues - _values.Count} unreleased value");
-				else if (_values.Count > _maxValues)
-					throw new InvalidOperationException($"Contains {_values.Count - _maxValues } value that were incorrectly released");
+				if (_values.Count < (int)_maxValues)
+					throw new InvalidOperationException($"Contains {(int)_maxValues - _values.Count} unreleased value");
+				else if (_values.Count > (int)_maxValues)
+					throw new InvalidOperationException($"Contains {_values.Count - (int)_maxValues} value that were incorrectly released");
 #endif
 
 				_values.Clear();

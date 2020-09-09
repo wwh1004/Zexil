@@ -242,8 +242,10 @@ namespace Zexil.DotNet.Emulation {
 		/// <inheritdoc />
 		public void Dispose() {
 			if (!_isDisposed) {
-				foreach (var assembly in _context._assemblies.Values)
-					Pal.UnmapFile(assembly.RawAssembly);
+				foreach (var assembly in _context._assemblies.Values) {
+					if (assembly.RawAssembly != null)
+						Pal.UnmapFile(assembly.RawAssembly);
+				}
 				_context.Dispose();
 				foreach (var interpreter in _interpreterManager.Interpreters.SelectMany(t => t.Values)) {
 					if (interpreter is IDisposable disposable)

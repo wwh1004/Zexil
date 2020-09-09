@@ -224,6 +224,16 @@ namespace Zexil.DotNet.Emulation {
 		}
 
 		/// <summary>
+		/// Resolves a type and return runtime type
+		/// </summary>
+		/// <param name="metadataToken"></param>
+		/// <returns></returns>
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public Type ResolveReflType(int metadataToken) {
+			return _reflModule.ResolveType(metadataToken);
+		}
+
+		/// <summary>
 		/// Resolves a field and return runtime field
 		/// </summary>
 		/// <param name="metadataToken"></param>
@@ -235,6 +245,16 @@ namespace Zexil.DotNet.Emulation {
 		}
 
 		/// <summary>
+		/// Resolves a field and return runtime field
+		/// </summary>
+		/// <param name="metadataToken"></param>
+		/// <returns></returns>
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public FieldInfo ResolveReflField(int metadataToken) {
+			return _reflModule.ResolveField(metadataToken);
+		}
+
+		/// <summary>
 		/// Resolves a method and return runtime method
 		/// </summary>
 		/// <param name="metadataToken"></param>
@@ -243,6 +263,16 @@ namespace Zexil.DotNet.Emulation {
 		public MethodDesc ResolveMethod(int metadataToken) {
 			var method = _reflModule.ResolveMethod(metadataToken);
 			return _executionEngine.ResolveMethod(method);
+		}
+
+		/// <summary>
+		/// Resolves a method and return runtime method
+		/// </summary>
+		/// <param name="metadataToken"></param>
+		/// <returns></returns>
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public MethodBase ResolveReflMethod(int metadataToken) {
+			return _reflModule.ResolveMethod(metadataToken);
 		}
 
 		internal ModuleDesc(ExecutionEngine executionEngine, Module reflModule) {
@@ -267,7 +297,7 @@ namespace Zexil.DotNet.Emulation {
 		private static readonly MethodInfo _getCorElementType = typeof(RuntimeTypeHandle).GetMethod("GetCorElementType", BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static);
 
 		private readonly ExecutionEngine _executionEngine;
-		private readonly Type _reflType;
+		internal readonly Type _reflType;
 		private readonly ModuleDesc _module;
 		private readonly int _metadataToken;
 		private readonly TypeDesc[] _instantiation;
