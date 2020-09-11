@@ -51,8 +51,8 @@ namespace Zexil.DotNet.Emulation.Emit {
 		private void*[] _locals;
 		private byte** _stackBase;
 		private byte** _stack;
-		private ElementType* _typeStackBase;
-		private ElementType* _typeStack;
+		private AnnotatedElementType* _typeStackBase;
+		private AnnotatedElementType* _typeStack;
 		private bool _isDisposed;
 
 		/// <summary>
@@ -106,7 +106,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 		/// <summary>
 		/// Type stack base
 		/// </summary>
-		public ElementType* TypeStackBase {
+		public AnnotatedElementType* TypeStackBase {
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
 			get => _typeStackBase;
 		}
@@ -114,7 +114,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 		/// <summary>
 		/// Type stack
 		/// </summary>
-		public ElementType* TypeStack {
+		public AnnotatedElementType* TypeStack {
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
 			get => _typeStack;
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -169,7 +169,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 			}
 			_stackBase = (byte**)_context.AcquireStack();
 			_stack = _stackBase + InterpreterContext.StackSize;
-			_typeStackBase = (ElementType*)_context.AcquireTypeStack();
+			_typeStackBase = (AnnotatedElementType*)_context.AcquireTypeStack();
 			_typeStack = _typeStackBase + InterpreterContext.TypeStackSize;
 			_isDisposed = false;
 		}
@@ -274,7 +274,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 		/// </summary>
 		/// <returns></returns>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public void Push(ElementType type) {
+		public void Push(AnnotatedElementType type) {
 			*--TypeStack = type;
 		}
 
@@ -283,7 +283,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 		/// </summary>
 		/// <returns></returns>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public ElementType PopType() {
+		public AnnotatedElementType PopType() {
 			return *TypeStack++;
 		}
 
@@ -292,7 +292,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 		/// </summary>
 		/// <returns></returns>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public ElementType PeekType() {
+		public AnnotatedElementType PeekType() {
 			return *TypeStack;
 		}
 

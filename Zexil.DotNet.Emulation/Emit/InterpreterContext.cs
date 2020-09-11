@@ -17,7 +17,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 		/// <summary>
 		/// Type stack size
 		/// </summary>
-		public const uint TypeStackSize = StackSize / 4;
+		public const uint TypeStackSize = StackSize;
 
 		private readonly ExecutionEngine _executionEngine;
 		private readonly Dictionary<MethodDesc, Cache<InterpreterMethodContext>> _methodContexts = new Dictionary<MethodDesc, Cache<InterpreterMethodContext>>();

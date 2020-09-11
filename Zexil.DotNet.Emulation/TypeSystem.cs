@@ -88,6 +88,17 @@ namespace Zexil.DotNet.Emulation {
 	}
 
 	/// <summary>
+	/// Extension of <see cref="ElementType"/>
+	/// </summary>
+	[Flags]
+	public enum AnnotatedElementType : uint {
+		/// <summary>
+		/// Small value type indicates the size of structure is less than or equal to size of native int (without this flag we regard it as large structure that can't be direct store)
+		/// </summary>
+		SmallValueType = 1 << 8
+	}
+
+	/// <summary>
 	/// Runtime assembly
 	/// </summary>
 	public sealed unsafe class AssemblyDesc {
@@ -301,9 +312,9 @@ namespace Zexil.DotNet.Emulation {
 		private readonly ModuleDesc _module;
 		private readonly int _metadataToken;
 		private readonly TypeDesc[] _instantiation;
-		private readonly ElementType _elementType;
-		private readonly bool _isCOMObject;
 		private readonly int _size;
+		private readonly AnnotatedElementType _elementType;
+		private readonly bool _isCOMObject;
 		private readonly int _genericParameterIndex;
 		internal readonly List<FieldDesc> _fields;
 		internal readonly List<MethodDesc> _methods;
@@ -351,9 +362,25 @@ namespace Zexil.DotNet.Emulation {
 		}
 
 		/// <summary>
-		/// CorElementType
+		/// Type size (equals to sizeof(T))
+		/// </summary>
+		public int Size {
+			[MethodImpl(MethodImplOptions.AggressiveInlining)]
+			get => _size;
+		}
+
+		/// <summary>
+		/// ElementType
 		/// </summary>
 		public ElementType ElementType {
+			[MethodImpl(MethodImplOptions.AggressiveInlining)]
+			get => (ElementType)_elementType;
+		}
+
+		/// <summary>
+		/// AnnotatedElementType
+		/// </summary>
+		public AnnotatedElementType AnnotatedElementType {
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
 			get => _elementType;
 		}
@@ -363,7 +390,7 @@ namespace Zexil.DotNet.Emulation {
 		/// </summary>
 		public bool IsByRef {
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => _elementType == ElementType.ByRef;
+			get => ElementType == ElementType.ByRef;
 		}
 
 		/// <summary>
@@ -371,7 +398,7 @@ namespace Zexil.DotNet.Emulation {
 		/// </summary>
 		public bool IsPointer {
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => _elementType == ElementType.Ptr;
+			get => ElementType == ElementType.Ptr;
 		}
 
 		/// <summary>
@@ -379,7 +406,7 @@ namespace Zexil.DotNet.Emulation {
 		/// </summary>
 		public bool IsPrimitive {
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => (_elementType >= ElementType.Boolean && _elementType <= ElementType.R8) || (_elementType >= ElementType.I && _elementType <= ElementType.R);
+			get => (ElementType >= ElementType.Boolean && ElementType <= ElementType.R8) || (ElementType >= ElementType.I && ElementType <= ElementType.R);
 		}
 
 		/// <summary>
@@ -387,7 +414,7 @@ namespace Zexil.DotNet.Emulation {
 		/// </summary>
 		public bool IsValueType {
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => (_elementType >= ElementType.Boolean && _elementType <= ElementType.R8) || (_elementType >= ElementType.ValueArray && _elementType <= ElementType.R) || _elementType == ElementType.ValueType;
+			get => (ElementType >= ElementType.Boolean && ElementType <= ElementType.R8) || (ElementType >= ElementType.ValueArray && ElementType <= ElementType.R) || ElementType == ElementType.ValueType;
 		}
 
 		/// <summary>
@@ -395,7 +422,7 @@ namespace Zexil.DotNet.Emulation {
 		/// </summary>
 		public bool IsGenericParameter {
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => _elementType == ElementType.Var || _elementType == ElementType.MVar;
+			get => ElementType == ElementType.Var || ElementType == ElementType.MVar;
 		}
 
 		/// <summary>
@@ -403,7 +430,7 @@ namespace Zexil.DotNet.Emulation {
 		/// </summary>
 		public bool IsGenericTypeParameter {
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => _elementType == ElementType.Var;
+			get => ElementType == ElementType.Var;
 		}
 
 		/// <summary>
@@ -411,7 +438,7 @@ namespace Zexil.DotNet.Emulation {
 		/// </summary>
 		public bool IsGenericMethodParameter {
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => _elementType == ElementType.MVar;
+			get => ElementType == ElementType.MVar;
 		}
 
 		/// <summary>
@@ -420,14 +447,6 @@ namespace Zexil.DotNet.Emulation {
 		public bool IsCOMObject {
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
 			get => _isCOMObject;
-		}
-
-		/// <summary>
-		/// Type size (equals to sizeof(T))
-		/// </summary>
-		public int Size {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => _size;
 		}
 
 		/// <summary>
@@ -461,9 +480,11 @@ namespace Zexil.DotNet.Emulation {
 			_module = executionEngine.ResolveModule(reflType.Module);
 			_metadataToken = reflType.MetadataToken;
 			_instantiation = reflType.IsGenericType ? reflType.GetGenericArguments().Select(t => executionEngine.ResolveType(t)).ToArray() : Array.Empty<TypeDesc>();
-			_elementType = GetCorElementType();
-			_isCOMObject = _reflType.IsCOMObject;
 			_size = IsValueType ? SizeOf(reflType) : IntPtr.Size;
+			_elementType = (AnnotatedElementType)GetElementType();
+			// not redundant code!!! GetAnnotatedElementType will use _elementType field
+			_elementType = GetAnnotatedElementType();
+			_isCOMObject = _reflType.IsCOMObject;
 			_genericParameterIndex = IsGenericParameter ? reflType.GenericParameterPosition : 0;
 			_fields = new List<FieldDesc>();
 			_methods = new List<MethodDesc>();
@@ -488,8 +509,63 @@ namespace Zexil.DotNet.Emulation {
 		/// </summary>
 		/// <param name="metadataToken"></param>
 		/// <returns></returns>
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public MethodDesc FindMethod(int metadataToken) {
+			foreach (var method in _methods) {
+				if (method.MetadataToken == metadataToken)
+					return method;
+			}
+			var typeInfo = (TypeInfo)_reflType;
+			foreach (var methodInfo in typeInfo.DeclaredMethods) {
+				if (methodInfo.MetadataToken == metadataToken)
+					return CreateMethodFast(methodInfo);
+			}
+			// we assume method is more widespread than constructor
+			foreach (var constructorInfo in typeInfo.DeclaredConstructors) {
+				if (constructorInfo.MetadataToken == metadataToken)
+					return CreateMethodFast(constructorInfo);
+			}
+			return null;
+		}
+
+		/// <summary>
+		/// Finds a method by token (faster than <see cref="FindMethod(int)"/> for we know if it is a constructor)
+		/// </summary>
+		/// <param name="methodDefinition">Generic method definition</param>
+		/// <returns></returns>
+		public MethodDesc FindMethod(MethodDesc methodDefinition) {
+			if (methodDefinition is null)
+				throw new ArgumentNullException(nameof(methodDefinition));
+
+#if DEBUG
+			System.Diagnostics.Debug.Assert(methodDefinition.Instantiation.Length > 0);
+#endif
+
+			foreach (var method in _methods) {
+				if (method.MetadataToken == methodDefinition.MetadataToken)
+					return method;
+			}
+			var typeInfo = (TypeInfo)_reflType;
+			if (methodDefinition.IsConstructor) {
+				foreach (var constructorInfo in typeInfo.DeclaredConstructors) {
+					if (constructorInfo.MetadataToken == methodDefinition.MetadataToken)
+						return CreateMethodFast(constructorInfo);
+				}
+			}
+			else {
+				foreach (var methodInfo in typeInfo.DeclaredMethods) {
+					if (methodInfo.MetadataToken == methodDefinition.MetadataToken)
+						return CreateMethodFast(methodInfo);
+				}
+			}
+			return null;
+		}
+
+		/// <summary>
+		/// Finds a method by token that will resolve all methods first then do a binary search target method
+		/// </summary>
+		/// <param name="metadataToken"></param>
+		/// <returns></returns>
+		public MethodDesc FindMethodCaching(int metadataToken) {
 			if (!_allMethodsResolvedAndSorted) {
 				ResolveAndSortAllMethods();
 				_allMethodsResolvedAndSorted = true;
@@ -522,7 +598,7 @@ namespace Zexil.DotNet.Emulation {
 			if (IsGenericMethodParameter && methodInstantiation is null)
 				throw new ArgumentNullException(nameof(methodInstantiation));
 
-			switch (_elementType) {
+			switch (ElementType) {
 			case ElementType.Var: return typeInstantiation[_genericParameterIndex];
 			case ElementType.MVar: return methodInstantiation[_genericParameterIndex];
 			default: return this;
@@ -537,9 +613,17 @@ namespace Zexil.DotNet.Emulation {
 			return (int)dynamicMethod.Invoke(null, null);
 		}
 
-		private ElementType GetCorElementType() {
+		private ElementType GetElementType() {
 			object boxedValue = !CLREnvironment.IsFramework2x ? _getCorElementType.Invoke(null, new object[] { _reflType }) : _getCorElementType.Invoke(_reflType.TypeHandle, null);
-			return (ElementType)(byte)boxedValue;
+			var elementType = (ElementType)(byte)boxedValue;
+			return elementType;
+		}
+
+		private AnnotatedElementType GetAnnotatedElementType() {
+			var annotatedElementType = _elementType;
+			if (IsValueType && _size <= IntPtr.Size)
+				annotatedElementType |= AnnotatedElementType.SmallValueType;
+			return annotatedElementType;
 		}
 
 		private void ResolveAndSortAllMethods() {
@@ -554,7 +638,11 @@ namespace Zexil.DotNet.Emulation {
 		private MethodDesc ResolveMethodFast(MethodBase method) {
 			if (_executionEngine.Context._methods.TryGetValue(method, out var methodDesc))
 				return methodDesc;
-			methodDesc = new MethodDesc(_executionEngine, method);
+			return CreateMethodFast(method);
+		}
+
+		private MethodDesc CreateMethodFast(MethodBase method) {
+			var methodDesc = new MethodDesc(_executionEngine, method);
 			_methods.Add(methodDesc);
 			return methodDesc;
 		}
@@ -682,7 +770,7 @@ namespace Zexil.DotNet.Emulation {
 		private readonly TypeDesc[] _instantiation;
 		private readonly MethodAttributes _attributes;
 		private readonly MethodFlags _flags;
-		private readonly TypeDesc[] _parameters;
+		private TypeDesc[] _parameters;
 		private readonly TypeDesc _returnType;
 
 		/// <summary>
@@ -795,7 +883,11 @@ namespace Zexil.DotNet.Emulation {
 		/// </summary>
 		public TypeDesc[] Parameters {
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => _parameters;
+			get {
+				if (_parameters is null)
+					_parameters = GetParameters();
+				return _parameters;
+			}
 		}
 
 		/// <summary>
@@ -823,7 +915,6 @@ namespace Zexil.DotNet.Emulation {
 			_declaringType = executionEngine.ResolveType(reflMethod.DeclaringType);
 			_attributes = reflMethod.Attributes;
 			_flags = GetConstructorFlags();
-			_parameters = GetParameters();
 			_returnType = executionEngine.ResolveType((reflMethod is MethodInfo methodInfo) ? methodInfo.ReturnType : typeof(void));
 		}
 
@@ -877,7 +968,7 @@ namespace Zexil.DotNet.Emulation {
 			var method = this;
 			if (!(typeInstantiation is null)) {
 				type = type.Instantiate(typeInstantiation);
-				method = type.FindMethod(_metadataToken);
+				method = type.FindMethod(this);
 			}
 			if (!(methodInstantiation is null))
 				method = method.Instantiate(methodInstantiation);
