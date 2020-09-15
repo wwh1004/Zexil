@@ -537,7 +537,7 @@ namespace Zexil.DotNet.Emulation {
 				throw new ArgumentNullException(nameof(methodDefinition));
 
 #if DEBUG
-			System.Diagnostics.Debug.Assert(methodDefinition.Instantiation.Length > 0);
+			System.Diagnostics.Debug.Assert(_instantiation.Length > 0);
 #endif
 
 			foreach (var method in _methods) {
