@@ -93,7 +93,7 @@ namespace Zexil.DotNet.Emulation {
 	[Flags]
 	public enum AnnotatedElementType : uint {
 		/// <summary>
-		/// Small value type indicates the size of structure is less than or equal to size of native int (without this flag we regard it as large structure that can't be direct store)
+		/// Small value type indicates the size of structure is less than or equal to size of <see cref="ElementType.I8"/> (without this flag we regard it as large structure that can't be direct store)
 		/// </summary>
 		SmallValueType = 1 << 8
 	}

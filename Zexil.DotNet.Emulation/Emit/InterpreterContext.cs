@@ -12,17 +12,11 @@ namespace Zexil.DotNet.Emulation.Emit {
 		/// <summary>
 		/// Stack size
 		/// </summary>
-		public const uint StackSize = 0x400;
-
-		/// <summary>
-		/// Type stack size
-		/// </summary>
-		public const uint TypeStackSize = StackSize;
+		public const uint StackSize = 100;
 
 		private readonly ExecutionEngine _executionEngine;
 		private readonly Dictionary<MethodDesc, Cache<InterpreterMethodContext>> _methodContexts = new Dictionary<MethodDesc, Cache<InterpreterMethodContext>>();
 		private readonly Cache<IntPtr> _stacks = Cache<IntPtr>.Create();
-		private readonly Cache<IntPtr> _typeStacks = Cache<IntPtr>.Create();
 		private bool _isDisposed;
 
 		/// <summary>
@@ -48,24 +42,14 @@ namespace Zexil.DotNet.Emulation.Emit {
 			_methodContexts[methodContext.Method].Release(methodContext);
 		}
 
-		internal void* AcquireStack() {
+		internal InterpreterSlot* AcquireStack() {
 			if (_stacks.TryAcquire(out var stack))
-				return (void*)stack;
-			return Pal.AllocMemory(StackSize, false);
+				return (InterpreterSlot*)stack;
+			return (InterpreterSlot*)Pal.AllocMemory((uint)sizeof(InterpreterSlot) * StackSize, false);
 		}
 
-		internal void ReleaseStack(void* stack) {
+		internal void ReleaseStack(InterpreterSlot* stack) {
 			_stacks.Release((IntPtr)stack);
-		}
-
-		internal void* AcquireTypeStack() {
-			if (_typeStacks.TryAcquire(out var stack))
-				return (void*)stack;
-			return Pal.AllocMemory(TypeStackSize, false);
-		}
-
-		internal void ReleaseTypeStack(void* stack) {
-			_typeStacks.Release((IntPtr)stack);
 		}
 
 		/// <inheritdoc />
@@ -77,9 +61,6 @@ namespace Zexil.DotNet.Emulation.Emit {
 				foreach (var stack in _stacks.Values)
 					Pal.FreeMemory((void*)stack);
 				_stacks.Clear();
-				foreach (var typeStack in _typeStacks.Values)
-					Pal.FreeMemory((void*)typeStack);
-				_typeStacks.Clear();
 				_isDisposed = true;
 			}
 		}

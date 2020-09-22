@@ -49,10 +49,8 @@ namespace Zexil.DotNet.Emulation.Emit {
 		#region Dynamic Context
 		private void*[] _arguments;
 		private void*[] _locals;
-		private byte** _stackBase;
-		private byte** _stack;
-		private AnnotatedElementType* _typeStackBase;
-		private AnnotatedElementType* _typeStack;
+		private InterpreterSlot* _stackBase;
+		private InterpreterSlot* _stack;
 		private bool _isDisposed;
 
 		/// <summary>
@@ -82,7 +80,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 		/// <summary>
 		/// Stack base
 		/// </summary>
-		public byte** StackBase {
+		public InterpreterSlot* StackBase {
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
 			get => _stackBase;
 		}
@@ -90,7 +88,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 		/// <summary>
 		/// Stack top
 		/// </summary>
-		public byte** Stack {
+		public InterpreterSlot* Stack {
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
 			get => _stack;
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -100,30 +98,6 @@ namespace Zexil.DotNet.Emulation.Emit {
 					throw new OutOfMemoryException();
 #endif
 				_stack = value;
-			}
-		}
-
-		/// <summary>
-		/// Type stack base
-		/// </summary>
-		public AnnotatedElementType* TypeStackBase {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => _typeStackBase;
-		}
-
-		/// <summary>
-		/// Type stack
-		/// </summary>
-		public AnnotatedElementType* TypeStack {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => _typeStack;
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			set {
-#if DEBUG
-				if (value < _typeStackBase || value > _typeStackBase + InterpreterContext.TypeStackSize)
-					throw new OutOfMemoryException();
-#endif
-				_typeStack = value;
 			}
 		}
 		#endregion
@@ -167,10 +141,8 @@ namespace Zexil.DotNet.Emulation.Emit {
 				_arguments = arguments;
 				_locals = new void*[_localTypes.Length];
 			}
-			_stackBase = (byte**)_context.AcquireStack();
+			_stackBase = _context.AcquireStack();
 			_stack = _stackBase + InterpreterContext.StackSize;
-			_typeStackBase = (AnnotatedElementType*)_context.AcquireTypeStack();
-			_typeStack = _typeStackBase + InterpreterContext.TypeStackSize;
 			_isDisposed = false;
 		}
 
@@ -184,22 +156,21 @@ namespace Zexil.DotNet.Emulation.Emit {
 				_context.ReleaseMethodContext(this);
 			}
 			_context.ReleaseStack(_stackBase);
-			_context.ReleaseTypeStack(_typeStackBase);
 			_stackBase = null;
 			_stack = null;
-			_typeStackBase = null;
-			_typeStack = null;
 			_isDisposed = true;
 		}
 
+		#region public stack apis
 		/// <summary>
-		/// Pushes object onto stack top
+		/// Pushes value onto stack top
 		/// </summary>
-		/// <typeparam name="T"></typeparam>
 		/// <returns></returns>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public void PushObject<T>(T obj) where T : class {
-			Push(JitHelpers.AsPointer(obj));
+		public void PushI4(int value) {
+			ref var slot = ref *--Stack;
+			slot.I4 = value;
+			slot.ElementType = ElementType.I4;
 		}
 
 		/// <summary>
@@ -207,28 +178,85 @@ namespace Zexil.DotNet.Emulation.Emit {
 		/// </summary>
 		/// <returns></returns>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public void Push(void* value) {
-			*--Stack = (byte*)value;
+		public void PushI8(long value) {
+			ref var slot = ref *--Stack;
+			slot.I8 = value;
+			slot.ElementType = ElementType.I8;
 		}
 
 		/// <summary>
-		/// Pops object from stack top
+		/// Pushes value onto stack top
 		/// </summary>
-		/// <typeparam name="T"></typeparam>
 		/// <returns></returns>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public T PopObject<T>() where T : class {
-			return JitHelpers.As<T>(Pop());
+		public void PushI(void* value) {
+			ref var slot = ref *--Stack;
+			slot.I = value;
+			slot.ElementType = ElementType.I;
 		}
 
 		/// <summary>
-		/// Pops object reference from stack top
+		/// Pushes value onto stack top
 		/// </summary>
-		/// <typeparam name="T"></typeparam>
 		/// <returns></returns>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public ref T PopObjectRef<T>() {
-			return ref Unsafe.AsRef<T>(Pop());
+		public void PushByRef(void* value) {
+			ref var slot = ref *--Stack;
+			slot.I = value;
+			slot.ElementType = ElementType.ByRef;
+		}
+
+		/// <summary>
+		/// Pushes value onto stack top
+		/// </summary>
+		/// <returns></returns>
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public void PushR4(float value) {
+			ref var slot = ref *--Stack;
+			slot.R4 = value;
+			slot.ElementType = ElementType.R4;
+		}
+
+		/// <summary>
+		/// Pushes value onto stack top
+		/// </summary>
+		/// <returns></returns>
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public void PushR8(double value) {
+			ref var slot = ref *--Stack;
+			slot.R8 = value;
+			slot.ElementType = ElementType.R8;
+		}
+
+		/// <summary>
+		/// Pushes value onto stack top
+		/// </summary>
+		/// <returns></returns>
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public void Push(void* value, AnnotatedElementType annotatedElementType) {
+			ref var slot = ref *--Stack;
+			slot.I = value;
+			slot.AnnotatedElementType = annotatedElementType;
+		}
+
+		/// <summary>
+		/// Pushes value onto stack top
+		/// </summary>
+		/// <returns></returns>
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public void Push(void* value, ElementType elementType) {
+			ref var slot = ref *--Stack;
+			slot.I = value;
+			slot.ElementType = elementType;
+		}
+
+		/// <summary>
+		/// Pushes value onto stack top
+		/// </summary>
+		/// <returns></returns>
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public void Push(in InterpreterSlot value) {
+			*--Stack = value;
 		}
 
 		/// <summary>
@@ -236,28 +264,8 @@ namespace Zexil.DotNet.Emulation.Emit {
 		/// </summary>
 		/// <returns></returns>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public void* Pop() {
-			return *Stack++;
-		}
-
-		/// <summary>
-		/// Peeks object on stack top
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <returns></returns>
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public T PeekObject<T>() where T : class {
-			return JitHelpers.As<T>(Peek());
-		}
-
-		/// <summary>
-		/// Peeks object reference on stack top
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <returns></returns>
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public ref T PeekObjectRef<T>() {
-			return ref Unsafe.AsRef<T>(Peek());
+		public ref InterpreterSlot Pop() {
+			return ref *Stack++;
 		}
 
 		/// <summary>
@@ -265,36 +273,27 @@ namespace Zexil.DotNet.Emulation.Emit {
 		/// </summary>
 		/// <returns></returns>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public void* Peek() {
-			return *Stack;
+		public ref InterpreterSlot Peek() {
+			return ref *_stack;
 		}
 
 		/// <summary>
-		/// Pushes type onto type stack top
+		/// Peeks value on stack
 		/// </summary>
+		/// <param name="index"></param>
 		/// <returns></returns>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public void Push(AnnotatedElementType type) {
-			*--TypeStack = type;
+		public ref InterpreterSlot Peek(int index) {
+#if DEBUG
+			var stack = _stack + index;
+			if (stack < _stackBase || stack >= _stackBase + InterpreterContext.StackSize)
+				throw new OutOfMemoryException();
+			return ref *stack;
+#else
+			return ref _stack[index];
+#endif
 		}
-
-		/// <summary>
-		/// Pops type on type stack top
-		/// </summary>
-		/// <returns></returns>
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public AnnotatedElementType PopType() {
-			return *TypeStack++;
-		}
-
-		/// <summary>
-		/// Peeks type on type stack top
-		/// </summary>
-		/// <returns></returns>
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public AnnotatedElementType PeekType() {
-			return *TypeStack;
-		}
+		#endregion
 
 		/// <inheritdoc />
 		public void Dispose() {
