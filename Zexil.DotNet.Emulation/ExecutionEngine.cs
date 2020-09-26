@@ -102,6 +102,8 @@ namespace Zexil.DotNet.Emulation {
 		/// Constructor
 		/// </summary>
 		public ExecutionEngine() {
+			if (!GCHandlePatcher.IsPatched && !GCHandlePatcher.Patch())
+				throw new NotSupportedException($"{nameof(GCHandlePatcher)} should be updated");
 			_context = new ExecutionEngineContext();
 			_bitness = sizeof(nint) * 8;
 			_interpreterManager = new InterpreterManager(this);
