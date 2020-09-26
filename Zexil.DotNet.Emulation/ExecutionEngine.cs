@@ -103,7 +103,7 @@ namespace Zexil.DotNet.Emulation {
 		/// </summary>
 		public ExecutionEngine() {
 			_context = new ExecutionEngineContext();
-			_bitness = sizeof(void*) * 8;
+			_bitness = sizeof(nint) * 8;
 			_interpreterManager = new InterpreterManager(this);
 		}
 
@@ -145,7 +145,7 @@ namespace Zexil.DotNet.Emulation {
 			if (assembly is null)
 				throw new ArgumentNullException(nameof(assembly));
 
-			void* rawAssembly = null;
+			nint rawAssembly = 0;
 			if (!(originalAssemblyData is null)) {
 				string path = Path.GetTempFileName();
 				File.WriteAllBytes(path, originalAssemblyData);
@@ -243,7 +243,7 @@ namespace Zexil.DotNet.Emulation {
 		public void Dispose() {
 			if (!_isDisposed) {
 				foreach (var assembly in _context._assemblies.Values) {
-					if (assembly.RawAssembly != null)
+					if (assembly.RawAssembly != 0)
 						Pal.UnmapFile(assembly.RawAssembly);
 				}
 				_context.Dispose();

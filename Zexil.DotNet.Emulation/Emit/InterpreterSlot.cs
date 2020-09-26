@@ -37,9 +37,16 @@ namespace Zexil.DotNet.Emulation.Emit {
 			set => _value = (long)value;
 		}
 
-		public void* I {
+		public nint I {
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => (void*)_value;
+			get => (nint)_value;
+			[MethodImpl(MethodImplOptions.AggressiveInlining)]
+			set => _value = value;
+		}
+
+		public nuint U {
+			[MethodImpl(MethodImplOptions.AggressiveInlining)]
+			get => (nuint)_value;
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
 			set => _value = (long)value;
 		}

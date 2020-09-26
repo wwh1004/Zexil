@@ -8,7 +8,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 	/// CIL instruction interpreter which provides methods to emulate method execution.
 	/// TODO: support thread local storage
 	/// </summary>
-	public sealed unsafe partial class Interpreter : IInterpreter, IDisposable {
+	public sealed partial class Interpreter : IInterpreter, IDisposable {
 		private readonly InterpreterContext _context;
 		private InterpretFromStubHandler _interpretFromStubUser;
 		private bool _isDisposed;
@@ -45,7 +45,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 		/// <param name="method"></param>
 		/// <param name="arguments"></param>
 		/// <returns></returns>
-		public InterpreterMethodContext CreateMethodContext(ModuleDef moduleDef, MethodDesc method, params void*[] arguments) {
+		public InterpreterMethodContext CreateMethodContext(ModuleDef moduleDef, MethodDesc method, params nint[] arguments) {
 			if (moduleDef is null)
 				throw new ArgumentNullException(nameof(moduleDef));
 			if (method is null)
@@ -65,7 +65,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 		/// <param name="methodDef"></param>
 		/// <param name="arguments"></param>
 		/// <returns></returns>
-		public InterpreterMethodContext CreateMethodContext(ModuleDef moduleDef, MethodDef methodDef, params void*[] arguments) {
+		public InterpreterMethodContext CreateMethodContext(ModuleDef moduleDef, MethodDef methodDef, params nint[] arguments) {
 			if (moduleDef is null)
 				throw new ArgumentNullException(nameof(moduleDef));
 			if (methodDef is null)
@@ -100,7 +100,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 		}
 
 		/// <inheritdoc />
-		public void InterpretFromStub(MethodDesc method, void*[] arguments) {
+		public void InterpretFromStub(MethodDesc method, nint[] arguments) {
 			throw new NotImplementedException();
 		}
 

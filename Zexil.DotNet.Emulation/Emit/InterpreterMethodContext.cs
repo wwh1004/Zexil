@@ -47,8 +47,8 @@ namespace Zexil.DotNet.Emulation.Emit {
 		#endregion
 
 		#region Dynamic Context
-		private void*[] _arguments;
-		private void*[] _locals;
+		private nint[] _arguments;
+		private nint[] _locals;
 		private InterpreterSlot* _stackBase;
 		private InterpreterSlot* _stack;
 		private bool _isDisposed;
@@ -56,7 +56,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 		/// <summary>
 		/// Arguments (includes return buffer)
 		/// </summary>
-		public void*[] Arguments {
+		public nint[] Arguments {
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
 			get => _arguments;
 		}
@@ -64,7 +64,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 		/// <summary>
 		/// Local variables
 		/// </summary>
-		public void*[] Locals {
+		public nint[] Locals {
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
 			get => _locals;
 		}
@@ -72,9 +72,9 @@ namespace Zexil.DotNet.Emulation.Emit {
 		/// <summary>
 		/// Return buffer (pointer to return value)
 		/// </summary>
-		public void* ReturnBuffer {
+		public nint ReturnBuffer {
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => _method.HasReturnType ? _arguments[_arguments.Length - 1] : null;
+			get => _method.HasReturnType ? _arguments[_arguments.Length - 1] : 0;
 		}
 
 		/// <summary>
@@ -131,7 +131,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 			}
 		}
 
-		internal void ResolveDynamicContext(void*[] arguments) {
+		internal void ResolveDynamicContext(nint[] arguments) {
 			if (!(_method is null)) {
 				if (arguments is null)
 					throw new ArgumentNullException(nameof(arguments));
@@ -139,7 +139,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 					throw new ArgumentException(nameof(arguments));
 
 				_arguments = arguments;
-				_locals = new void*[_localTypes.Length];
+				_locals = new nint[_localTypes.Length];
 			}
 			_stackBase = _context.AcquireStack();
 			_stack = _stackBase + InterpreterContext.StackSize;
@@ -189,7 +189,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 		/// </summary>
 		/// <returns></returns>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public void PushI(void* value) {
+		public void PushI(nint value) {
 			ref var slot = ref *--Stack;
 			slot.I = value;
 			slot.ElementType = ElementType.I;
@@ -200,7 +200,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 		/// </summary>
 		/// <returns></returns>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public void PushByRef(void* value) {
+		public void PushByRef(nint value) {
 			ref var slot = ref *--Stack;
 			slot.I = value;
 			slot.ElementType = ElementType.ByRef;
@@ -233,7 +233,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 		/// </summary>
 		/// <returns></returns>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public void Push(void* value, AnnotatedElementType annotatedElementType) {
+		public void Push(nint value, AnnotatedElementType annotatedElementType) {
 			ref var slot = ref *--Stack;
 			slot.I = value;
 			slot.AnnotatedElementType = annotatedElementType;
@@ -244,7 +244,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 		/// </summary>
 		/// <returns></returns>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public void Push(void* value, ElementType elementType) {
+		public void Push(nint value, ElementType elementType) {
 			ref var slot = ref *--Stack;
 			slot.I = value;
 			slot.ElementType = elementType;

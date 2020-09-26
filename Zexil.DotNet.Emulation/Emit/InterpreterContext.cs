@@ -16,7 +16,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 
 		private readonly ExecutionEngine _executionEngine;
 		private readonly Dictionary<MethodDesc, Cache<InterpreterMethodContext>> _methodContexts = new Dictionary<MethodDesc, Cache<InterpreterMethodContext>>();
-		private readonly Cache<IntPtr> _stacks = Cache<IntPtr>.Create();
+		private readonly Cache<nint> _stacks = Cache<nint>.Create();
 		private bool _isDisposed;
 
 		/// <summary>
@@ -43,13 +43,13 @@ namespace Zexil.DotNet.Emulation.Emit {
 		}
 
 		internal InterpreterSlot* AcquireStack() {
-			if (_stacks.TryAcquire(out var stack))
+			if (_stacks.TryAcquire(out nint stack))
 				return (InterpreterSlot*)stack;
 			return (InterpreterSlot*)Pal.AllocMemory((uint)sizeof(InterpreterSlot) * StackSize, false);
 		}
 
 		internal void ReleaseStack(InterpreterSlot* stack) {
-			_stacks.Release((IntPtr)stack);
+			_stacks.Release((nint)stack);
 		}
 
 		/// <inheritdoc />
@@ -58,8 +58,8 @@ namespace Zexil.DotNet.Emulation.Emit {
 				foreach (var methodContext in _methodContexts.Values.SelectMany(t => t.Values))
 					methodContext.Dispose();
 				_methodContexts.Clear();
-				foreach (var stack in _stacks.Values)
-					Pal.FreeMemory((void*)stack);
+				foreach (nint stack in _stacks.Values)
+					Pal.FreeMemory(stack);
 				_stacks.Clear();
 				_isDisposed = true;
 			}

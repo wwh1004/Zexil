@@ -105,7 +105,7 @@ namespace Zexil.DotNet.Emulation {
 		private readonly ExecutionEngine _executionEngine;
 		private readonly Assembly _reflAssembly;
 		private readonly string _fullName;
-		private readonly void* _rawAssembly;
+		private readonly nint _rawAssembly;
 		internal readonly List<ModuleDesc> _modules;
 
 		/// <summary>
@@ -136,7 +136,7 @@ namespace Zexil.DotNet.Emulation {
 		/// <summary>
 		/// Original assembly data
 		/// </summary>
-		public void* RawAssembly {
+		public nint RawAssembly {
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
 			get => _rawAssembly;
 		}
@@ -157,7 +157,7 @@ namespace Zexil.DotNet.Emulation {
 			get => _modules[0];
 		}
 
-		internal AssemblyDesc(ExecutionEngine executionEngine, Assembly reflAssembly, void* rawAssembly) {
+		internal AssemblyDesc(ExecutionEngine executionEngine, Assembly reflAssembly, nint rawAssembly) {
 			executionEngine.Context._assemblies.Add(reflAssembly, this);
 			_executionEngine = executionEngine;
 			_reflAssembly = reflAssembly;
@@ -304,7 +304,7 @@ namespace Zexil.DotNet.Emulation {
 	/// <summary>
 	/// Runtime type
 	/// </summary>
-	public sealed class TypeDesc {
+	public sealed unsafe class TypeDesc {
 		private static readonly MethodInfo _getCorElementType = typeof(RuntimeTypeHandle).GetMethod("GetCorElementType", BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static);
 
 		private readonly ExecutionEngine _executionEngine;
@@ -480,9 +480,9 @@ namespace Zexil.DotNet.Emulation {
 			_module = executionEngine.ResolveModule(reflType.Module);
 			_metadataToken = reflType.MetadataToken;
 			_instantiation = reflType.IsGenericType ? reflType.GetGenericArguments().Select(t => executionEngine.ResolveType(t)).ToArray() : Array.Empty<TypeDesc>();
-			_size = IsValueType ? SizeOf(reflType) : IntPtr.Size;
+			_size = IsValueType ? SizeOf(reflType) : sizeof(nint);
 			_elementType = (AnnotatedElementType)GetElementType();
-			// not redundant code!!! GetAnnotatedElementType will use _elementType field
+			// not redundant code, GetAnnotatedElementType will use _elementType field
 			_elementType = GetAnnotatedElementType();
 			_isCOMObject = _reflType.IsCOMObject;
 			_genericParameterIndex = IsGenericParameter ? reflType.GenericParameterPosition : 0;
@@ -598,11 +598,12 @@ namespace Zexil.DotNet.Emulation {
 			if (IsGenericMethodParameter && methodInstantiation is null)
 				throw new ArgumentNullException(nameof(methodInstantiation));
 
-			switch (ElementType) {
-			case ElementType.Var: return typeInstantiation[_genericParameterIndex];
-			case ElementType.MVar: return methodInstantiation[_genericParameterIndex];
-			default: return this;
-			}
+			return ElementType switch
+			{
+				ElementType.Var => typeInstantiation[_genericParameterIndex],
+				ElementType.MVar => methodInstantiation[_genericParameterIndex],
+				_ => this,
+			};
 		}
 
 		private static int SizeOf(Type type) {
@@ -621,7 +622,7 @@ namespace Zexil.DotNet.Emulation {
 
 		private AnnotatedElementType GetAnnotatedElementType() {
 			var annotatedElementType = _elementType;
-			if (IsValueType && _size <= IntPtr.Size)
+			if (IsValueType && _size <= sizeof(long))
 				annotatedElementType |= AnnotatedElementType.SmallValueType;
 			return annotatedElementType;
 		}
@@ -737,12 +738,12 @@ namespace Zexil.DotNet.Emulation {
 			_metadataToken = reflField.MetadataToken;
 			_declaringType = executionEngine.ResolveType(reflField.FieldType);
 			_isStatic = reflField.IsStatic;
-			_offset = !_isStatic ? GetFieldOffset((void*)reflField.FieldHandle.Value) : 0;
+			_offset = !_isStatic ? GetFieldOffset(reflField.FieldHandle.Value) : 0;
 			_isThreadStatic = !(reflField.GetCustomAttribute<ThreadStaticAttribute>() is null);
 		}
 
-		private static uint GetFieldOffset(void* fieldHandle) {
-			return *(uint*)((byte*)fieldHandle + sizeof(void*) + 4) & 0x7FFFFFF;
+		private static uint GetFieldOffset(nint fieldHandle) {
+			return *(uint*)((byte*)fieldHandle + sizeof(nint) + 4) & 0x7FFFFFF;
 		}
 
 		/// <inheritdoc />

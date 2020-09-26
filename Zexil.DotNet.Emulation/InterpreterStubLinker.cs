@@ -18,13 +18,12 @@ namespace Zexil.DotNet.Emulation {
 		/// <param name="moduleId"></param>
 		/// <returns></returns>
 		public static byte[] Link(ModuleDef module, out int moduleId) {
-			using (var stream = new MemoryStream()) {
-				var writerOptions = new ModuleWriterOptions(module);
-				writerOptions.MetadataOptions.Flags |= MetadataFlags.PreserveAll | MetadataFlags.KeepOldMaxStack;
-				writerOptions.Logger = DummyLogger.NoThrowInstance;
-				module.Write(stream, writerOptions);
-				return Link(stream.ToArray(), out moduleId);
-			}
+			using var stream = new MemoryStream();
+			var writerOptions = new ModuleWriterOptions(module);
+			writerOptions.MetadataOptions.Flags |= MetadataFlags.PreserveAll | MetadataFlags.KeepOldMaxStack;
+			writerOptions.Logger = DummyLogger.NoThrowInstance;
+			module.Write(stream, writerOptions);
+			return Link(stream.ToArray(), out moduleId);
 		}
 
 		/// <summary>

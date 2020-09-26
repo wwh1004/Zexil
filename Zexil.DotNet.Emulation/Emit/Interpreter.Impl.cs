@@ -15,9 +15,9 @@ namespace Zexil.DotNet.Emulation.Emit {
 					else if (v2.IsI8)
 						methodContext.PushI8(v1.I4 + v2.I8);
 					else if (v2.IsI)
-						methodContext.PushI(v1.I4 + (byte*)v2.I);
+						methodContext.PushI(v1.I4 + v2.I);
 					else if (v2.IsByRef)
-						methodContext.PushByRef(v1.I4 + (byte*)v2.I);
+						methodContext.PushByRef(v1.I4 + v2.I);
 					else
 						throw new InvalidProgramException("Binary arithmetic operation type mismatch (int and ?)");
 					break;
@@ -27,31 +27,31 @@ namespace Zexil.DotNet.Emulation.Emit {
 					else if (v2.IsI4)
 						methodContext.PushI8(v1.I8 + v2.I4);
 					else if (v2.IsI)
-						methodContext.PushI8(v1.I8 + (long)v2.I);
+						methodContext.PushI8(v1.I8 + v2.I);
 					else if (v2.IsByRef)
-						methodContext.PushByRef(v1.I8 + (byte*)v2.I);
+						methodContext.PushByRef((nint)(v1.I8 + v2.I));
 					else
 						throw new InvalidProgramException("Binary arithmetic operation type mismatch (long and ?)");
 					break;
 				case ElementType.I:
 					if (v2.IsI)
-						methodContext.PushI((void*)(sizeof(void*) == 4 ? v1.I4 + v2.I4 : v1.I8 + v2.I8));
+						methodContext.PushI(v1.I + v2.I);
 					else if (v2.IsI4)
-						methodContext.PushI((byte*)v1.I + v2.I4);
+						methodContext.PushI(v1.I + v2.I4);
 					else if (v2.IsI8)
-						methodContext.PushI8((long)v1.I + v2.I8);
+						methodContext.PushI8(v1.I + v2.I8);
 					else if (v2.IsByRef)
-						methodContext.PushByRef((void*)(sizeof(void*) == 4 ? v1.I4 + v2.I4 : v1.I8 + v2.I8));
+						methodContext.PushByRef(v1.I + v2.I);
 					else
 						throw new InvalidProgramException("Binary arithmetic operation type mismatch (native int and ?)");
 					break;
 				case ElementType.ByRef:
 					if (v2.IsI4)
-						methodContext.PushByRef((byte*)v1.I + v2.I4);
+						methodContext.PushByRef(v1.I + v2.I4);
 					else if (v2.IsI8)
-						methodContext.PushByRef((byte*)v1.I + v2.I8);
+						methodContext.PushByRef((nint)(v1.I + v2.I8));
 					else if (v2.IsI)
-						methodContext.PushByRef((void*)(sizeof(void*) == 4 ? v1.I4 + v2.I4 : v1.I8 + v2.I8));
+						methodContext.PushByRef(v1.I + v2.I);
 					else
 						throw new InvalidProgramException("Binary arithmetic operation type mismatch (byref and ?)");
 					break;
@@ -84,7 +84,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 					else if (v2.IsI8)
 						methodContext.PushI8(checked(v1.I4 + v2.I8));
 					else if (v2.IsI)
-						methodContext.PushI((void*)checked(sizeof(void*) == 4 ? v1.I4 + v2.I4 : v1.I4 + v2.I8));
+						methodContext.PushI(checked(v1.I + v2.I));
 					else if (v2.IsByRef)
 						throw new InvalidProgramException("Illegal arithmetic overflow operation for int and byref.");
 					else
@@ -96,7 +96,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 					else if (v2.IsI4)
 						methodContext.PushI8(checked(v1.I8 + v2.I4));
 					else if (v2.IsI)
-						methodContext.PushI8(checked(sizeof(void*) == 4 ? v1.I8 + v2.I4 : v1.I8 + v2.I8));
+						methodContext.PushI8(checked(v1.I8 + v2.I));
 					else if (v2.IsByRef)
 						throw new InvalidProgramException("Illegal arithmetic overflow operation for long and byref.");
 					else
@@ -104,28 +104,18 @@ namespace Zexil.DotNet.Emulation.Emit {
 					break;
 				case ElementType.I:
 					if (v2.IsI)
-						methodContext.PushI((void*)checked(sizeof(void*) == 4 ? v1.I4 + v2.I4 : v1.I8 + v2.I8));
+						methodContext.PushI(checked(v1.I + v2.I));
 					else if (v2.IsI4)
-						methodContext.PushI((void*)checked(sizeof(void*) == 4 ? v1.I4 + v2.I4 : v1.I8 + v2.I4));
+						methodContext.PushI(checked(v1.I + v2.I4));
 					else if (v2.IsI8)
-						methodContext.PushI8(checked(sizeof(void*) == 4 ? v1.I4 + v2.I8 : v1.I8 + v2.I8));
+						methodContext.PushI8(checked(v1.I + v2.I8));
 					else if (v2.IsByRef)
 						throw new InvalidProgramException("Illegal arithmetic overflow operation for native int and byref.");
 					else
 						throw new InvalidProgramException("Binary arithmetic overflow operation type mismatch (native int and ?)");
 					break;
 				case ElementType.ByRef:
-					if (v2.IsI4)
-						methodContext.PushByRef((void*)checked(sizeof(void*) == 4 ? v1.I4 + v2.I4 : v1.I8 + v2.I4));
-					else if (v2.IsI8)
-						methodContext.PushByRef((void*)checked(sizeof(void*) == 4 ? v1.I4 + v2.I8 : v1.I8 + v2.I8));
-					else if (v2.IsI)
-						methodContext.PushByRef((void*)checked(sizeof(void*) == 4 ? v1.I4 + v2.I4 : v1.I8 + v2.I8));
-					else if (v2.IsByRef)
-						throw new InvalidProgramException("Illegal arithmetic overflow operation for byref and byref: may only subtract managed pointer values.");
-					else
-						throw new InvalidProgramException("Binary arithmetic overflow operation type mismatch (byref and ?)");
-					break;
+					throw new InvalidProgramException("Signed binary arithmetic overflow operation not permitted on managed pointer values.");
 				default:
 					throw new InvalidProgramException("Can't do binary arithmetic on object references or non-stack-normal type on stack.");
 				}
@@ -135,49 +125,49 @@ namespace Zexil.DotNet.Emulation.Emit {
 				ref var v2 = ref methodContext.Pop();
 				ref var v1 = ref methodContext.Pop();
 				switch (v1.ElementType) {
-				case ElementType.U4:
+				case ElementType.I4:
 					if (v2.IsI4)
 						methodContext.PushI4((int)checked(v1.U4 + v2.U4));
 					else if (v2.IsI8)
 						methodContext.PushI8((long)checked(v1.U4 + v2.U8));
 					else if (v2.IsI)
-						methodContext.PushI((void*)checked(sizeof(void*) == 4 ? v1.U4 + v2.U4 : v1.U4 + v2.U8));
+						methodContext.PushI((nint)checked(v1.U4 + v2.U));
 					else if (v2.IsByRef)
-						methodContext.PushByRef((void*)checked(sizeof(void*) == 4 ? v1.U4 + v2.U4 : v1.U4 + v2.U8));
+						methodContext.PushByRef((nint)checked(v1.U4 + v2.U));
 					else
 						throw new InvalidProgramException("Binary arithmetic overflow operation type mismatch (int and ?)");
 					break;
-				case ElementType.U8:
+				case ElementType.I8:
 					if (v2.IsI8)
 						methodContext.PushI8((long)checked(v1.U8 + v2.U8));
 					else if (v2.IsI4)
 						methodContext.PushI8((long)checked(v1.U8 + v2.U4));
 					else if (v2.IsI)
-						methodContext.PushI8((long)checked(sizeof(void*) == 4 ? v1.U8 + v2.U4 : v1.U8 + v2.U8));
+						methodContext.PushI8((long)checked(v1.U8 + v2.U));
 					else if (v2.IsByRef)
-						methodContext.PushByRef((void*)checked(sizeof(void*) == 4 ? v1.U8 + v2.U4 : v1.U8 + v2.U8));
+						methodContext.PushByRef((nint)checked(v1.U8 + v2.U));
 					else
 						throw new InvalidProgramException("Binary arithmetic overflow operation type mismatch (long and ?)");
 					break;
 				case ElementType.I:
 					if (v2.IsI)
-						methodContext.PushI((void*)checked(sizeof(void*) == 4 ? v1.U4 + v2.U4 : v1.U8 + v2.U8));
+						methodContext.PushI((nint)checked(v1.U + v2.U));
 					else if (v2.IsI4)
-						methodContext.PushI((void*)checked(sizeof(void*) == 4 ? v1.U4 + v2.U4 : v1.U8 + v2.U4));
+						methodContext.PushI((nint)checked(v1.U + v2.U4));
 					else if (v2.IsI8)
-						methodContext.PushI8((long)checked(sizeof(void*) == 4 ? v1.U4 + v2.U8 : v1.U8 + v2.U8));
+						methodContext.PushI8((long)checked(v1.U + v2.U8));
 					else if (v2.IsByRef)
-						methodContext.PushByRef((void*)checked(sizeof(void*) == 4 ? v1.U4 + v2.U4 : v1.U8 + v2.U8));
+						methodContext.PushByRef((nint)checked(v1.U + v2.U));
 					else
 						throw new InvalidProgramException("Binary arithmetic overflow operation type mismatch (native int and ?)");
 					break;
 				case ElementType.ByRef:
 					if (v2.IsI4)
-						methodContext.PushByRef((void*)checked(sizeof(void*) == 4 ? v1.U4 + v2.U4 : v1.U8 + v2.U4));
+						methodContext.PushByRef((nint)checked(v1.U + v2.U4));
 					else if (v2.IsI8)
-						methodContext.PushByRef((void*)checked(sizeof(void*) == 4 ? v1.U4 + v2.U8 : v1.U8 + v2.U8));
+						methodContext.PushByRef((nint)checked(v1.U + v2.U8));
 					else if (v2.IsI)
-						methodContext.PushByRef((void*)checked(sizeof(void*) == 4 ? v1.U4 + v2.U4 : v1.U8 + v2.U8));
+						methodContext.PushByRef((nint)checked(v1.U + v2.U));
 					else
 						throw new InvalidProgramException("Binary arithmetic overflow operation type mismatch (byref and ?)");
 					break;
@@ -186,22 +176,6 @@ namespace Zexil.DotNet.Emulation.Emit {
 				}
 				break;
 			}
-			case Code.And:
-			case Code.Div:
-			case Code.Div_Un:
-			case Code.Mul:
-			case Code.Mul_Ovf:
-			case Code.Mul_Ovf_Un:
-			case Code.Neg:
-			case Code.Not:
-			case Code.Or:
-			case Code.Rem:
-			case Code.Rem_Un:
-			case Code.Shl:
-			case Code.Shr:
-			case Code.Shr_Un:
-				break;
-
 			case Code.Sub: {
 				ref var v2 = ref methodContext.Pop();
 				ref var v1 = ref methodContext.Pop();
@@ -212,9 +186,9 @@ namespace Zexil.DotNet.Emulation.Emit {
 					else if (v2.IsI8)
 						methodContext.PushI8(v1.I4 - v2.I8);
 					else if (v2.IsI)
-						methodContext.PushI((void*)((byte*)v1.I4 - (byte*)v2.I));
+						methodContext.PushI(v1.I4 - v2.I);
 					else if (v2.IsByRef)
-						methodContext.PushByRef((void*)((byte*)v1.I4 - (byte*)v2.I));
+						throw new InvalidProgramException("Operation not permitted on int and managed pointer.");
 					else
 						throw new InvalidProgramException("Binary arithmetic operation type mismatch (int and ?)");
 					break;
@@ -224,33 +198,33 @@ namespace Zexil.DotNet.Emulation.Emit {
 					else if (v2.IsI4)
 						methodContext.PushI8(v1.I8 - v2.I4);
 					else if (v2.IsI)
-						methodContext.PushI8(v1.I8 - (long)v2.I);
+						methodContext.PushI8(v1.I8 - v2.I);
 					else if (v2.IsByRef)
-						methodContext.PushByRef((void*)((byte*)v1.I8 - (byte*)v2.I));
+						throw new InvalidProgramException("Operation not permitted on long and managed pointer.");
 					else
 						throw new InvalidProgramException("Binary arithmetic operation type mismatch (long and ?)");
 					break;
 				case ElementType.I:
 					if (v2.IsI)
-						methodContext.PushI((void*)(sizeof(void*) == 4 ? v1.I4 - v2.I4 : v1.I8 - v2.I8));
+						methodContext.PushI(v1.I - v2.I);
 					else if (v2.IsI4)
-						methodContext.PushI((byte*)v1.I - v2.I4);
+						methodContext.PushI(v1.I - v2.I4);
 					else if (v2.IsI8)
-						methodContext.PushI8((long)v1.I - v2.I8);
+						methodContext.PushI8(v1.I - v2.I8);
 					else if (v2.IsByRef)
-						methodContext.PushByRef((void*)(sizeof(void*) == 4 ? v1.I4 - v2.I4 : v1.I8 - v2.I8));
+						throw new InvalidProgramException("Operation not permitted on native int and managed pointer.");
 					else
 						throw new InvalidProgramException("Binary arithmetic operation type mismatch (native int and ?)");
 					break;
 				case ElementType.ByRef:
 					if (v2.IsByRef)
-						methodContext.PushI((void*)((byte*)v1.I - (byte*)v2.I));
+						methodContext.PushI(v1.I - v2.I);
 					else if (v2.IsI4)
-						methodContext.PushByRef((byte*)v1.I - v2.I4);
+						methodContext.PushByRef(v1.I - v2.I4);
 					else if (v2.IsI8)
-						methodContext.PushByRef((byte*)v1.I - v2.I8);
+						methodContext.PushByRef((nint)(v1.I - v2.I8));
 					else if (v2.IsI)
-						methodContext.PushByRef((void*)(sizeof(void*) == 4 ? v1.I4 - v2.I4 : v1.I8 - v2.I8));
+						methodContext.PushByRef(v1.I - v2.I);
 					else
 						throw new InvalidProgramException("Binary arithmetic operation type mismatch (byref and ?)");
 					break;
@@ -283,7 +257,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 					else if (v2.IsI8)
 						methodContext.PushI8(checked(v1.I4 - v2.I8));
 					else if (v2.IsI)
-						methodContext.PushI((void*)checked(sizeof(void*) == 4 ? v1.I4 - v2.I4 : v1.I4 - v2.I8));
+						methodContext.PushI(checked(v1.I4 - v2.I));
 					else if (v2.IsByRef)
 						throw new InvalidProgramException("Illegal arithmetic overflow operation for int and byref.");
 					else
@@ -295,7 +269,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 					else if (v2.IsI4)
 						methodContext.PushI8(checked(v1.I8 - v2.I4));
 					else if (v2.IsI)
-						methodContext.PushI8(checked(sizeof(void*) == 4 ? v1.I8 - v2.I4 : v1.I8 - v2.I8));
+						methodContext.PushI8(checked(v1.I8 - v2.I));
 					else if (v2.IsByRef)
 						throw new InvalidProgramException("Illegal arithmetic overflow operation for long and byref.");
 					else
@@ -303,11 +277,11 @@ namespace Zexil.DotNet.Emulation.Emit {
 					break;
 				case ElementType.I:
 					if (v2.IsI)
-						methodContext.PushI((void*)checked(sizeof(void*) == 4 ? v1.I4 - v2.I4 : v1.I8 - v2.I8));
+						methodContext.PushI(checked(v1.I - v2.I));
 					else if (v2.IsI4)
-						methodContext.PushI((void*)checked(sizeof(void*) == 4 ? v1.I4 - v2.I4 : v1.I8 - v2.I4));
+						methodContext.PushI(checked(v1.I - v2.I4));
 					else if (v2.IsI8)
-						methodContext.PushI8(checked(sizeof(void*) == 4 ? v1.I4 - v2.I8 : v1.I8 - v2.I8));
+						methodContext.PushI8(checked(v1.I - v2.I8));
 					else if (v2.IsByRef)
 						throw new InvalidProgramException("Illegal arithmetic overflow operation for native int and byref.");
 					else
@@ -324,45 +298,51 @@ namespace Zexil.DotNet.Emulation.Emit {
 				ref var v2 = ref methodContext.Pop();
 				ref var v1 = ref methodContext.Pop();
 				switch (v1.ElementType) {
-				case ElementType.U4:
+				case ElementType.I4:
 					if (v2.IsI4)
 						methodContext.PushI4((int)checked(v1.U4 - v2.U4));
 					else if (v2.IsI8)
 						methodContext.PushI8((long)checked(v1.U4 - v2.U8));
 					else if (v2.IsI)
-						methodContext.PushI((void*)checked(sizeof(void*) == 4 ? v1.U4 - v2.U4 : v1.U4 - v2.U8));
+						methodContext.PushI((nint)checked(v1.U4 - v2.U));
+					else if (v2.IsByRef)
+						throw new InvalidProgramException("Illegal arithmetic overflow operation for int and byref.");
 					else
 						throw new InvalidProgramException("Binary arithmetic overflow operation type mismatch (int and ?)");
 					break;
-				case ElementType.U8:
+				case ElementType.I8:
 					if (v2.IsI8)
 						methodContext.PushI8((long)checked(v1.U8 - v2.U8));
 					else if (v2.IsI4)
 						methodContext.PushI8((long)checked(v1.U8 - v2.U4));
 					else if (v2.IsI)
-						methodContext.PushI8((long)checked(sizeof(void*) == 4 ? v1.U8 - v2.U4 : v1.U8 - v2.U8));
+						methodContext.PushI8((long)checked(v1.U8 - v2.U));
+					else if (v2.IsByRef)
+						throw new InvalidProgramException("Illegal arithmetic overflow operation for long and byref.");
 					else
 						throw new InvalidProgramException("Binary arithmetic overflow operation type mismatch (long and ?)");
 					break;
 				case ElementType.I:
 					if (v2.IsI)
-						methodContext.PushI((void*)checked(sizeof(void*) == 4 ? v1.U4 - v2.U4 : v1.U8 - v2.U8));
+						methodContext.PushI((nint)checked(v1.U - v2.U));
 					else if (v2.IsI4)
-						methodContext.PushI((void*)checked(sizeof(void*) == 4 ? v1.U4 - v2.U4 : v1.U8 - v2.U4));
+						methodContext.PushI((nint)checked(v1.U - v2.U4));
 					else if (v2.IsI8)
-						methodContext.PushI8((long)checked(sizeof(void*) == 4 ? v1.U4 - v2.U8 : v1.U8 - v2.U8));
+						methodContext.PushI8((long)checked(v1.U - v2.U8));
+					else if (v2.IsByRef)
+						throw new InvalidProgramException("Illegal arithmetic overflow operation for native int and byref.");
 					else
 						throw new InvalidProgramException("Binary arithmetic overflow operation type mismatch (native int and ?)");
 					break;
 				case ElementType.ByRef:
 					if (v2.IsByRef)
-						methodContext.PushI((void*)checked((byte*)v1.I - (byte*)v2.I));
+						methodContext.PushI((nint)checked(v1.U - v2.U));
 					else if (v2.IsI4)
-						methodContext.PushByRef((void*)checked(sizeof(void*) == 4 ? v1.U4 - v2.U4 : v1.U8 - v2.U4));
+						methodContext.PushByRef((nint)checked(v1.U - v2.U4));
 					else if (v2.IsI8)
-						methodContext.PushByRef((void*)checked(sizeof(void*) == 4 ? v1.U4 - v2.U8 : v1.U8 - v2.U8));
+						methodContext.PushByRef((nint)checked(v1.U - v2.U8));
 					else if (v2.IsI)
-						methodContext.PushByRef((void*)checked(sizeof(void*) == 4 ? v1.U4 - v2.U4 : v1.U8 - v2.U8));
+						methodContext.PushByRef((nint)checked(v1.U - v2.U));
 					else
 						throw new InvalidProgramException("Binary arithmetic overflow operation type mismatch (byref and ?)");
 					break;
@@ -371,8 +351,577 @@ namespace Zexil.DotNet.Emulation.Emit {
 				}
 				break;
 			}
-			case Code.Xor:
+			case Code.Mul: {
+				ref var v2 = ref methodContext.Pop();
+				ref var v1 = ref methodContext.Pop();
+				switch (v1.ElementType) {
+				case ElementType.I4:
+					if (v2.IsI4)
+						methodContext.PushI4(v1.I4 * v2.I4);
+					else if (v2.IsI8)
+						methodContext.PushI8(v1.I4 * v2.I8);
+					else if (v2.IsI)
+						methodContext.PushI(v1.I4 * v2.I);
+					else
+						throw new InvalidProgramException("Binary arithmetic operation type mismatch (int and ?)");
+					break;
+				case ElementType.I8:
+					if (v2.IsI8)
+						methodContext.PushI8(v1.I8 * v2.I8);
+					else if (v2.IsI4)
+						methodContext.PushI8(v1.I8 * v2.I4);
+					else if (v2.IsI)
+						methodContext.PushI8(v1.I8 * v2.I);
+					else
+						throw new InvalidProgramException("Binary arithmetic operation type mismatch (long and ?)");
+					break;
+				case ElementType.I:
+					if (v2.IsI)
+						methodContext.PushI(v1.I * v2.I);
+					else if (v2.IsI4)
+						methodContext.PushI(v1.I * v2.I4);
+					else if (v2.IsI8)
+						methodContext.PushI8(v1.I * v2.I8);
+					else
+						throw new InvalidProgramException("Binary arithmetic operation type mismatch (native int and ?)");
+					break;
+				case ElementType.R4:
+					if (v2.IsR4)
+						methodContext.PushR4(v1.R4 * v2.R4);
+					else if (v2.IsR8)
+						methodContext.PushR8(v1.R8 * v2.R8);
+					else
+						throw new InvalidProgramException("Binary arithmetic operation type mismatch (float and ?)");
+					break;
+				case ElementType.R8:
+					if (v2.IsR8)
+						methodContext.PushR8(v1.R8 * v2.R8);
+					else
+						throw new InvalidProgramException("Binary arithmetic operation type mismatch (double and ?)");
+					break;
+				default:
+					throw new InvalidProgramException("Can't do binary arithmetic on object references or non-stack-normal type on stack.");
+				}
 				break;
+			}
+			case Code.Mul_Ovf: {
+				ref var v2 = ref methodContext.Pop();
+				ref var v1 = ref methodContext.Pop();
+				switch (v1.ElementType) {
+				case ElementType.I4:
+					if (v2.IsI4)
+						methodContext.PushI4(checked(v1.I4 * v2.I4));
+					else if (v2.IsI8)
+						methodContext.PushI8(checked(v1.I4 * v2.I8));
+					else if (v2.IsI)
+						methodContext.PushI(checked(v1.I4 * v2.I));
+					else
+						throw new InvalidProgramException("Binary arithmetic overflow operation type mismatch (int and ?)");
+					break;
+				case ElementType.I8:
+					if (v2.IsI8)
+						methodContext.PushI8(checked(v1.I8 * v2.I8));
+					else if (v2.IsI4)
+						methodContext.PushI8(checked(v1.I8 * v2.I4));
+					else if (v2.IsI)
+						methodContext.PushI8(checked(v1.I8 * v2.I));
+					else
+						throw new InvalidProgramException("Binary arithmetic overflow operation type mismatch (long and ?)");
+					break;
+				case ElementType.I:
+					if (v2.IsI)
+						methodContext.PushI(checked(v1.I * v2.I));
+					else if (v2.IsI4)
+						methodContext.PushI(checked(v1.I * v2.I4));
+					else if (v2.IsI8)
+						methodContext.PushI8(checked(v1.I * v2.I8));
+					else
+						throw new InvalidProgramException("Binary arithmetic overflow operation type mismatch (native int and ?)");
+					break;
+				default:
+					throw new InvalidProgramException("Can't do binary arithmetic on object references or non*stack*normal type on stack.");
+				}
+				break;
+			}
+			case Code.Mul_Ovf_Un: {
+				ref var v2 = ref methodContext.Pop();
+				ref var v1 = ref methodContext.Pop();
+				switch (v1.ElementType) {
+				case ElementType.I4:
+					if (v2.IsI4)
+						methodContext.PushI4((int)checked(v1.U4 * v2.U4));
+					else if (v2.IsI8)
+						methodContext.PushI8((long)checked(v1.U4 * v2.U8));
+					else if (v2.IsI)
+						methodContext.PushI((nint)checked(v1.U4 * v2.U));
+					else
+						throw new InvalidProgramException("Binary arithmetic overflow operation type mismatch (int and ?)");
+					break;
+				case ElementType.I8:
+					if (v2.IsI8)
+						methodContext.PushI8((long)checked(v1.U8 * v2.U8));
+					else if (v2.IsI4)
+						methodContext.PushI8((long)checked(v1.U8 * v2.U4));
+					else if (v2.IsI)
+						methodContext.PushI8((long)checked(v1.U8 * v2.U));
+					else
+						throw new InvalidProgramException("Binary arithmetic overflow operation type mismatch (long and ?)");
+					break;
+				case ElementType.I:
+					if (v2.IsI)
+						methodContext.PushI((nint)checked(v1.U * v2.U));
+					else if (v2.IsI4)
+						methodContext.PushI((nint)checked(v1.U * v2.U4));
+					else if (v2.IsI8)
+						methodContext.PushI8((long)checked(v1.U * v2.U8));
+					else
+						throw new InvalidProgramException("Binary arithmetic overflow operation type mismatch (native int and ?)");
+					break;
+				default:
+					throw new InvalidProgramException("Can't do binary arithmetic on object references or non*stack*normal type on stack.");
+				}
+				break;
+			}
+			case Code.Div: {
+				ref var v2 = ref methodContext.Pop();
+				ref var v1 = ref methodContext.Pop();
+				switch (v1.ElementType) {
+				case ElementType.I4:
+					if (v2.IsI4)
+						methodContext.PushI4(v1.I4 / v2.I4);
+					else if (v2.IsI8)
+						methodContext.PushI8(v1.I4 / v2.I8);
+					else if (v2.IsI)
+						methodContext.PushI(v1.I4 / v2.I);
+					else
+						throw new InvalidProgramException("Binary arithmetic operation type mismatch (int and ?)");
+					break;
+				case ElementType.I8:
+					if (v2.IsI8)
+						methodContext.PushI8(v1.I8 / v2.I8);
+					else if (v2.IsI4)
+						methodContext.PushI8(v1.I8 / v2.I4);
+					else if (v2.IsI)
+						methodContext.PushI8(v1.I8 / v2.I);
+					else
+						throw new InvalidProgramException("Binary arithmetic operation type mismatch (long and ?)");
+					break;
+				case ElementType.I:
+					if (v2.IsI)
+						methodContext.PushI(v1.I / v2.I);
+					else if (v2.IsI4)
+						methodContext.PushI(v1.I / v2.I4);
+					else if (v2.IsI8)
+						methodContext.PushI8(v1.I / v2.I8);
+					else
+						throw new InvalidProgramException("Binary arithmetic operation type mismatch (native int and ?)");
+					break;
+				case ElementType.R4:
+					if (v2.IsR4)
+						methodContext.PushR4(v1.R4 / v2.R4);
+					else if (v2.IsR8)
+						methodContext.PushR8(v1.R8 / v2.R8);
+					else
+						throw new InvalidProgramException("Binary arithmetic operation type mismatch (float and ?)");
+					break;
+				case ElementType.R8:
+					if (v2.IsR8)
+						methodContext.PushR8(v1.R8 / v2.R8);
+					else
+						throw new InvalidProgramException("Binary arithmetic operation type mismatch (double and ?)");
+					break;
+				default:
+					throw new InvalidProgramException("Can't do binary arithmetic on object references or non-stack-normal type on stack.");
+				}
+				break;
+			}
+			case Code.Div_Un: {
+				ref var v2 = ref methodContext.Pop();
+				ref var v1 = ref methodContext.Pop();
+				switch (v1.ElementType) {
+				case ElementType.I4:
+					if (v2.IsI4)
+						methodContext.PushI4((int)(v1.U4 / v2.U4));
+					else if (v2.IsI8)
+						methodContext.PushI8((long)(v1.U4 / v2.U8));
+					else if (v2.IsI)
+						methodContext.PushI((nint)(v1.U4 / v2.U));
+					else
+						throw new InvalidProgramException("Binary arithmetic operation type mismatch (int and ?)");
+					break;
+				case ElementType.I8:
+					if (v2.IsI8)
+						methodContext.PushI8((long)(v1.U8 / v2.U8));
+					else if (v2.IsI4)
+						methodContext.PushI8((long)(v1.U8 / v2.U4));
+					else if (v2.IsI)
+						methodContext.PushI8((long)(v1.U8 / v2.U));
+					else
+						throw new InvalidProgramException("Binary arithmetic operation type mismatch (long and ?)");
+					break;
+				case ElementType.I:
+					if (v2.IsI)
+						methodContext.PushI((nint)(v1.U / v2.U));
+					else if (v2.IsI4)
+						methodContext.PushI((nint)(v1.U / v2.U4));
+					else if (v2.IsI8)
+						methodContext.PushI8((long)(v1.U / v2.U8));
+					else
+						throw new InvalidProgramException("Binary arithmetic operation type mismatch (native int and ?)");
+					break;
+				default:
+					throw new InvalidProgramException("Can't do binary arithmetic on object references or non/stack/normal type on stack.");
+				}
+				break;
+			}
+			case Code.Rem: {
+				ref var v2 = ref methodContext.Pop();
+				ref var v1 = ref methodContext.Pop();
+				switch (v1.ElementType) {
+				case ElementType.I4:
+					if (v2.IsI4)
+						methodContext.PushI4(v1.I4 % v2.I4);
+					else if (v2.IsI8)
+						methodContext.PushI8(v1.I4 % v2.I8);
+					else if (v2.IsI)
+						methodContext.PushI(v1.I4 % v2.I);
+					else
+						throw new InvalidProgramException("Binary arithmetic operation type mismatch (int and ?)");
+					break;
+				case ElementType.I8:
+					if (v2.IsI8)
+						methodContext.PushI8(v1.I8 % v2.I8);
+					else if (v2.IsI4)
+						methodContext.PushI8(v1.I8 % v2.I4);
+					else if (v2.IsI)
+						methodContext.PushI8(v1.I8 % v2.I);
+					else
+						throw new InvalidProgramException("Binary arithmetic operation type mismatch (long and ?)");
+					break;
+				case ElementType.I:
+					if (v2.IsI)
+						methodContext.PushI(v1.I % v2.I);
+					else if (v2.IsI4)
+						methodContext.PushI(v1.I % v2.I4);
+					else if (v2.IsI8)
+						methodContext.PushI8(v1.I % v2.I8);
+					else
+						throw new InvalidProgramException("Binary arithmetic operation type mismatch (native int and ?)");
+					break;
+				case ElementType.R4:
+					if (v2.IsR4)
+						methodContext.PushR4(v1.R4 % v2.R4);
+					else if (v2.IsR8)
+						methodContext.PushR8(v1.R8 % v2.R8);
+					else
+						throw new InvalidProgramException("Binary arithmetic operation type mismatch (float and ?)");
+					break;
+				case ElementType.R8:
+					if (v2.IsR8)
+						methodContext.PushR8(v1.R8 % v2.R8);
+					else
+						throw new InvalidProgramException("Binary arithmetic operation type mismatch (double and ?)");
+					break;
+				default:
+					throw new InvalidProgramException("Can't do binary arithmetic on object references or non-stack-normal type on stack.");
+				}
+				break;
+			}
+			case Code.Rem_Un: {
+				ref var v2 = ref methodContext.Pop();
+				ref var v1 = ref methodContext.Pop();
+				switch (v1.ElementType) {
+				case ElementType.I4:
+					if (v2.IsI4)
+						methodContext.PushI4((int)(v1.U4 % v2.U4));
+					else if (v2.IsI8)
+						methodContext.PushI8((long)(v1.U4 % v2.U8));
+					else if (v2.IsI)
+						methodContext.PushI((nint)(v1.U4 % v2.U));
+					else
+						throw new InvalidProgramException("Binary arithmetic operation type mismatch (int and ?)");
+					break;
+				case ElementType.I8:
+					if (v2.IsI8)
+						methodContext.PushI8((long)(v1.U8 % v2.U8));
+					else if (v2.IsI4)
+						methodContext.PushI8((long)(v1.U8 % v2.U4));
+					else if (v2.IsI)
+						methodContext.PushI8((long)(v1.U8 % v2.U));
+					else
+						throw new InvalidProgramException("Binary arithmetic operation type mismatch (long and ?)");
+					break;
+				case ElementType.I:
+					if (v2.IsI)
+						methodContext.PushI((nint)(v1.U % v2.U));
+					else if (v2.IsI4)
+						methodContext.PushI((nint)(v1.U % v2.U4));
+					else if (v2.IsI8)
+						methodContext.PushI8((long)(v1.U % v2.U8));
+					else
+						throw new InvalidProgramException("Binary arithmetic operation type mismatch (native int and ?)");
+					break;
+				default:
+					throw new InvalidProgramException("Can't do binary arithmetic on object references or non%stack%normal type on stack.");
+				}
+				break;
+			}
+			case Code.And: {
+				ref var v2 = ref methodContext.Pop();
+				ref var v1 = ref methodContext.Pop();
+				switch (v1.ElementType) {
+				case ElementType.I4:
+					if (v2.IsI4)
+						methodContext.PushI4((int)(v1.U4 & v2.U4));
+					else if (v2.IsI8)
+						methodContext.PushI8((long)(v1.U4 & v2.U8));
+					else if (v2.IsI)
+						methodContext.PushI((nint)(v1.U4 & v2.U));
+					else
+						throw new InvalidProgramException("Binary arithmetic operation type mismatch (int and ?)");
+					break;
+				case ElementType.I8:
+					if (v2.IsI8)
+						methodContext.PushI8((long)(v1.U8 & v2.U8));
+					else if (v2.IsI4)
+						methodContext.PushI8((long)(v1.U8 & v2.U4));
+					else if (v2.IsI)
+						methodContext.PushI8((long)(v1.U8 & v2.U));
+					else
+						throw new InvalidProgramException("Binary arithmetic operation type mismatch (long and ?)");
+					break;
+				case ElementType.I:
+					if (v2.IsI)
+						methodContext.PushI((nint)(v1.U & v2.U));
+					else if (v2.IsI4)
+						methodContext.PushI((nint)(v1.U & v2.U4));
+					else if (v2.IsI8)
+						methodContext.PushI8((long)(v1.U & v2.U8));
+					else
+						throw new InvalidProgramException("Binary arithmetic operation type mismatch (native int and ?)");
+					break;
+				default:
+					throw new InvalidProgramException("Illegal operation for non-integral data type.");
+				}
+				break;
+			}
+			case Code.Or: {
+				ref var v2 = ref methodContext.Pop();
+				ref var v1 = ref methodContext.Pop();
+				switch (v1.ElementType) {
+				case ElementType.I4:
+					if (v2.IsI4)
+						methodContext.PushI4((int)(v1.U4 | v2.U4));
+					else if (v2.IsI8)
+						methodContext.PushI8((long)(v1.U4 | v2.U8));
+					else if (v2.IsI)
+						methodContext.PushI((nint)(v1.U4 | v2.U));
+					else
+						throw new InvalidProgramException("Binary arithmetic operation type mismatch (int and ?)");
+					break;
+				case ElementType.I8:
+					if (v2.IsI8)
+						methodContext.PushI8((long)(v1.U8 | v2.U8));
+					else if (v2.IsI4)
+						methodContext.PushI8((long)(v1.U8 | v2.U4));
+					else if (v2.IsI)
+						methodContext.PushI8((long)(v1.U8 | v2.U));
+					else
+						throw new InvalidProgramException("Binary arithmetic operation type mismatch (long and ?)");
+					break;
+				case ElementType.I:
+					if (v2.IsI)
+						methodContext.PushI((nint)(v1.U | v2.U));
+					else if (v2.IsI4)
+						methodContext.PushI((nint)(v1.U | v2.U4));
+					else if (v2.IsI8)
+						methodContext.PushI8((long)(v1.U | v2.U8));
+					else
+						throw new InvalidProgramException("Binary arithmetic operation type mismatch (native int and ?)");
+					break;
+				default:
+					throw new InvalidProgramException("Illegal operation for non-integral data type.");
+				}
+				break;
+			}
+			case Code.Xor: {
+				ref var v2 = ref methodContext.Pop();
+				ref var v1 = ref methodContext.Pop();
+				switch (v1.ElementType) {
+				case ElementType.I4:
+					if (v2.IsI4)
+						methodContext.PushI4((int)(v1.U4 ^ v2.U4));
+					else if (v2.IsI8)
+						methodContext.PushI8((long)(v1.U4 ^ v2.U8));
+					else if (v2.IsI)
+						methodContext.PushI((nint)(v1.U4 ^ v2.U));
+					else
+						throw new InvalidProgramException("Binary arithmetic operation type mismatch (int and ?)");
+					break;
+				case ElementType.I8:
+					if (v2.IsI8)
+						methodContext.PushI8((long)(v1.U8 ^ v2.U8));
+					else if (v2.IsI4)
+						methodContext.PushI8((long)(v1.U8 ^ v2.U4));
+					else if (v2.IsI)
+						methodContext.PushI8((long)(v1.U8 ^ v2.U));
+					else
+						throw new InvalidProgramException("Binary arithmetic operation type mismatch (long and ?)");
+					break;
+				case ElementType.I:
+					if (v2.IsI)
+						methodContext.PushI((nint)(v1.U ^ v2.U));
+					else if (v2.IsI4)
+						methodContext.PushI((nint)(v1.U ^ v2.U4));
+					else if (v2.IsI8)
+						methodContext.PushI8((long)(v1.U ^ v2.U8));
+					else
+						throw new InvalidProgramException("Binary arithmetic operation type mismatch (native int and ?)");
+					break;
+				default:
+					throw new InvalidProgramException("Illegal operation for non-integral data type.");
+				}
+				break;
+			}
+			case Code.Shl: {
+				ref var v2 = ref methodContext.Pop();
+				ref var v1 = ref methodContext.Pop();
+				switch (v1.ElementType) {
+				case ElementType.I4:
+					if (v2.IsI4)
+						methodContext.PushI4(v1.I4 << v2.I4);
+					else if (v2.IsI)
+						methodContext.PushI(v1.I4 << (int)v2.I);
+					else
+						throw new InvalidProgramException("Operand type mismatch for shift operator.");
+					break;
+				case ElementType.I8:
+					if (v2.IsI4)
+						methodContext.PushI8(v1.I8 << v2.I4);
+					else if (v2.IsI)
+						methodContext.PushI8(v1.I8 << (int)v2.I);
+					else
+						throw new InvalidProgramException("Operand type mismatch for shift operator.");
+					break;
+				case ElementType.I:
+					if (v2.IsI4)
+						methodContext.PushI(v1.I << v2.I4);
+					else if (v2.IsI)
+						methodContext.PushI(v1.I << (int)v2.I);
+					else
+						throw new InvalidProgramException("Operand type mismatch for shift operator.");
+					break;
+				default:
+					throw new InvalidProgramException("Illegal value type for shift operation.");
+				}
+				break;
+			}
+			case Code.Shr: {
+				ref var v2 = ref methodContext.Pop();
+				ref var v1 = ref methodContext.Pop();
+				switch (v1.ElementType) {
+				case ElementType.I4:
+					if (v2.IsI4)
+						methodContext.PushI4(v1.I4 >> v2.I4);
+					else if (v2.IsI)
+						methodContext.PushI(v1.I4 >> (int)v2.I);
+					else
+						throw new InvalidProgramException("Operand type mismatch for shift operator.");
+					break;
+				case ElementType.I8:
+					if (v2.IsI4)
+						methodContext.PushI8(v1.I8 >> v2.I4);
+					else if (v2.IsI)
+						methodContext.PushI8(v1.I8 >> (int)v2.I);
+					else
+						throw new InvalidProgramException("Operand type mismatch for shift operator.");
+					break;
+				case ElementType.I:
+					if (v2.IsI4)
+						methodContext.PushI(v1.I >> v2.I4);
+					else if (v2.IsI)
+						methodContext.PushI(v1.I >> (int)v2.I);
+					else
+						throw new InvalidProgramException("Operand type mismatch for shift operator.");
+					break;
+				default:
+					throw new InvalidProgramException("Illegal value type for shift operation.");
+				}
+				break;
+			}
+			case Code.Shr_Un: {
+				ref var v2 = ref methodContext.Pop();
+				ref var v1 = ref methodContext.Pop();
+				switch (v1.ElementType) {
+				case ElementType.I4:
+					if (v2.IsI4)
+						methodContext.PushI4((int)(v1.U4 >> v2.I4));
+					else if (v2.IsI)
+						methodContext.PushI((nint)(v1.U4 >> (int)v2.I));
+					else
+						throw new InvalidProgramException("Operand type mismatch for shift operator.");
+					break;
+				case ElementType.I8:
+					if (v2.IsI4)
+						methodContext.PushI8((long)(v1.U8 >> v2.I4));
+					else if (v2.IsI)
+						methodContext.PushI8((long)(v1.U8 >> (int)v2.I));
+					else
+						throw new InvalidProgramException("Operand type mismatch for shift operator.");
+					break;
+				case ElementType.I:
+					if (v2.IsI4)
+						methodContext.PushI((nint)(v1.U >> v2.I4));
+					else if (v2.IsI)
+						methodContext.PushI((nint)(v1.U >> (int)v2.I));
+					else
+						throw new InvalidProgramException("Operand type mismatch for shift operator.");
+					break;
+				default:
+					throw new InvalidProgramException("Illegal value type for shift operation.");
+				}
+				break;
+			}
+			case Code.Neg: {
+				ref var v = ref methodContext.Peek();
+				switch (v.ElementType) {
+				case ElementType.I4:
+					v.I4 = -v.I4;
+					break;
+				case ElementType.I8:
+					v.I8 = -v.I8;
+					break;
+				case ElementType.I:
+					v.I = -v.I;
+					break;
+				case ElementType.R4:
+					v.R4 = -v.R4;
+					break;
+				case ElementType.R8:
+					v.R8 = -v.R8;
+					break;
+				default:
+					throw new InvalidProgramException("Illegal operand type for Neg operation.");
+				}
+				break;
+			}
+			case Code.Not: {
+				ref var v = ref methodContext.Peek();
+				switch (v.ElementType) {
+				case ElementType.I4:
+					v.I4 = ~v.I4;
+					break;
+				case ElementType.I8:
+					v.I8 = ~v.I8;
+					break;
+				case ElementType.I:
+					v.I = ~v.I;
+					break;
+				default:
+					throw new InvalidProgramException("Illegal operand type for Not operation.");
+				}
+				break;
+			}
 
 			case Code.Ceq:
 			case Code.Cgt:

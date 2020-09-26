@@ -4,13 +4,13 @@ using System.Runtime.CompilerServices;
 namespace Zexil.DotNet.Emulation.Internal {
 	internal static unsafe class JitHelpers {
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static T As<T>(void* ptr) where T : class {
+		public static T As<T>(nint ptr) where T : class {
 			return Unsafe.AsRef<T>(&ptr);
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static void* AsPointer<T>(T obj) where T : class {
-			return *(void**)Unsafe.AsPointer(ref obj);
+		public static nint AsPointer<T>(T obj) where T : class {
+			return *(nint*)Unsafe.AsPointer(ref obj);
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -34,7 +34,7 @@ namespace Zexil.DotNet.Emulation.Internal {
 		}
 
 		private sealed class RawSZArrayData {
-			public IntPtr Count;
+			public nint Count;
 			public byte Data;
 		}
 #pragma warning restore CS0649

@@ -4,7 +4,8 @@ using System.Reflection;
 namespace Zexil.DotNet.Emulation.Internal {
 	internal enum CLRFlavor {
 		Framework,
-		Core
+		Core,
+		Net
 	}
 
 	internal static class CLREnvironment {
@@ -19,6 +20,8 @@ namespace Zexil.DotNet.Emulation.Internal {
 				return CLRFlavor.Framework;
 			else if (product.EndsWith("Core", StringComparison.Ordinal))
 				return CLRFlavor.Core;
+			else if (product.EndsWith("NET", StringComparison.Ordinal))
+				return CLRFlavor.Net;
 			else
 				throw new NotSupportedException();
 		}

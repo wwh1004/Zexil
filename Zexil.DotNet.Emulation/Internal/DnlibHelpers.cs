@@ -8,46 +8,37 @@ namespace Zexil.DotNet.Emulation.Internal {
 		}
 
 		private static Type TypeSigToReflTypeLocalImpl(MethodDesc method, TypeSig typeSig) {
-			switch (typeSig.ElementType) {
-			case dnlib.DotNet.ElementType.Void: return typeof(void);
-			case dnlib.DotNet.ElementType.Boolean: return typeof(bool);
-			case dnlib.DotNet.ElementType.Char: return typeof(char);
-			case dnlib.DotNet.ElementType.I1: return typeof(sbyte);
-			case dnlib.DotNet.ElementType.U1: return typeof(byte);
-			case dnlib.DotNet.ElementType.I2: return typeof(short);
-			case dnlib.DotNet.ElementType.U2: return typeof(ushort);
-			case dnlib.DotNet.ElementType.I4: return typeof(int);
-			case dnlib.DotNet.ElementType.U4: return typeof(uint);
-			case dnlib.DotNet.ElementType.I8: return typeof(long);
-			case dnlib.DotNet.ElementType.U8: return typeof(ulong);
-			case dnlib.DotNet.ElementType.R4: return typeof(float);
-			case dnlib.DotNet.ElementType.R8: return typeof(double);
-			case dnlib.DotNet.ElementType.String: return typeof(string);
-			case dnlib.DotNet.ElementType.Ptr: return TypeSigToReflTypeLocalImpl(method, typeSig.Next).MakePointerType();
-			case dnlib.DotNet.ElementType.ByRef: return TypeSigToReflTypeLocalImpl(method, typeSig.Next).MakeByRefType();
-			case dnlib.DotNet.ElementType.ValueType:
-			case dnlib.DotNet.ElementType.Class: return method.DeclaringType.Module.ResolveReflType(((TypeDefOrRefSig)typeSig).TypeDefOrRef.MDToken.ToInt32());
-			case dnlib.DotNet.ElementType.Var: return method.DeclaringType.Instantiation[((GenericVar)typeSig).Number]._reflType;
-			case dnlib.DotNet.ElementType.Array: return TypeSigToReflTypeLocalImpl(method, typeSig.Next).MakeArrayType((int)((ArraySig)typeSig).Rank);
-			case dnlib.DotNet.ElementType.TypedByRef: return TypeSigToReflTypeLocalImpl(method, typeSig.Next).MakeByRefType();
-			case dnlib.DotNet.ElementType.I: return typeof(IntPtr);
-			case dnlib.DotNet.ElementType.U: return typeof(UIntPtr);
-			case dnlib.DotNet.ElementType.R: return typeof(double);
-			case dnlib.DotNet.ElementType.FnPtr: return typeof(IntPtr);
-			case dnlib.DotNet.ElementType.Object: return typeof(object);
-			case dnlib.DotNet.ElementType.SZArray: return TypeSigToReflTypeLocalImpl(method, typeSig.Next).MakeArrayType();
-			case dnlib.DotNet.ElementType.MVar: return method.Instantiation[((GenericMVar)typeSig).Number]._reflType;
-			case dnlib.DotNet.ElementType.End:
-			case dnlib.DotNet.ElementType.GenericInst:
-			case dnlib.DotNet.ElementType.ValueArray:
-			case dnlib.DotNet.ElementType.CModReqd:
-			case dnlib.DotNet.ElementType.CModOpt:
-			case dnlib.DotNet.ElementType.Internal:
-			case dnlib.DotNet.ElementType.Module:
-			case dnlib.DotNet.ElementType.Sentinel:
-			case dnlib.DotNet.ElementType.Pinned: throw new NotSupportedException();
-			default: throw new InvalidOperationException("Unreachable");
-			}
+			return typeSig.ElementType switch
+			{
+				dnlib.DotNet.ElementType.Void => typeof(void),
+				dnlib.DotNet.ElementType.Boolean => typeof(bool),
+				dnlib.DotNet.ElementType.Char => typeof(char),
+				dnlib.DotNet.ElementType.I1 => typeof(sbyte),
+				dnlib.DotNet.ElementType.U1 => typeof(byte),
+				dnlib.DotNet.ElementType.I2 => typeof(short),
+				dnlib.DotNet.ElementType.U2 => typeof(ushort),
+				dnlib.DotNet.ElementType.I4 => typeof(int),
+				dnlib.DotNet.ElementType.U4 => typeof(uint),
+				dnlib.DotNet.ElementType.I8 => typeof(long),
+				dnlib.DotNet.ElementType.U8 => typeof(ulong),
+				dnlib.DotNet.ElementType.R4 => typeof(float),
+				dnlib.DotNet.ElementType.R8 => typeof(double),
+				dnlib.DotNet.ElementType.String => typeof(string),
+				dnlib.DotNet.ElementType.Ptr => TypeSigToReflTypeLocalImpl(method, typeSig.Next).MakePointerType(),
+				dnlib.DotNet.ElementType.ByRef => TypeSigToReflTypeLocalImpl(method, typeSig.Next).MakeByRefType(),
+				dnlib.DotNet.ElementType.ValueType or dnlib.DotNet.ElementType.Class => method.DeclaringType.Module.ResolveReflType(((TypeDefOrRefSig)typeSig).TypeDefOrRef.MDToken.ToInt32()),
+				dnlib.DotNet.ElementType.Var => method.DeclaringType.Instantiation[((GenericVar)typeSig).Number]._reflType,
+				dnlib.DotNet.ElementType.Array => TypeSigToReflTypeLocalImpl(method, typeSig.Next).MakeArrayType((int)((ArraySig)typeSig).Rank),
+				dnlib.DotNet.ElementType.TypedByRef => TypeSigToReflTypeLocalImpl(method, typeSig.Next).MakeByRefType(),
+				dnlib.DotNet.ElementType.I => typeof(nint),
+				dnlib.DotNet.ElementType.U => typeof(nuint),
+				dnlib.DotNet.ElementType.R => typeof(double),
+				dnlib.DotNet.ElementType.FnPtr => typeof(nint),
+				dnlib.DotNet.ElementType.Object => typeof(object),
+				dnlib.DotNet.ElementType.SZArray => TypeSigToReflTypeLocalImpl(method, typeSig.Next).MakeArrayType(),
+				dnlib.DotNet.ElementType.MVar => method.Instantiation[((GenericMVar)typeSig).Number]._reflType,
+				_ => throw new NotSupportedException()
+			};
 		}
 	}
 }

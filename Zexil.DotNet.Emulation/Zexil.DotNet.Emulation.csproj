@@ -6,6 +6,7 @@
 	</PropertyGroup>
 	<PropertyGroup>
 		<TargetFramework>netstandard2.0</TargetFramework>
+		<LangVersion>9.0</LangVersion>
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 		<OutputPath>..\bin\$(Configuration)</OutputPath>
 		<GenerateDocumentationFile>true</GenerateDocumentationFile>

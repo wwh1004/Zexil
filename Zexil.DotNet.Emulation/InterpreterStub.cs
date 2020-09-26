@@ -35,7 +35,7 @@ namespace Zexil.DotNet.Emulation {
 		/// <param name="arguments"></param>
 		/// <param name="typeInstantiation"></param>
 		/// <param name="methodInstantiation"></param>
-		public static void Dispatch(int moduleId, int methodToken, void*[] arguments, Type[] typeInstantiation, Type[] methodInstantiation) {
+		public static void Dispatch(int moduleId, int methodToken, nint[] arguments, Type[] typeInstantiation, Type[] methodInstantiation) {
 			if (!_modules.TryGetValue(moduleId, out var moduleWeakRef))
 				throw new InvalidOperationException();
 			if (!moduleWeakRef.TryGetTarget(out var module))
@@ -52,24 +52,13 @@ namespace Zexil.DotNet.Emulation {
 			if (method.HasReturnType)
 				length -= 1;
 			for (int i = 0; i < length; i++) {
-				if (sizeof(void*) == 4) {
-					int argument = (int)arguments[i];
-					if ((argument & 1) == 1) {
-						// it is a genType, we should deference if it is a reference type in runtime
-						argument &= ~1;
-						if (!method.Parameters[i].IsValueType)
-							argument = *(int*)argument;
-						arguments[i] = (void*)argument;
-					}
-				}
-				else {
-					long argument = (long)arguments[i];
-					if ((argument & 1) == 1) {
-						argument &= ~1;
-						if (!method.Parameters[i].IsValueType)
-							argument = *(long*)argument;
-						arguments[i] = (void*)argument;
-					}
+				nint argument = arguments[i];
+				if ((argument & 1) == 1) {
+					// it is a genType, we should deference if it is a reference type in runtime
+					argument &= ~1;
+					if (!method.Parameters[i].IsValueType)
+						argument = *(nint*)argument;
+					arguments[i] = argument;
 				}
 			}
 
@@ -81,4 +70,3 @@ namespace Zexil.DotNet.Emulation {
 		}
 	}
 }
-

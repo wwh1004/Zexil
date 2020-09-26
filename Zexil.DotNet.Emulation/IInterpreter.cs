@@ -17,15 +17,15 @@ namespace Zexil.DotNet.Emulation {
 	/// </summary>
 	/// <param name="method"></param>
 	/// <param name="arguments"></param>
-	public unsafe delegate void InterpretFromStubHandler(MethodDesc method, void*[] arguments);
+	public delegate void InterpretFromStubHandler(MethodDesc method, nint[] arguments);
 
 	/// <summary>
 	/// Interpreter interface
 	/// </summary>
-	public unsafe interface IInterpreter {
+	public interface IInterpreter {
 		/// <summary>
-		/// InterpretFromStub user handler, if <see cref="InterpretFromStubUser"/> is not <see langword="null"/>, <see cref="InterpreterStub.Dispatch(int, int, void*[], Type[], Type[])"/> should call
-		/// <see cref="InterpretFromStubUser"/> not <see cref="InterpretFromStub(MethodDesc, void*[])"/>
+		/// InterpretFromStub user handler, if <see cref="InterpretFromStubUser"/> is not <see langword="null"/>, <see cref="InterpreterStub.Dispatch(int, int, nint[], Type[], Type[])"/> should call
+		/// <see cref="InterpretFromStubUser"/> not <see cref="InterpretFromStub(MethodDesc, nint[])"/>
 		/// </summary>
 		InterpretFromStubHandler InterpretFromStubUser { get; set; }
 
@@ -45,6 +45,6 @@ namespace Zexil.DotNet.Emulation {
 		/// </summary>
 		/// <param name="method"></param>
 		/// <param name="arguments"></param>
-		void InterpretFromStub(MethodDesc method, void*[] arguments);
+		void InterpretFromStub(MethodDesc method, nint[] arguments);
 	}
 }
