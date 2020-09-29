@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 using dnlib.DotNet;
 using Zexil.DotNet.Emulation.Internal;
 
@@ -17,6 +18,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 		private readonly ExecutionEngine _executionEngine;
 		private readonly Dictionary<MethodDesc, Cache<InterpreterMethodContext>> _methodContexts = new Dictionary<MethodDesc, Cache<InterpreterMethodContext>>();
 		private readonly Cache<nint> _stacks = Cache<nint>.Create();
+		private readonly Cache<Stack<GCHandle>> _handleLists = Cache<Stack<GCHandle>>.Create();
 		private bool _isDisposed;
 
 		/// <summary>
@@ -52,6 +54,19 @@ namespace Zexil.DotNet.Emulation.Emit {
 			_stacks.Release((nint)stack);
 		}
 
+		internal Stack<GCHandle> AcquireHandles() {
+			if (_handleLists.TryAcquire(out var handles))
+				return handles;
+			return new Stack<GCHandle>();
+		}
+
+		internal void ReleaseHandles(Stack<GCHandle> handles) {
+			foreach (var handle in handles)
+				handle.Free();
+			handles.Clear();
+			_handleLists.Release(handles);
+		}
+
 		/// <inheritdoc />
 		public void Dispose() {
 			if (!_isDisposed) {
@@ -61,6 +76,9 @@ namespace Zexil.DotNet.Emulation.Emit {
 				foreach (nint stack in _stacks.Values)
 					Pal.FreeMemory(stack);
 				_stacks.Clear();
+				foreach (var handle in _handleLists.Values.SelectMany(t => t))
+					handle.Free();
+				_handleLists.Clear();
 				_isDisposed = true;
 			}
 		}

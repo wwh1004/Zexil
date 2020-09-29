@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using dnlib.DotNet;
 using Zexil.DotNet.Emulation.Internal;
 
@@ -19,6 +21,11 @@ namespace Zexil.DotNet.Emulation.Emit {
 		/// Interpreted method
 		/// </summary>
 		public MethodDesc Method => _method;
+
+		/// <summary>
+		/// Interpreted module
+		/// </summary>
+		public ModuleDesc Module => _method.Module;
 
 		/// <summary>
 		/// Type generic arguments
@@ -47,16 +54,18 @@ namespace Zexil.DotNet.Emulation.Emit {
 		#endregion
 
 		#region Dynamic Context
-		private nint[] _arguments;
-		private nint[] _locals;
+		private InterpreterSlot[] _arguments;
+		private InterpreterSlot[] _locals;
 		private InterpreterSlot* _stackBase;
 		private InterpreterSlot* _stack;
+		private Stack<GCHandle> _handles;
+		private GCHandle _lastUsedHandle;
 		private bool _isDisposed;
 
 		/// <summary>
 		/// Arguments (includes return buffer)
 		/// </summary>
-		public nint[] Arguments {
+		public InterpreterSlot[] Arguments {
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
 			get => _arguments;
 		}
@@ -64,7 +73,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 		/// <summary>
 		/// Local variables
 		/// </summary>
-		public nint[] Locals {
+		public InterpreterSlot[] Locals {
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
 			get => _locals;
 		}
@@ -72,9 +81,14 @@ namespace Zexil.DotNet.Emulation.Emit {
 		/// <summary>
 		/// Return buffer (pointer to return value)
 		/// </summary>
-		public nint ReturnBuffer {
+		public ref InterpreterSlot ReturnBuffer {
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => _method.HasReturnType ? _arguments[_arguments.Length - 1] : 0;
+			get {
+				if (!_method.HasReturnType)
+					throw new InvalidOperationException();
+
+				return ref _arguments[_arguments.Length - 1];
+			}
 		}
 
 		/// <summary>
@@ -100,6 +114,22 @@ namespace Zexil.DotNet.Emulation.Emit {
 				_stack = value;
 			}
 		}
+
+		/// <summary>
+		/// Handles of objects
+		/// </summary>
+		internal Stack<GCHandle> Handles {
+			[MethodImpl(MethodImplOptions.AggressiveInlining)]
+			get => _handles;
+		}
+
+		/// <summary>
+		/// Last used object handle
+		/// </summary>
+		internal GCHandle LastUsedHandle {
+			get => _lastUsedHandle;
+			set => _lastUsedHandle = value;
+		}
 		#endregion
 
 		/// <summary>
@@ -124,7 +154,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 
 				_localTypes = new TypeDesc[localDefs.Count];
 				for (int i = 0; i < _localTypes.Length; i++)
-					_localTypes[i] = _context.ExecutionEngine.ResolveType(DnlibHelpers.TypeSigToReflTypeLocal(_method, localDefs[i].Type));
+					_localTypes[i] = DnlibHelpers.ResolveTypeSig(_method, localDefs[i].Type);
 			}
 			else {
 				_localTypes = Array.Empty<TypeDesc>();
@@ -132,17 +162,15 @@ namespace Zexil.DotNet.Emulation.Emit {
 		}
 
 		internal void ResolveDynamicContext(nint[] arguments) {
-			if (!(_method is null)) {
-				if (arguments is null)
-					throw new ArgumentNullException(nameof(arguments));
-				if (arguments.Length != _method.Parameters.Length + (_method.HasReturnType ? 1 : 0))
-					throw new ArgumentException(nameof(arguments));
-
-				_arguments = arguments;
-				_locals = new nint[_localTypes.Length];
-			}
 			_stackBase = _context.AcquireStack();
 			_stack = _stackBase + InterpreterContext.StackSize;
+			_handles = _context.AcquireHandles();
+			if (!(_method is null)) {
+				_arguments = Interpreter.ConvertArguments(arguments, this);
+				_locals = new InterpreterSlot[_localTypes.Length];
+				_handles.Push(GCHandle.Alloc(_arguments, GCHandleType.Pinned));
+				_handles.Push(GCHandle.Alloc(_locals, GCHandleType.Pinned));
+			}
 			_isDisposed = false;
 		}
 
@@ -158,6 +186,9 @@ namespace Zexil.DotNet.Emulation.Emit {
 			_context.ReleaseStack(_stackBase);
 			_stackBase = null;
 			_stack = null;
+			_context.ReleaseHandles(_handles);
+			_handles = null;
+			_lastUsedHandle = default;
 			_isDisposed = true;
 		}
 
@@ -170,7 +201,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 		public void PushI4(int value) {
 			ref var slot = ref *--Stack;
 			slot.I4 = value;
-			slot.ElementType = ElementType.I4;
+			slot.AnnotatedElementType = (AnnotatedElementType)ElementType.I4 | AnnotatedElementType.Unmanaged;
 		}
 
 		/// <summary>
@@ -181,7 +212,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 		public void PushI8(long value) {
 			ref var slot = ref *--Stack;
 			slot.I8 = value;
-			slot.ElementType = ElementType.I8;
+			slot.AnnotatedElementType = (AnnotatedElementType)ElementType.I8 | AnnotatedElementType.Unmanaged;
 		}
 
 		/// <summary>
@@ -192,7 +223,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 		public void PushI(nint value) {
 			ref var slot = ref *--Stack;
 			slot.I = value;
-			slot.ElementType = ElementType.I;
+			slot.AnnotatedElementType = (AnnotatedElementType)ElementType.I | AnnotatedElementType.Unmanaged;
 		}
 
 		/// <summary>
@@ -203,7 +234,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 		public void PushByRef(nint value) {
 			ref var slot = ref *--Stack;
 			slot.I = value;
-			slot.ElementType = ElementType.ByRef;
+			slot.AnnotatedElementType = (AnnotatedElementType)ElementType.ByRef | AnnotatedElementType.Unmanaged;
 		}
 
 		/// <summary>
@@ -214,7 +245,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 		public void PushR4(float value) {
 			ref var slot = ref *--Stack;
 			slot.R4 = value;
-			slot.ElementType = ElementType.R4;
+			slot.AnnotatedElementType = (AnnotatedElementType)ElementType.R4 | AnnotatedElementType.Unmanaged;
 		}
 
 		/// <summary>
@@ -225,7 +256,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 		public void PushR8(double value) {
 			ref var slot = ref *--Stack;
 			slot.R8 = value;
-			slot.ElementType = ElementType.R8;
+			slot.AnnotatedElementType = (AnnotatedElementType)ElementType.R8 | AnnotatedElementType.Unmanaged;
 		}
 
 		/// <summary>
@@ -237,6 +268,17 @@ namespace Zexil.DotNet.Emulation.Emit {
 			ref var slot = ref *--Stack;
 			slot.I = value;
 			slot.AnnotatedElementType = annotatedElementType;
+		}
+
+		/// <summary>
+		/// Pushes empty slot onto stack top
+		/// </summary>
+		/// <returns></returns>
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public ref InterpreterSlot Push() {
+			ref var slot = ref *--Stack;
+			slot = default;
+			return ref slot;
 		}
 
 		/// <summary>

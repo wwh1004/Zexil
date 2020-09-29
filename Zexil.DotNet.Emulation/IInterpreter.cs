@@ -15,9 +15,10 @@ namespace Zexil.DotNet.Emulation {
 	/// Calling conversation
 	/// arguments = method arguments + method return buffer (if method has return value)
 	/// </summary>
+	/// <param name="interpreter"></param>
 	/// <param name="method"></param>
 	/// <param name="arguments"></param>
-	public delegate void InterpretFromStubHandler(MethodDesc method, nint[] arguments);
+	public delegate void InterpretFromStubHandler(IInterpreter interpreter, MethodDesc method, nint[] arguments);
 
 	/// <summary>
 	/// Interpreter interface

@@ -64,7 +64,7 @@ namespace Zexil.DotNet.Emulation {
 
 			var interpretFromStubUser = interpreter.InterpretFromStubUser;
 			if (!(interpretFromStubUser is null))
-				interpretFromStubUser(method, arguments);
+				interpretFromStubUser(interpreter, method, arguments);
 			else
 				interpreter.InterpretFromStub(method, arguments);
 		}

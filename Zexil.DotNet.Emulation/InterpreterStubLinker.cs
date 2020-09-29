@@ -220,7 +220,7 @@ namespace Zexil.DotNet.Emulation {
 						EmitInstruction(OpCodes.Ldobj, typeSig.ToTypeDefOrRef());
 						EmitInstruction(OpCodes.Stloc, local);
 					}
-					else {
+					else if (!typeSig.IsPointer && !typeSig.IsByRef) {
 						// refType&
 						var local = new Local(new PinnedSig(typeSig));
 						// refType pinned
@@ -229,13 +229,18 @@ namespace Zexil.DotNet.Emulation {
 						EmitInstruction(OpCodes.Ldobj, typeSig.ToTypeDefOrRef());
 						EmitInstruction(OpCodes.Stloc, local);
 					}
+					else {
+#if DEBUG
+						System.Diagnostics.Debug.Assert(typeSig.IsPointer || typeSig.IsByRef);
+#endif
+					}
 				}
 				else {
 					if (typeSig.IsValueType) {
 						// valType
 						return;
 					}
-					else {
+					else if (!typeSig.IsPointer && !typeSig.IsByRef) {
 						// T/refType
 						// for T, it is also a fucking case, we don't know whether it is a value type or not, maybe we should regard it as reference type
 						var local = new Local(new PinnedSig(typeSig));
@@ -243,6 +248,11 @@ namespace Zexil.DotNet.Emulation {
 						_pinnedArguments.Add(local);
 						EmitInstruction(OpCodes.Ldarg, parameter);
 						EmitInstruction(OpCodes.Stloc, local);
+					}
+					else {
+#if DEBUG
+						System.Diagnostics.Debug.Assert(typeSig.IsPointer || typeSig.IsByRef);
+#endif
 					}
 				}
 			}
