@@ -80,108 +80,6 @@ namespace Zexil.DotNet.Emulation.Emit {
 				}
 				break;
 			}
-			case Code.Add_Ovf: {
-				ref var v2 = ref methodContext.Pop();
-				ref var v1 = ref methodContext.Pop();
-				switch (v1.ElementType) {
-				case ElementType.I4:
-					if (v2.IsI4)
-						methodContext.PushI4(checked(v1.I4 + v2.I4));
-					else if (v2.IsI8)
-						methodContext.PushI8(checked(v1.I4 + v2.I8));
-					else if (v2.IsI)
-						methodContext.PushI(checked(v1.I + v2.I));
-					else if (v2.IsByRef)
-						throw new InvalidProgramException("Illegal arithmetic overflow operation for int and byref.");
-					else
-						throw new InvalidProgramException("Binary arithmetic overflow operation type mismatch (int and ?)");
-					break;
-				case ElementType.I8:
-					if (v2.IsI8)
-						methodContext.PushI8(checked(v1.I8 + v2.I8));
-					else if (v2.IsI4)
-						methodContext.PushI8(checked(v1.I8 + v2.I4));
-					else if (v2.IsI)
-						methodContext.PushI8(checked(v1.I8 + v2.I));
-					else if (v2.IsByRef)
-						throw new InvalidProgramException("Illegal arithmetic overflow operation for long and byref.");
-					else
-						throw new InvalidProgramException("Binary arithmetic overflow operation type mismatch (long and ?)");
-					break;
-				case ElementType.I:
-					if (v2.IsI)
-						methodContext.PushI(checked(v1.I + v2.I));
-					else if (v2.IsI4)
-						methodContext.PushI(checked(v1.I + v2.I4));
-					else if (v2.IsI8)
-						methodContext.PushI8(checked(v1.I + v2.I8));
-					else if (v2.IsByRef)
-						throw new InvalidProgramException("Illegal arithmetic overflow operation for native int and byref.");
-					else
-						throw new InvalidProgramException("Binary arithmetic overflow operation type mismatch (native int and ?)");
-					break;
-				case ElementType.ByRef:
-					throw new InvalidProgramException("Signed binary arithmetic overflow operation not permitted on managed pointer values.");
-				default:
-					throw new InvalidProgramException("Can't do binary arithmetic on object references or non-stack-normal type on stack.");
-				}
-				break;
-			}
-			case Code.Add_Ovf_Un: {
-				ref var v2 = ref methodContext.Pop();
-				ref var v1 = ref methodContext.Pop();
-				switch (v1.ElementType) {
-				case ElementType.I4:
-					if (v2.IsI4)
-						methodContext.PushI4((int)checked(v1.U4 + v2.U4));
-					else if (v2.IsI8)
-						methodContext.PushI8((long)checked(v1.U4 + v2.U8));
-					else if (v2.IsI)
-						methodContext.PushI((nint)checked(v1.U4 + v2.U));
-					else if (v2.IsByRef)
-						methodContext.PushByRef((nint)checked(v1.U4 + v2.U));
-					else
-						throw new InvalidProgramException("Binary arithmetic overflow operation type mismatch (int and ?)");
-					break;
-				case ElementType.I8:
-					if (v2.IsI8)
-						methodContext.PushI8((long)checked(v1.U8 + v2.U8));
-					else if (v2.IsI4)
-						methodContext.PushI8((long)checked(v1.U8 + v2.U4));
-					else if (v2.IsI)
-						methodContext.PushI8((long)checked(v1.U8 + v2.U));
-					else if (v2.IsByRef)
-						methodContext.PushByRef((nint)checked(v1.U8 + v2.U));
-					else
-						throw new InvalidProgramException("Binary arithmetic overflow operation type mismatch (long and ?)");
-					break;
-				case ElementType.I:
-					if (v2.IsI)
-						methodContext.PushI((nint)checked(v1.U + v2.U));
-					else if (v2.IsI4)
-						methodContext.PushI((nint)checked(v1.U + v2.U4));
-					else if (v2.IsI8)
-						methodContext.PushI8((long)checked(v1.U + v2.U8));
-					else if (v2.IsByRef)
-						methodContext.PushByRef((nint)checked(v1.U + v2.U));
-					else
-						throw new InvalidProgramException("Binary arithmetic overflow operation type mismatch (native int and ?)");
-					break;
-				case ElementType.ByRef:
-					if (v2.IsI4)
-						methodContext.PushByRef((nint)checked(v1.U + v2.U4));
-					else if (v2.IsI8)
-						methodContext.PushByRef((nint)checked(v1.U + v2.U8));
-					else if (v2.IsI)
-						methodContext.PushByRef((nint)checked(v1.U + v2.U));
-					else
-						throw new InvalidProgramException("Binary arithmetic overflow operation type mismatch (byref and ?)");
-					break;
-				default:
-					throw new InvalidProgramException("Can't do binary arithmetic on object references or non-stack-normal type on stack.");
-				}
-				break;
-			}
 			case Code.Sub: {
 				ref var v2 = ref methodContext.Pop();
 				ref var v1 = ref methodContext.Pop();
@@ -253,110 +151,6 @@ namespace Zexil.DotNet.Emulation.Emit {
 				}
 				break;
 			}
-			case Code.Sub_Ovf: {
-				ref var v2 = ref methodContext.Pop();
-				ref var v1 = ref methodContext.Pop();
-				switch (v1.ElementType) {
-				case ElementType.I4:
-					if (v2.IsI4)
-						methodContext.PushI4(checked(v1.I4 - v2.I4));
-					else if (v2.IsI8)
-						methodContext.PushI8(checked(v1.I4 - v2.I8));
-					else if (v2.IsI)
-						methodContext.PushI(checked(v1.I4 - v2.I));
-					else if (v2.IsByRef)
-						throw new InvalidProgramException("Illegal arithmetic overflow operation for int and byref.");
-					else
-						throw new InvalidProgramException("Binary arithmetic overflow operation type mismatch (int and ?)");
-					break;
-				case ElementType.I8:
-					if (v2.IsI8)
-						methodContext.PushI8(checked(v1.I8 - v2.I8));
-					else if (v2.IsI4)
-						methodContext.PushI8(checked(v1.I8 - v2.I4));
-					else if (v2.IsI)
-						methodContext.PushI8(checked(v1.I8 - v2.I));
-					else if (v2.IsByRef)
-						throw new InvalidProgramException("Illegal arithmetic overflow operation for long and byref.");
-					else
-						throw new InvalidProgramException("Binary arithmetic overflow operation type mismatch (long and ?)");
-					break;
-				case ElementType.I:
-					if (v2.IsI)
-						methodContext.PushI(checked(v1.I - v2.I));
-					else if (v2.IsI4)
-						methodContext.PushI(checked(v1.I - v2.I4));
-					else if (v2.IsI8)
-						methodContext.PushI8(checked(v1.I - v2.I8));
-					else if (v2.IsByRef)
-						throw new InvalidProgramException("Illegal arithmetic overflow operation for native int and byref.");
-					else
-						throw new InvalidProgramException("Binary arithmetic overflow operation type mismatch (native int and ?)");
-					break;
-				case ElementType.ByRef:
-					throw new InvalidProgramException("Signed binary arithmetic overflow operation not permitted on managed pointer values.");
-				default:
-					throw new InvalidProgramException("Can't do binary arithmetic on object references or non-stack-normal type on stack.");
-				}
-				break;
-			}
-			case Code.Sub_Ovf_Un: {
-				ref var v2 = ref methodContext.Pop();
-				ref var v1 = ref methodContext.Pop();
-				switch (v1.ElementType) {
-				case ElementType.I4:
-					if (v2.IsI4)
-						methodContext.PushI4((int)checked(v1.U4 - v2.U4));
-					else if (v2.IsI8)
-						methodContext.PushI8((long)checked(v1.U4 - v2.U8));
-					else if (v2.IsI)
-						methodContext.PushI((nint)checked(v1.U4 - v2.U));
-					else if (v2.IsByRef)
-						throw new InvalidProgramException("Illegal arithmetic overflow operation for int and byref.");
-					else
-						throw new InvalidProgramException("Binary arithmetic overflow operation type mismatch (int and ?)");
-					break;
-				case ElementType.I8:
-					if (v2.IsI8)
-						methodContext.PushI8((long)checked(v1.U8 - v2.U8));
-					else if (v2.IsI4)
-						methodContext.PushI8((long)checked(v1.U8 - v2.U4));
-					else if (v2.IsI)
-						methodContext.PushI8((long)checked(v1.U8 - v2.U));
-					else if (v2.IsByRef)
-						throw new InvalidProgramException("Illegal arithmetic overflow operation for long and byref.");
-					else
-						throw new InvalidProgramException("Binary arithmetic overflow operation type mismatch (long and ?)");
-					break;
-				case ElementType.I:
-					if (v2.IsI)
-						methodContext.PushI((nint)checked(v1.U - v2.U));
-					else if (v2.IsI4)
-						methodContext.PushI((nint)checked(v1.U - v2.U4));
-					else if (v2.IsI8)
-						methodContext.PushI8((long)checked(v1.U - v2.U8));
-					else if (v2.IsByRef)
-						throw new InvalidProgramException("Illegal arithmetic overflow operation for native int and byref.");
-					else
-						throw new InvalidProgramException("Binary arithmetic overflow operation type mismatch (native int and ?)");
-					break;
-				case ElementType.ByRef:
-					if (v2.IsByRef)
-						methodContext.PushI((nint)checked(v1.U - v2.U));
-					else if (v2.IsI4)
-						methodContext.PushByRef((nint)checked(v1.U - v2.U4));
-					else if (v2.IsI8)
-						methodContext.PushByRef((nint)checked(v1.U - v2.U8));
-					else if (v2.IsI)
-						methodContext.PushByRef((nint)checked(v1.U - v2.U));
-					else
-						throw new InvalidProgramException("Binary arithmetic overflow operation type mismatch (byref and ?)");
-					break;
-				default:
-					throw new InvalidProgramException("Can't do binary arithmetic on object references or non-stack-normal type on stack.");
-				}
-				break;
-			}
 			case Code.Mul: {
 				ref var v2 = ref methodContext.Pop();
 				ref var v1 = ref methodContext.Pop();
@@ -407,84 +201,6 @@ namespace Zexil.DotNet.Emulation.Emit {
 					break;
 				default:
 					throw new InvalidProgramException("Can't do binary arithmetic on object references or non-stack-normal type on stack.");
-				}
-				break;
-			}
-			case Code.Mul_Ovf: {
-				ref var v2 = ref methodContext.Pop();
-				ref var v1 = ref methodContext.Pop();
-				switch (v1.ElementType) {
-				case ElementType.I4:
-					if (v2.IsI4)
-						methodContext.PushI4(checked(v1.I4 * v2.I4));
-					else if (v2.IsI8)
-						methodContext.PushI8(checked(v1.I4 * v2.I8));
-					else if (v2.IsI)
-						methodContext.PushI(checked(v1.I4 * v2.I));
-					else
-						throw new InvalidProgramException("Binary arithmetic overflow operation type mismatch (int and ?)");
-					break;
-				case ElementType.I8:
-					if (v2.IsI8)
-						methodContext.PushI8(checked(v1.I8 * v2.I8));
-					else if (v2.IsI4)
-						methodContext.PushI8(checked(v1.I8 * v2.I4));
-					else if (v2.IsI)
-						methodContext.PushI8(checked(v1.I8 * v2.I));
-					else
-						throw new InvalidProgramException("Binary arithmetic overflow operation type mismatch (long and ?)");
-					break;
-				case ElementType.I:
-					if (v2.IsI)
-						methodContext.PushI(checked(v1.I * v2.I));
-					else if (v2.IsI4)
-						methodContext.PushI(checked(v1.I * v2.I4));
-					else if (v2.IsI8)
-						methodContext.PushI8(checked(v1.I * v2.I8));
-					else
-						throw new InvalidProgramException("Binary arithmetic overflow operation type mismatch (native int and ?)");
-					break;
-				default:
-					throw new InvalidProgramException("Can't do binary arithmetic on object references or non*stack*normal type on stack.");
-				}
-				break;
-			}
-			case Code.Mul_Ovf_Un: {
-				ref var v2 = ref methodContext.Pop();
-				ref var v1 = ref methodContext.Pop();
-				switch (v1.ElementType) {
-				case ElementType.I4:
-					if (v2.IsI4)
-						methodContext.PushI4((int)checked(v1.U4 * v2.U4));
-					else if (v2.IsI8)
-						methodContext.PushI8((long)checked(v1.U4 * v2.U8));
-					else if (v2.IsI)
-						methodContext.PushI((nint)checked(v1.U4 * v2.U));
-					else
-						throw new InvalidProgramException("Binary arithmetic overflow operation type mismatch (int and ?)");
-					break;
-				case ElementType.I8:
-					if (v2.IsI8)
-						methodContext.PushI8((long)checked(v1.U8 * v2.U8));
-					else if (v2.IsI4)
-						methodContext.PushI8((long)checked(v1.U8 * v2.U4));
-					else if (v2.IsI)
-						methodContext.PushI8((long)checked(v1.U8 * v2.U));
-					else
-						throw new InvalidProgramException("Binary arithmetic overflow operation type mismatch (long and ?)");
-					break;
-				case ElementType.I:
-					if (v2.IsI)
-						methodContext.PushI((nint)checked(v1.U * v2.U));
-					else if (v2.IsI4)
-						methodContext.PushI((nint)checked(v1.U * v2.U4));
-					else if (v2.IsI8)
-						methodContext.PushI8((long)checked(v1.U * v2.U8));
-					else
-						throw new InvalidProgramException("Binary arithmetic overflow operation type mismatch (native int and ?)");
-					break;
-				default:
-					throw new InvalidProgramException("Can't do binary arithmetic on object references or non*stack*normal type on stack.");
 				}
 				break;
 			}
@@ -928,54 +644,308 @@ namespace Zexil.DotNet.Emulation.Emit {
 				}
 				break;
 			}
+			case Code.Add_Ovf: {
+				ref var v2 = ref methodContext.Pop();
+				ref var v1 = ref methodContext.Pop();
+				switch (v1.ElementType) {
+				case ElementType.I4:
+					if (v2.IsI4)
+						methodContext.PushI4(checked(v1.I4 + v2.I4));
+					else if (v2.IsI8)
+						methodContext.PushI8(checked(v1.I4 + v2.I8));
+					else if (v2.IsI)
+						methodContext.PushI(checked(v1.I + v2.I));
+					else if (v2.IsByRef)
+						throw new InvalidProgramException("Illegal arithmetic overflow operation for int and byref.");
+					else
+						throw new InvalidProgramException("Binary arithmetic overflow operation type mismatch (int and ?)");
+					break;
+				case ElementType.I8:
+					if (v2.IsI8)
+						methodContext.PushI8(checked(v1.I8 + v2.I8));
+					else if (v2.IsI4)
+						methodContext.PushI8(checked(v1.I8 + v2.I4));
+					else if (v2.IsI)
+						methodContext.PushI8(checked(v1.I8 + v2.I));
+					else if (v2.IsByRef)
+						throw new InvalidProgramException("Illegal arithmetic overflow operation for long and byref.");
+					else
+						throw new InvalidProgramException("Binary arithmetic overflow operation type mismatch (long and ?)");
+					break;
+				case ElementType.I:
+					if (v2.IsI)
+						methodContext.PushI(checked(v1.I + v2.I));
+					else if (v2.IsI4)
+						methodContext.PushI(checked(v1.I + v2.I4));
+					else if (v2.IsI8)
+						methodContext.PushI8(checked(v1.I + v2.I8));
+					else if (v2.IsByRef)
+						throw new InvalidProgramException("Illegal arithmetic overflow operation for native int and byref.");
+					else
+						throw new InvalidProgramException("Binary arithmetic overflow operation type mismatch (native int and ?)");
+					break;
+				case ElementType.ByRef:
+					throw new InvalidProgramException("Signed binary arithmetic overflow operation not permitted on managed pointer values.");
+				default:
+					throw new InvalidProgramException("Can't do binary arithmetic on object references or non-stack-normal type on stack.");
+				}
+				break;
+			}
+			case Code.Add_Ovf_Un: {
+				ref var v2 = ref methodContext.Pop();
+				ref var v1 = ref methodContext.Pop();
+				switch (v1.ElementType) {
+				case ElementType.I4:
+					if (v2.IsI4)
+						methodContext.PushI4((int)checked(v1.U4 + v2.U4));
+					else if (v2.IsI8)
+						methodContext.PushI8((long)checked(v1.U4 + v2.U8));
+					else if (v2.IsI)
+						methodContext.PushI((nint)checked(v1.U4 + v2.U));
+					else if (v2.IsByRef)
+						methodContext.PushByRef((nint)checked(v1.U4 + v2.U));
+					else
+						throw new InvalidProgramException("Binary arithmetic overflow operation type mismatch (int and ?)");
+					break;
+				case ElementType.I8:
+					if (v2.IsI8)
+						methodContext.PushI8((long)checked(v1.U8 + v2.U8));
+					else if (v2.IsI4)
+						methodContext.PushI8((long)checked(v1.U8 + v2.U4));
+					else if (v2.IsI)
+						methodContext.PushI8((long)checked(v1.U8 + v2.U));
+					else if (v2.IsByRef)
+						methodContext.PushByRef((nint)checked(v1.U8 + v2.U));
+					else
+						throw new InvalidProgramException("Binary arithmetic overflow operation type mismatch (long and ?)");
+					break;
+				case ElementType.I:
+					if (v2.IsI)
+						methodContext.PushI((nint)checked(v1.U + v2.U));
+					else if (v2.IsI4)
+						methodContext.PushI((nint)checked(v1.U + v2.U4));
+					else if (v2.IsI8)
+						methodContext.PushI8((long)checked(v1.U + v2.U8));
+					else if (v2.IsByRef)
+						methodContext.PushByRef((nint)checked(v1.U + v2.U));
+					else
+						throw new InvalidProgramException("Binary arithmetic overflow operation type mismatch (native int and ?)");
+					break;
+				case ElementType.ByRef:
+					if (v2.IsI4)
+						methodContext.PushByRef((nint)checked(v1.U + v2.U4));
+					else if (v2.IsI8)
+						methodContext.PushByRef((nint)checked(v1.U + v2.U8));
+					else if (v2.IsI)
+						methodContext.PushByRef((nint)checked(v1.U + v2.U));
+					else
+						throw new InvalidProgramException("Binary arithmetic overflow operation type mismatch (byref and ?)");
+					break;
+				default:
+					throw new InvalidProgramException("Can't do binary arithmetic on object references or non-stack-normal type on stack.");
+				}
+				break;
+			}
+			case Code.Mul_Ovf: {
+				ref var v2 = ref methodContext.Pop();
+				ref var v1 = ref methodContext.Pop();
+				switch (v1.ElementType) {
+				case ElementType.I4:
+					if (v2.IsI4)
+						methodContext.PushI4(checked(v1.I4 * v2.I4));
+					else if (v2.IsI8)
+						methodContext.PushI8(checked(v1.I4 * v2.I8));
+					else if (v2.IsI)
+						methodContext.PushI(checked(v1.I4 * v2.I));
+					else
+						throw new InvalidProgramException("Binary arithmetic overflow operation type mismatch (int and ?)");
+					break;
+				case ElementType.I8:
+					if (v2.IsI8)
+						methodContext.PushI8(checked(v1.I8 * v2.I8));
+					else if (v2.IsI4)
+						methodContext.PushI8(checked(v1.I8 * v2.I4));
+					else if (v2.IsI)
+						methodContext.PushI8(checked(v1.I8 * v2.I));
+					else
+						throw new InvalidProgramException("Binary arithmetic overflow operation type mismatch (long and ?)");
+					break;
+				case ElementType.I:
+					if (v2.IsI)
+						methodContext.PushI(checked(v1.I * v2.I));
+					else if (v2.IsI4)
+						methodContext.PushI(checked(v1.I * v2.I4));
+					else if (v2.IsI8)
+						methodContext.PushI8(checked(v1.I * v2.I8));
+					else
+						throw new InvalidProgramException("Binary arithmetic overflow operation type mismatch (native int and ?)");
+					break;
+				default:
+					throw new InvalidProgramException("Can't do binary arithmetic on object references or non*stack*normal type on stack.");
+				}
+				break;
+			}
+			case Code.Mul_Ovf_Un: {
+				ref var v2 = ref methodContext.Pop();
+				ref var v1 = ref methodContext.Pop();
+				switch (v1.ElementType) {
+				case ElementType.I4:
+					if (v2.IsI4)
+						methodContext.PushI4((int)checked(v1.U4 * v2.U4));
+					else if (v2.IsI8)
+						methodContext.PushI8((long)checked(v1.U4 * v2.U8));
+					else if (v2.IsI)
+						methodContext.PushI((nint)checked(v1.U4 * v2.U));
+					else
+						throw new InvalidProgramException("Binary arithmetic overflow operation type mismatch (int and ?)");
+					break;
+				case ElementType.I8:
+					if (v2.IsI8)
+						methodContext.PushI8((long)checked(v1.U8 * v2.U8));
+					else if (v2.IsI4)
+						methodContext.PushI8((long)checked(v1.U8 * v2.U4));
+					else if (v2.IsI)
+						methodContext.PushI8((long)checked(v1.U8 * v2.U));
+					else
+						throw new InvalidProgramException("Binary arithmetic overflow operation type mismatch (long and ?)");
+					break;
+				case ElementType.I:
+					if (v2.IsI)
+						methodContext.PushI((nint)checked(v1.U * v2.U));
+					else if (v2.IsI4)
+						methodContext.PushI((nint)checked(v1.U * v2.U4));
+					else if (v2.IsI8)
+						methodContext.PushI8((long)checked(v1.U * v2.U8));
+					else
+						throw new InvalidProgramException("Binary arithmetic overflow operation type mismatch (native int and ?)");
+					break;
+				default:
+					throw new InvalidProgramException("Can't do binary arithmetic on object references or non*stack*normal type on stack.");
+				}
+				break;
+			}
+			case Code.Sub_Ovf: {
+				ref var v2 = ref methodContext.Pop();
+				ref var v1 = ref methodContext.Pop();
+				switch (v1.ElementType) {
+				case ElementType.I4:
+					if (v2.IsI4)
+						methodContext.PushI4(checked(v1.I4 - v2.I4));
+					else if (v2.IsI8)
+						methodContext.PushI8(checked(v1.I4 - v2.I8));
+					else if (v2.IsI)
+						methodContext.PushI(checked(v1.I4 - v2.I));
+					else if (v2.IsByRef)
+						throw new InvalidProgramException("Illegal arithmetic overflow operation for int and byref.");
+					else
+						throw new InvalidProgramException("Binary arithmetic overflow operation type mismatch (int and ?)");
+					break;
+				case ElementType.I8:
+					if (v2.IsI8)
+						methodContext.PushI8(checked(v1.I8 - v2.I8));
+					else if (v2.IsI4)
+						methodContext.PushI8(checked(v1.I8 - v2.I4));
+					else if (v2.IsI)
+						methodContext.PushI8(checked(v1.I8 - v2.I));
+					else if (v2.IsByRef)
+						throw new InvalidProgramException("Illegal arithmetic overflow operation for long and byref.");
+					else
+						throw new InvalidProgramException("Binary arithmetic overflow operation type mismatch (long and ?)");
+					break;
+				case ElementType.I:
+					if (v2.IsI)
+						methodContext.PushI(checked(v1.I - v2.I));
+					else if (v2.IsI4)
+						methodContext.PushI(checked(v1.I - v2.I4));
+					else if (v2.IsI8)
+						methodContext.PushI8(checked(v1.I - v2.I8));
+					else if (v2.IsByRef)
+						throw new InvalidProgramException("Illegal arithmetic overflow operation for native int and byref.");
+					else
+						throw new InvalidProgramException("Binary arithmetic overflow operation type mismatch (native int and ?)");
+					break;
+				case ElementType.ByRef:
+					throw new InvalidProgramException("Signed binary arithmetic overflow operation not permitted on managed pointer values.");
+				default:
+					throw new InvalidProgramException("Can't do binary arithmetic on object references or non-stack-normal type on stack.");
+				}
+				break;
+			}
+			case Code.Sub_Ovf_Un: {
+				ref var v2 = ref methodContext.Pop();
+				ref var v1 = ref methodContext.Pop();
+				switch (v1.ElementType) {
+				case ElementType.I4:
+					if (v2.IsI4)
+						methodContext.PushI4((int)checked(v1.U4 - v2.U4));
+					else if (v2.IsI8)
+						methodContext.PushI8((long)checked(v1.U4 - v2.U8));
+					else if (v2.IsI)
+						methodContext.PushI((nint)checked(v1.U4 - v2.U));
+					else if (v2.IsByRef)
+						throw new InvalidProgramException("Illegal arithmetic overflow operation for int and byref.");
+					else
+						throw new InvalidProgramException("Binary arithmetic overflow operation type mismatch (int and ?)");
+					break;
+				case ElementType.I8:
+					if (v2.IsI8)
+						methodContext.PushI8((long)checked(v1.U8 - v2.U8));
+					else if (v2.IsI4)
+						methodContext.PushI8((long)checked(v1.U8 - v2.U4));
+					else if (v2.IsI)
+						methodContext.PushI8((long)checked(v1.U8 - v2.U));
+					else if (v2.IsByRef)
+						throw new InvalidProgramException("Illegal arithmetic overflow operation for long and byref.");
+					else
+						throw new InvalidProgramException("Binary arithmetic overflow operation type mismatch (long and ?)");
+					break;
+				case ElementType.I:
+					if (v2.IsI)
+						methodContext.PushI((nint)checked(v1.U - v2.U));
+					else if (v2.IsI4)
+						methodContext.PushI((nint)checked(v1.U - v2.U4));
+					else if (v2.IsI8)
+						methodContext.PushI8((long)checked(v1.U - v2.U8));
+					else if (v2.IsByRef)
+						throw new InvalidProgramException("Illegal arithmetic overflow operation for native int and byref.");
+					else
+						throw new InvalidProgramException("Binary arithmetic overflow operation type mismatch (native int and ?)");
+					break;
+				case ElementType.ByRef:
+					if (v2.IsByRef)
+						methodContext.PushI((nint)checked(v1.U - v2.U));
+					else if (v2.IsI4)
+						methodContext.PushByRef((nint)checked(v1.U - v2.U4));
+					else if (v2.IsI8)
+						methodContext.PushByRef((nint)checked(v1.U - v2.U8));
+					else if (v2.IsI)
+						methodContext.PushByRef((nint)checked(v1.U - v2.U));
+					else
+						throw new InvalidProgramException("Binary arithmetic overflow operation type mismatch (byref and ?)");
+					break;
+				default:
+					throw new InvalidProgramException("Can't do binary arithmetic on object references or non-stack-normal type on stack.");
+				}
+				break;
+			}
 			#endregion
 
 			#region Comparison
-			case Code.Ceq:
-			case Code.Cgt:
-			case Code.Cgt_Un:
 			case Code.Ckfinite:
+				throw new NotImplementedException();
+			case Code.Ceq:
+				throw new NotImplementedException();
+			case Code.Cgt:
+				throw new NotImplementedException();
+			case Code.Cgt_Un:
+				throw new NotImplementedException();
 			case Code.Clt:
+				throw new NotImplementedException();
 			case Code.Clt_Un:
 				throw new NotImplementedException();
 			#endregion
 
 			#region Casting
-			case Code.Box: {
-				ref var valueSlot = ref methodContext.Peek();
-				var type = ResolveType(instruction.Operand, methodContext);
-#if DEBUG
-				System.Diagnostics.Debug.Assert(valueSlot.IsValueType && IsValueTypeStackNormalized(type));
-#endif
-				nint source = GetValueTypeAddress(ref valueSlot);
-				valueSlot.I = Box(source, type, methodContext);
-				valueSlot.ElementType = ElementType.Class;
-				break;
-			}
-			case Code.Unbox: {
-				ref var valueSlot = ref methodContext.Peek();
-#if DEBUG
-				System.Diagnostics.Debug.Assert(valueSlot.IsClass);
-#endif
-				valueSlot.I += sizeof(nint);
-				valueSlot.ElementType = ElementType.I;
-				break;
-			}
-			case Code.Unbox_Any: {
-				ref var valueSlot = ref methodContext.Peek();
-				if (valueSlot.IsValueType) {
-					// we should use TypeDesc.IsValueType for properly implementing unbox.any, but for performance we use InterpreterSlot.IsValueType
-#if DEBUG
-					System.Diagnostics.Debug.Assert(!valueSlot.IsByRef && !valueSlot.IsTypedRef && IsValueTypeStackNormalized(ResolveType(instruction.Operand, methodContext)));
-#endif
-					valueSlot.I += sizeof(nint);
-					valueSlot.ElementType = ElementType.I;
-					goto case Code.Ldobj;
-				}
-				else {
-					goto case Code.Castclass;
-				}
-			}
 			case Code.Castclass: {
 				ref var valueSlot = ref methodContext.Peek();
 				var type = ResolveType(instruction.Operand, methodContext);
@@ -997,6 +967,41 @@ namespace Zexil.DotNet.Emulation.Emit {
 					valueSlot.I = 0;
 				break;
 			}
+			case Code.Unbox: {
+				ref var valueSlot = ref methodContext.Peek();
+#if DEBUG
+				System.Diagnostics.Debug.Assert(valueSlot.IsClass);
+#endif
+				valueSlot.I += sizeof(nint);
+				valueSlot.ElementType = ElementType.I;
+				break;
+			}
+			case Code.Box: {
+				ref var valueSlot = ref methodContext.Peek();
+				var type = ResolveType(instruction.Operand, methodContext);
+#if DEBUG
+				System.Diagnostics.Debug.Assert(valueSlot.IsValueType && IsValueTypeStackNormalized(type));
+#endif
+				nint source = GetValueTypeAddress(ref valueSlot);
+				valueSlot.I = Box(source, type, methodContext);
+				valueSlot.ElementType = ElementType.Class;
+				break;
+			}
+			case Code.Unbox_Any: {
+				ref var valueSlot = ref methodContext.Peek();
+				if (valueSlot.IsValueType) {
+					// we should use TypeDesc.IsValueType for properly implementing unbox.any, but for performance we use InterpreterSlot.IsValueType
+#if DEBUG
+					System.Diagnostics.Debug.Assert(!valueSlot.IsByRef && !valueSlot.IsTypedRef && IsValueTypeStackNormalized(ResolveType(instruction.Operand, methodContext)));
+#endif
+					valueSlot.I += sizeof(nint);
+					valueSlot.ElementType = ElementType.I;
+					goto case Code.Ldobj;
+				}
+				else {
+					goto case Code.Castclass;
+				}
+			}
 			case Code.Constrained: {
 				ref var addressSlot = ref methodContext.Peek();
 				var type = ResolveType(instruction.Operand, methodContext);
@@ -1010,39 +1015,12 @@ namespace Zexil.DotNet.Emulation.Emit {
 			#endregion
 
 			#region Conversion
-			case Code.Conv_I:
-			case Code.Conv_U: {
-				ref var valueSlot = ref methodContext.Peek();
-				switch (valueSlot.ElementType) {
-				case ElementType.I4:
-					ConvertI(ref valueSlot, valueSlot.I4);
-					break;
-				case ElementType.I8:
-					ConvertI(ref valueSlot, (nint)valueSlot.I8);
-					break;
-				case ElementType.I:
-					break;
-				case ElementType.ByRef:
-				case ElementType.Class:
-					ConvertI(ref valueSlot, valueSlot.I);
-					break;
-				case ElementType.R4:
-					ConvertI(ref valueSlot, (nint)valueSlot.R4);
-					break;
-				case ElementType.R8:
-					ConvertI(ref valueSlot, (nint)valueSlot.R8);
-					break;
-				default:
-					throw new InvalidProgramException("Illegal operand type for conv.* operation.");
-				}
-				break;
-			}
 			case Code.Conv_I1:
 			case Code.Conv_I2:
 			case Code.Conv_I4:
-			case Code.Conv_U1:
+			case Code.Conv_U4:
 			case Code.Conv_U2:
-			case Code.Conv_U4: {
+			case Code.Conv_U1: {
 				ref var valueSlot = ref methodContext.Peek();
 				switch (valueSlot.ElementType) {
 				case ElementType.I4:
@@ -1088,526 +1066,6 @@ namespace Zexil.DotNet.Emulation.Emit {
 					break;
 				default:
 					throw new InvalidProgramException("Illegal operand type for conv.* operation.");
-				}
-				break;
-			}
-			case Code.Conv_Ovf_I: {
-				ref var valueSlot = ref methodContext.Peek();
-				switch (valueSlot.ElementType) {
-				case ElementType.I4:
-					ConvertI(ref valueSlot, valueSlot.I4);
-					break;
-				case ElementType.I8:
-					ConvertI(ref valueSlot, checked((nint)valueSlot.I8));
-					break;
-				case ElementType.I:
-					break;
-				case ElementType.ByRef:
-				case ElementType.Class:
-					ConvertI(ref valueSlot, valueSlot.I);
-					break;
-				case ElementType.R4:
-					ConvertI(ref valueSlot, checked((nint)valueSlot.R4));
-					break;
-				case ElementType.R8:
-					ConvertI(ref valueSlot, checked((nint)valueSlot.R8));
-					break;
-				default:
-					throw new InvalidProgramException("Illegal operand type for conv.ovf.* operation.");
-				}
-				break;
-			}
-			case Code.Conv_Ovf_I_Un: {
-				ref var valueSlot = ref methodContext.Peek();
-				switch (valueSlot.ElementType) {
-				case ElementType.I4:
-					ConvertI(ref valueSlot, checked((nint)valueSlot.U4));
-					break;
-				case ElementType.I8:
-					ConvertI(ref valueSlot, checked((nint)valueSlot.U8));
-					break;
-				case ElementType.I:
-				case ElementType.ByRef:
-				case ElementType.Class:
-					ConvertI(ref valueSlot, checked((nint)valueSlot.U));
-					break;
-				case ElementType.R4:
-					ConvertI(ref valueSlot, checked((nint)valueSlot.R4));
-					break;
-				case ElementType.R8:
-					ConvertI(ref valueSlot, checked((nint)valueSlot.R8));
-					break;
-				default:
-					throw new InvalidProgramException("Illegal operand type for conv.ovf.*.un operation.");
-				}
-				break;
-			}
-			case Code.Conv_Ovf_I1: {
-				ref var valueSlot = ref methodContext.Peek();
-				switch (valueSlot.ElementType) {
-				case ElementType.I4:
-					ConvertI4(ref valueSlot, checked((sbyte)valueSlot.I4));
-					break;
-				case ElementType.I8:
-					ConvertI4(ref valueSlot, checked((sbyte)valueSlot.I8));
-					break;
-				case ElementType.I:
-				case ElementType.ByRef:
-				case ElementType.Class:
-					ConvertI4(ref valueSlot, checked((sbyte)valueSlot.I));
-					break;
-				case ElementType.R4:
-					ConvertI4(ref valueSlot, checked((sbyte)valueSlot.R4));
-					break;
-				case ElementType.R8:
-					ConvertI4(ref valueSlot, checked((sbyte)valueSlot.R8));
-					break;
-				default:
-					throw new InvalidProgramException("Illegal operand type for conv.ovf.* operation.");
-				}
-				break;
-			}
-			case Code.Conv_Ovf_I1_Un: {
-				ref var valueSlot = ref methodContext.Peek();
-				switch (valueSlot.ElementType) {
-				case ElementType.I4:
-					ConvertI4(ref valueSlot, checked((sbyte)valueSlot.U4));
-					break;
-				case ElementType.I8:
-					ConvertI4(ref valueSlot, checked((sbyte)valueSlot.U8));
-					break;
-				case ElementType.I:
-				case ElementType.ByRef:
-				case ElementType.Class:
-					ConvertI4(ref valueSlot, checked((sbyte)valueSlot.U));
-					break;
-				case ElementType.R4:
-					ConvertI4(ref valueSlot, checked((sbyte)valueSlot.R4));
-					break;
-				case ElementType.R8:
-					ConvertI4(ref valueSlot, checked((sbyte)valueSlot.R8));
-					break;
-				default:
-					throw new InvalidProgramException("Illegal operand type for conv.ovf.*.un operation.");
-				}
-				break;
-			}
-			case Code.Conv_Ovf_I2: {
-				ref var valueSlot = ref methodContext.Peek();
-				switch (valueSlot.ElementType) {
-				case ElementType.I4:
-					ConvertI4(ref valueSlot, checked((short)valueSlot.I4));
-					break;
-				case ElementType.I8:
-					ConvertI4(ref valueSlot, checked((short)valueSlot.I8));
-					break;
-				case ElementType.I:
-				case ElementType.ByRef:
-				case ElementType.Class:
-					ConvertI4(ref valueSlot, checked((short)valueSlot.I));
-					break;
-				case ElementType.R4:
-					ConvertI4(ref valueSlot, checked((short)valueSlot.R4));
-					break;
-				case ElementType.R8:
-					ConvertI4(ref valueSlot, checked((short)valueSlot.R8));
-					break;
-				default:
-					throw new InvalidProgramException("Illegal operand type for conv.ovf.* operation.");
-				}
-				break;
-			}
-			case Code.Conv_Ovf_I2_Un: {
-				ref var valueSlot = ref methodContext.Peek();
-				switch (valueSlot.ElementType) {
-				case ElementType.I4:
-					ConvertI4(ref valueSlot, checked((short)valueSlot.U4));
-					break;
-				case ElementType.I8:
-					ConvertI4(ref valueSlot, checked((short)valueSlot.U8));
-					break;
-				case ElementType.I:
-				case ElementType.ByRef:
-				case ElementType.Class:
-					ConvertI4(ref valueSlot, checked((short)valueSlot.U));
-					break;
-				case ElementType.R4:
-					ConvertI4(ref valueSlot, checked((short)valueSlot.R4));
-					break;
-				case ElementType.R8:
-					ConvertI4(ref valueSlot, checked((short)valueSlot.R8));
-					break;
-				default:
-					throw new InvalidProgramException("Illegal operand type for conv.ovf.*.un operation.");
-				}
-				break;
-			}
-			case Code.Conv_Ovf_I4: {
-				ref var valueSlot = ref methodContext.Peek();
-				switch (valueSlot.ElementType) {
-				case ElementType.I4:
-					break;
-				case ElementType.I8:
-					ConvertI4(ref valueSlot, checked((int)valueSlot.I8));
-					break;
-				case ElementType.I:
-				case ElementType.ByRef:
-				case ElementType.Class:
-					ConvertI4(ref valueSlot, checked((int)valueSlot.I));
-					break;
-				case ElementType.R4:
-					ConvertI4(ref valueSlot, checked((int)valueSlot.R4));
-					break;
-				case ElementType.R8:
-					ConvertI4(ref valueSlot, checked((int)valueSlot.R8));
-					break;
-				default:
-					throw new InvalidProgramException("Illegal operand type for conv.ovf.* operation.");
-				}
-				break;
-			}
-			case Code.Conv_Ovf_I4_Un: {
-				ref var valueSlot = ref methodContext.Peek();
-				switch (valueSlot.ElementType) {
-				case ElementType.I4:
-					ConvertI4(ref valueSlot, checked((int)valueSlot.U4));
-					break;
-				case ElementType.I8:
-					ConvertI4(ref valueSlot, checked((int)valueSlot.U8));
-					break;
-				case ElementType.I:
-				case ElementType.ByRef:
-				case ElementType.Class:
-					ConvertI4(ref valueSlot, checked((int)valueSlot.U));
-					break;
-				case ElementType.R4:
-					ConvertI4(ref valueSlot, checked((int)valueSlot.R4));
-					break;
-				case ElementType.R8:
-					ConvertI4(ref valueSlot, checked((int)valueSlot.R8));
-					break;
-				default:
-					throw new InvalidProgramException("Illegal operand type for conv.ovf.*.un operation.");
-				}
-				break;
-			}
-			case Code.Conv_Ovf_I8: {
-				ref var valueSlot = ref methodContext.Peek();
-				switch (valueSlot.ElementType) {
-				case ElementType.I4:
-					ConvertI8(ref valueSlot, valueSlot.I4);
-					break;
-				case ElementType.I8:
-					break;
-				case ElementType.I:
-				case ElementType.ByRef:
-				case ElementType.Class:
-					ConvertI8(ref valueSlot, valueSlot.I);
-					break;
-				case ElementType.R4:
-					ConvertI8(ref valueSlot, (int)checked((long)valueSlot.R4));
-					break;
-				case ElementType.R8:
-					ConvertI8(ref valueSlot, (int)checked((long)valueSlot.R8));
-					break;
-				default:
-					throw new InvalidProgramException("Illegal operand type for conv.ovf.* operation.");
-				}
-				break;
-			}
-			case Code.Conv_Ovf_I8_Un: {
-				ref var valueSlot = ref methodContext.Peek();
-				switch (valueSlot.ElementType) {
-				case ElementType.I4:
-					ConvertI8(ref valueSlot, valueSlot.U4);
-					break;
-				case ElementType.I8:
-					ConvertI8(ref valueSlot, (int)checked((long)valueSlot.U8));
-					break;
-				case ElementType.I:
-				case ElementType.ByRef:
-				case ElementType.Class:
-					ConvertI8(ref valueSlot, (int)checked((long)valueSlot.U));
-					break;
-				case ElementType.R4:
-					ConvertI8(ref valueSlot, (int)checked((long)valueSlot.R4));
-					break;
-				case ElementType.R8:
-					ConvertI8(ref valueSlot, (int)checked((long)valueSlot.R8));
-					break;
-				default:
-					throw new InvalidProgramException("Illegal operand type for conv.ovf.*.un operation.");
-				}
-				break;
-			}
-			case Code.Conv_Ovf_U: {
-				ref var valueSlot = ref methodContext.Peek();
-				switch (valueSlot.ElementType) {
-				case ElementType.I4:
-					ConvertI(ref valueSlot, (int)checked((nuint)valueSlot.I4));
-					break;
-				case ElementType.I8:
-					ConvertI(ref valueSlot, (int)checked((nuint)valueSlot.I8));
-					break;
-				case ElementType.I:
-				case ElementType.ByRef:
-				case ElementType.Class:
-					ConvertI(ref valueSlot, (int)checked((nuint)valueSlot.I));
-					break;
-				case ElementType.R4:
-					ConvertI(ref valueSlot, (int)checked((nuint)valueSlot.R4));
-					break;
-				case ElementType.R8:
-					ConvertI(ref valueSlot, (int)checked((nuint)valueSlot.R8));
-					break;
-				default:
-					throw new InvalidProgramException("Illegal operand type for conv.ovf.* operation.");
-				}
-				break;
-			}
-			case Code.Conv_Ovf_U_Un: {
-				ref var valueSlot = ref methodContext.Peek();
-				switch (valueSlot.ElementType) {
-				case ElementType.I4:
-					break;
-				case ElementType.I8:
-					ConvertI(ref valueSlot, (nint)checked((nuint)valueSlot.U8));
-					break;
-				case ElementType.I:
-					break;
-				case ElementType.ByRef:
-				case ElementType.Class:
-					ConvertI(ref valueSlot, (nint)valueSlot.U);
-					break;
-				case ElementType.R4:
-					ConvertI(ref valueSlot, (nint)checked((nuint)valueSlot.R4));
-					break;
-				case ElementType.R8:
-					ConvertI(ref valueSlot, (nint)checked((nuint)valueSlot.R8));
-					break;
-				default:
-					throw new InvalidProgramException("Illegal operand type for conv.ovf.*.un operation.");
-				}
-				break;
-			}
-			case Code.Conv_Ovf_U1: {
-				ref var valueSlot = ref methodContext.Peek();
-				switch (valueSlot.ElementType) {
-				case ElementType.I4:
-					ConvertI4(ref valueSlot, checked((byte)valueSlot.I4));
-					break;
-				case ElementType.I8:
-					ConvertI4(ref valueSlot, checked((byte)valueSlot.I8));
-					break;
-				case ElementType.I:
-				case ElementType.ByRef:
-				case ElementType.Class:
-					ConvertI4(ref valueSlot, checked((byte)valueSlot.I));
-					break;
-				case ElementType.R4:
-					ConvertI4(ref valueSlot, checked((byte)valueSlot.R4));
-					break;
-				case ElementType.R8:
-					ConvertI4(ref valueSlot, checked((byte)valueSlot.R8));
-					break;
-				default:
-					throw new InvalidProgramException("Illegal operand type for conv.ovf.* operation.");
-				}
-				break;
-			}
-			case Code.Conv_Ovf_U1_Un: {
-				ref var valueSlot = ref methodContext.Peek();
-				switch (valueSlot.ElementType) {
-				case ElementType.I4:
-					ConvertI4(ref valueSlot, checked((byte)valueSlot.U4));
-					break;
-				case ElementType.I8:
-					ConvertI4(ref valueSlot, checked((byte)valueSlot.U8));
-					break;
-				case ElementType.I:
-				case ElementType.ByRef:
-				case ElementType.Class:
-					ConvertI4(ref valueSlot, checked((byte)valueSlot.U));
-					break;
-				case ElementType.R4:
-					ConvertI4(ref valueSlot, checked((byte)valueSlot.R4));
-					break;
-				case ElementType.R8:
-					ConvertI4(ref valueSlot, checked((byte)valueSlot.R8));
-					break;
-				default:
-					throw new InvalidProgramException("Illegal operand type for conv.ovf.*.un operation.");
-				}
-				break;
-			}
-			case Code.Conv_Ovf_U2: {
-				ref var valueSlot = ref methodContext.Peek();
-				switch (valueSlot.ElementType) {
-				case ElementType.I4:
-					ConvertI4(ref valueSlot, checked((ushort)valueSlot.I4));
-					break;
-				case ElementType.I8:
-					ConvertI4(ref valueSlot, checked((ushort)valueSlot.I8));
-					break;
-				case ElementType.I:
-				case ElementType.ByRef:
-				case ElementType.Class:
-					ConvertI4(ref valueSlot, checked((ushort)valueSlot.I));
-					break;
-				case ElementType.R4:
-					ConvertI4(ref valueSlot, checked((ushort)valueSlot.R4));
-					break;
-				case ElementType.R8:
-					ConvertI4(ref valueSlot, checked((ushort)valueSlot.R8));
-					break;
-				default:
-					throw new InvalidProgramException("Illegal operand type for conv.ovf.* operation.");
-				}
-				break;
-			}
-			case Code.Conv_Ovf_U2_Un: {
-				ref var valueSlot = ref methodContext.Peek();
-				switch (valueSlot.ElementType) {
-				case ElementType.I4:
-					ConvertI4(ref valueSlot, checked((ushort)valueSlot.U4));
-					break;
-				case ElementType.I8:
-					ConvertI4(ref valueSlot, checked((ushort)valueSlot.U8));
-					break;
-				case ElementType.I:
-				case ElementType.ByRef:
-				case ElementType.Class:
-					ConvertI4(ref valueSlot, checked((ushort)valueSlot.U));
-					break;
-				case ElementType.R4:
-					ConvertI4(ref valueSlot, checked((ushort)valueSlot.R4));
-					break;
-				case ElementType.R8:
-					ConvertI4(ref valueSlot, checked((ushort)valueSlot.R8));
-					break;
-				default:
-					throw new InvalidProgramException("Illegal operand type for conv.ovf.*.un operation.");
-				}
-				break;
-			}
-			case Code.Conv_Ovf_U4: {
-				ref var valueSlot = ref methodContext.Peek();
-				switch (valueSlot.ElementType) {
-				case ElementType.I4:
-					ConvertI4(ref valueSlot, (int)checked((uint)valueSlot.I4));
-					break;
-				case ElementType.I8:
-					ConvertI4(ref valueSlot, (int)checked((uint)valueSlot.I8));
-					break;
-				case ElementType.I:
-				case ElementType.ByRef:
-				case ElementType.Class:
-					ConvertI4(ref valueSlot, (int)checked((uint)valueSlot.I));
-					break;
-				case ElementType.R4:
-					ConvertI4(ref valueSlot, (int)checked((uint)valueSlot.R4));
-					break;
-				case ElementType.R8:
-					ConvertI4(ref valueSlot, (int)checked((uint)valueSlot.R8));
-					break;
-				default:
-					throw new InvalidProgramException("Illegal operand type for conv.ovf.* operation.");
-				}
-				break;
-			}
-			case Code.Conv_Ovf_U4_Un: {
-				ref var valueSlot = ref methodContext.Peek();
-				switch (valueSlot.ElementType) {
-				case ElementType.I4:
-					break;
-				case ElementType.I8:
-					ConvertI4(ref valueSlot, (int)checked((uint)valueSlot.U8));
-					break;
-				case ElementType.I:
-				case ElementType.ByRef:
-				case ElementType.Class:
-					ConvertI4(ref valueSlot, (int)checked((uint)valueSlot.U));
-					break;
-				case ElementType.R4:
-					ConvertI4(ref valueSlot, (int)checked((uint)valueSlot.R4));
-					break;
-				case ElementType.R8:
-					ConvertI4(ref valueSlot, (int)checked((uint)valueSlot.R8));
-					break;
-				default:
-					throw new InvalidProgramException("Illegal operand type for conv.ovf.*.un operation.");
-				}
-				break;
-			}
-			case Code.Conv_Ovf_U8: {
-				ref var valueSlot = ref methodContext.Peek();
-				switch (valueSlot.ElementType) {
-				case ElementType.I4:
-					ConvertI8(ref valueSlot, (long)checked((ulong)valueSlot.I4));
-					break;
-				case ElementType.I8:
-					ConvertI8(ref valueSlot, (long)checked((ulong)valueSlot.I8));
-					break;
-				case ElementType.I:
-				case ElementType.ByRef:
-				case ElementType.Class:
-					ConvertI8(ref valueSlot, (long)checked((ulong)valueSlot.I));
-					break;
-				case ElementType.R4:
-					ConvertI8(ref valueSlot, (long)checked((ulong)valueSlot.R4));
-					break;
-				case ElementType.R8:
-					ConvertI8(ref valueSlot, (long)checked((ulong)valueSlot.R8));
-					break;
-				default:
-					throw new InvalidProgramException("Illegal operand type for conv.ovf.* operation.");
-				}
-				break;
-			}
-			case Code.Conv_Ovf_U8_Un: {
-				ref var valueSlot = ref methodContext.Peek();
-				switch (valueSlot.ElementType) {
-				case ElementType.I4:
-					ConvertI8(ref valueSlot, valueSlot.I4);
-					break;
-				case ElementType.I8:
-					break;
-				case ElementType.I:
-				case ElementType.ByRef:
-				case ElementType.Class:
-					ConvertI8(ref valueSlot, valueSlot.I);
-					break;
-				case ElementType.R4:
-					ConvertI8(ref valueSlot, (long)checked((ulong)valueSlot.R4));
-					break;
-				case ElementType.R8:
-					ConvertI8(ref valueSlot, (long)checked((ulong)valueSlot.R8));
-					break;
-				default:
-					throw new InvalidProgramException("Illegal operand type for conv.ovf.*.un operation.");
-				}
-				break;
-			}
-			case Code.Conv_R_Un: {
-				// see coreclr 'void Interpreter::ConvRUn()'
-				ref var valueSlot = ref methodContext.Peek();
-				switch (valueSlot.ElementType) {
-				case ElementType.I4:
-					ConvertR8(ref valueSlot, valueSlot.U4);
-					break;
-				case ElementType.I8:
-					ConvertR8(ref valueSlot, valueSlot.U8);
-					break;
-				case ElementType.I:
-					// roslyn doesn't emit conv.r.un for nuint
-					if (sizeof(nint) == 4)
-						goto case ElementType.I4;
-					else
-						goto case ElementType.I8;
-				case ElementType.R8:
-					break;
-				default:
-					throw new InvalidProgramException("Illegal operand type for conv.r.un operation.");
 				}
 				break;
 			}
@@ -1659,32 +1117,558 @@ namespace Zexil.DotNet.Emulation.Emit {
 				}
 				break;
 			}
+			case Code.Conv_R_Un: {
+				// see coreclr 'void Interpreter::ConvRUn()'
+				ref var valueSlot = ref methodContext.Peek();
+				switch (valueSlot.ElementType) {
+				case ElementType.I4:
+					ConvertR8(ref valueSlot, valueSlot.U4);
+					break;
+				case ElementType.I8:
+					ConvertR8(ref valueSlot, valueSlot.U8);
+					break;
+				case ElementType.I:
+					// roslyn doesn't emit conv.r.un for nuint
+					if (sizeof(nint) == 4)
+						goto case ElementType.I4;
+					else
+						goto case ElementType.I8;
+				case ElementType.R8:
+					break;
+				default:
+					throw new InvalidProgramException("Illegal operand type for conv.r.un operation.");
+				}
+				break;
+			}
+			case Code.Conv_Ovf_I1_Un: {
+				ref var valueSlot = ref methodContext.Peek();
+				switch (valueSlot.ElementType) {
+				case ElementType.I4:
+					ConvertI4(ref valueSlot, checked((sbyte)valueSlot.U4));
+					break;
+				case ElementType.I8:
+					ConvertI4(ref valueSlot, checked((sbyte)valueSlot.U8));
+					break;
+				case ElementType.I:
+				case ElementType.ByRef:
+				case ElementType.Class:
+					ConvertI4(ref valueSlot, checked((sbyte)valueSlot.U));
+					break;
+				case ElementType.R4:
+					ConvertI4(ref valueSlot, checked((sbyte)valueSlot.R4));
+					break;
+				case ElementType.R8:
+					ConvertI4(ref valueSlot, checked((sbyte)valueSlot.R8));
+					break;
+				default:
+					throw new InvalidProgramException("Illegal operand type for conv.ovf.*.un operation.");
+				}
+				break;
+			}
+			case Code.Conv_Ovf_I2_Un: {
+				ref var valueSlot = ref methodContext.Peek();
+				switch (valueSlot.ElementType) {
+				case ElementType.I4:
+					ConvertI4(ref valueSlot, checked((short)valueSlot.U4));
+					break;
+				case ElementType.I8:
+					ConvertI4(ref valueSlot, checked((short)valueSlot.U8));
+					break;
+				case ElementType.I:
+				case ElementType.ByRef:
+				case ElementType.Class:
+					ConvertI4(ref valueSlot, checked((short)valueSlot.U));
+					break;
+				case ElementType.R4:
+					ConvertI4(ref valueSlot, checked((short)valueSlot.R4));
+					break;
+				case ElementType.R8:
+					ConvertI4(ref valueSlot, checked((short)valueSlot.R8));
+					break;
+				default:
+					throw new InvalidProgramException("Illegal operand type for conv.ovf.*.un operation.");
+				}
+				break;
+			}
+			case Code.Conv_Ovf_I4_Un: {
+				ref var valueSlot = ref methodContext.Peek();
+				switch (valueSlot.ElementType) {
+				case ElementType.I4:
+					ConvertI4(ref valueSlot, checked((int)valueSlot.U4));
+					break;
+				case ElementType.I8:
+					ConvertI4(ref valueSlot, checked((int)valueSlot.U8));
+					break;
+				case ElementType.I:
+				case ElementType.ByRef:
+				case ElementType.Class:
+					ConvertI4(ref valueSlot, checked((int)valueSlot.U));
+					break;
+				case ElementType.R4:
+					ConvertI4(ref valueSlot, checked((int)valueSlot.R4));
+					break;
+				case ElementType.R8:
+					ConvertI4(ref valueSlot, checked((int)valueSlot.R8));
+					break;
+				default:
+					throw new InvalidProgramException("Illegal operand type for conv.ovf.*.un operation.");
+				}
+				break;
+			}
+			case Code.Conv_Ovf_I8_Un: {
+				ref var valueSlot = ref methodContext.Peek();
+				switch (valueSlot.ElementType) {
+				case ElementType.I4:
+					ConvertI8(ref valueSlot, valueSlot.U4);
+					break;
+				case ElementType.I8:
+					ConvertI8(ref valueSlot, (int)checked((long)valueSlot.U8));
+					break;
+				case ElementType.I:
+				case ElementType.ByRef:
+				case ElementType.Class:
+					ConvertI8(ref valueSlot, (int)checked((long)valueSlot.U));
+					break;
+				case ElementType.R4:
+					ConvertI8(ref valueSlot, (int)checked((long)valueSlot.R4));
+					break;
+				case ElementType.R8:
+					ConvertI8(ref valueSlot, (int)checked((long)valueSlot.R8));
+					break;
+				default:
+					throw new InvalidProgramException("Illegal operand type for conv.ovf.*.un operation.");
+				}
+				break;
+			}
+			case Code.Conv_Ovf_U1_Un: {
+				ref var valueSlot = ref methodContext.Peek();
+				switch (valueSlot.ElementType) {
+				case ElementType.I4:
+					ConvertI4(ref valueSlot, checked((byte)valueSlot.U4));
+					break;
+				case ElementType.I8:
+					ConvertI4(ref valueSlot, checked((byte)valueSlot.U8));
+					break;
+				case ElementType.I:
+				case ElementType.ByRef:
+				case ElementType.Class:
+					ConvertI4(ref valueSlot, checked((byte)valueSlot.U));
+					break;
+				case ElementType.R4:
+					ConvertI4(ref valueSlot, checked((byte)valueSlot.R4));
+					break;
+				case ElementType.R8:
+					ConvertI4(ref valueSlot, checked((byte)valueSlot.R8));
+					break;
+				default:
+					throw new InvalidProgramException("Illegal operand type for conv.ovf.*.un operation.");
+				}
+				break;
+			}
+			case Code.Conv_Ovf_U2_Un: {
+				ref var valueSlot = ref methodContext.Peek();
+				switch (valueSlot.ElementType) {
+				case ElementType.I4:
+					ConvertI4(ref valueSlot, checked((ushort)valueSlot.U4));
+					break;
+				case ElementType.I8:
+					ConvertI4(ref valueSlot, checked((ushort)valueSlot.U8));
+					break;
+				case ElementType.I:
+				case ElementType.ByRef:
+				case ElementType.Class:
+					ConvertI4(ref valueSlot, checked((ushort)valueSlot.U));
+					break;
+				case ElementType.R4:
+					ConvertI4(ref valueSlot, checked((ushort)valueSlot.R4));
+					break;
+				case ElementType.R8:
+					ConvertI4(ref valueSlot, checked((ushort)valueSlot.R8));
+					break;
+				default:
+					throw new InvalidProgramException("Illegal operand type for conv.ovf.*.un operation.");
+				}
+				break;
+			}
+			case Code.Conv_Ovf_U4_Un: {
+				ref var valueSlot = ref methodContext.Peek();
+				switch (valueSlot.ElementType) {
+				case ElementType.I4:
+					break;
+				case ElementType.I8:
+					ConvertI4(ref valueSlot, (int)checked((uint)valueSlot.U8));
+					break;
+				case ElementType.I:
+				case ElementType.ByRef:
+				case ElementType.Class:
+					ConvertI4(ref valueSlot, (int)checked((uint)valueSlot.U));
+					break;
+				case ElementType.R4:
+					ConvertI4(ref valueSlot, (int)checked((uint)valueSlot.R4));
+					break;
+				case ElementType.R8:
+					ConvertI4(ref valueSlot, (int)checked((uint)valueSlot.R8));
+					break;
+				default:
+					throw new InvalidProgramException("Illegal operand type for conv.ovf.*.un operation.");
+				}
+				break;
+			}
+			case Code.Conv_Ovf_U8_Un: {
+				ref var valueSlot = ref methodContext.Peek();
+				switch (valueSlot.ElementType) {
+				case ElementType.I4:
+					ConvertI8(ref valueSlot, valueSlot.I4);
+					break;
+				case ElementType.I8:
+					break;
+				case ElementType.I:
+				case ElementType.ByRef:
+				case ElementType.Class:
+					ConvertI8(ref valueSlot, valueSlot.I);
+					break;
+				case ElementType.R4:
+					ConvertI8(ref valueSlot, (long)checked((ulong)valueSlot.R4));
+					break;
+				case ElementType.R8:
+					ConvertI8(ref valueSlot, (long)checked((ulong)valueSlot.R8));
+					break;
+				default:
+					throw new InvalidProgramException("Illegal operand type for conv.ovf.*.un operation.");
+				}
+				break;
+			}
+			case Code.Conv_Ovf_I_Un: {
+				ref var valueSlot = ref methodContext.Peek();
+				switch (valueSlot.ElementType) {
+				case ElementType.I4:
+					ConvertI(ref valueSlot, checked((nint)valueSlot.U4));
+					break;
+				case ElementType.I8:
+					ConvertI(ref valueSlot, checked((nint)valueSlot.U8));
+					break;
+				case ElementType.I:
+				case ElementType.ByRef:
+				case ElementType.Class:
+					ConvertI(ref valueSlot, checked((nint)valueSlot.U));
+					break;
+				case ElementType.R4:
+					ConvertI(ref valueSlot, checked((nint)valueSlot.R4));
+					break;
+				case ElementType.R8:
+					ConvertI(ref valueSlot, checked((nint)valueSlot.R8));
+					break;
+				default:
+					throw new InvalidProgramException("Illegal operand type for conv.ovf.*.un operation.");
+				}
+				break;
+			}
+			case Code.Conv_Ovf_U_Un: {
+				ref var valueSlot = ref methodContext.Peek();
+				switch (valueSlot.ElementType) {
+				case ElementType.I4:
+					break;
+				case ElementType.I8:
+					ConvertI(ref valueSlot, (nint)checked((nuint)valueSlot.U8));
+					break;
+				case ElementType.I:
+					break;
+				case ElementType.ByRef:
+				case ElementType.Class:
+					ConvertI(ref valueSlot, (nint)valueSlot.U);
+					break;
+				case ElementType.R4:
+					ConvertI(ref valueSlot, (nint)checked((nuint)valueSlot.R4));
+					break;
+				case ElementType.R8:
+					ConvertI(ref valueSlot, (nint)checked((nuint)valueSlot.R8));
+					break;
+				default:
+					throw new InvalidProgramException("Illegal operand type for conv.ovf.*.un operation.");
+				}
+				break;
+			}
+			case Code.Conv_Ovf_I1: {
+				ref var valueSlot = ref methodContext.Peek();
+				switch (valueSlot.ElementType) {
+				case ElementType.I4:
+					ConvertI4(ref valueSlot, checked((sbyte)valueSlot.I4));
+					break;
+				case ElementType.I8:
+					ConvertI4(ref valueSlot, checked((sbyte)valueSlot.I8));
+					break;
+				case ElementType.I:
+				case ElementType.ByRef:
+				case ElementType.Class:
+					ConvertI4(ref valueSlot, checked((sbyte)valueSlot.I));
+					break;
+				case ElementType.R4:
+					ConvertI4(ref valueSlot, checked((sbyte)valueSlot.R4));
+					break;
+				case ElementType.R8:
+					ConvertI4(ref valueSlot, checked((sbyte)valueSlot.R8));
+					break;
+				default:
+					throw new InvalidProgramException("Illegal operand type for conv.ovf.* operation.");
+				}
+				break;
+			}
+			case Code.Conv_Ovf_U1: {
+				ref var valueSlot = ref methodContext.Peek();
+				switch (valueSlot.ElementType) {
+				case ElementType.I4:
+					ConvertI4(ref valueSlot, checked((byte)valueSlot.I4));
+					break;
+				case ElementType.I8:
+					ConvertI4(ref valueSlot, checked((byte)valueSlot.I8));
+					break;
+				case ElementType.I:
+				case ElementType.ByRef:
+				case ElementType.Class:
+					ConvertI4(ref valueSlot, checked((byte)valueSlot.I));
+					break;
+				case ElementType.R4:
+					ConvertI4(ref valueSlot, checked((byte)valueSlot.R4));
+					break;
+				case ElementType.R8:
+					ConvertI4(ref valueSlot, checked((byte)valueSlot.R8));
+					break;
+				default:
+					throw new InvalidProgramException("Illegal operand type for conv.ovf.* operation.");
+				}
+				break;
+			}
+			case Code.Conv_Ovf_I2: {
+				ref var valueSlot = ref methodContext.Peek();
+				switch (valueSlot.ElementType) {
+				case ElementType.I4:
+					ConvertI4(ref valueSlot, checked((short)valueSlot.I4));
+					break;
+				case ElementType.I8:
+					ConvertI4(ref valueSlot, checked((short)valueSlot.I8));
+					break;
+				case ElementType.I:
+				case ElementType.ByRef:
+				case ElementType.Class:
+					ConvertI4(ref valueSlot, checked((short)valueSlot.I));
+					break;
+				case ElementType.R4:
+					ConvertI4(ref valueSlot, checked((short)valueSlot.R4));
+					break;
+				case ElementType.R8:
+					ConvertI4(ref valueSlot, checked((short)valueSlot.R8));
+					break;
+				default:
+					throw new InvalidProgramException("Illegal operand type for conv.ovf.* operation.");
+				}
+				break;
+			}
+			case Code.Conv_Ovf_U2: {
+				ref var valueSlot = ref methodContext.Peek();
+				switch (valueSlot.ElementType) {
+				case ElementType.I4:
+					ConvertI4(ref valueSlot, checked((ushort)valueSlot.I4));
+					break;
+				case ElementType.I8:
+					ConvertI4(ref valueSlot, checked((ushort)valueSlot.I8));
+					break;
+				case ElementType.I:
+				case ElementType.ByRef:
+				case ElementType.Class:
+					ConvertI4(ref valueSlot, checked((ushort)valueSlot.I));
+					break;
+				case ElementType.R4:
+					ConvertI4(ref valueSlot, checked((ushort)valueSlot.R4));
+					break;
+				case ElementType.R8:
+					ConvertI4(ref valueSlot, checked((ushort)valueSlot.R8));
+					break;
+				default:
+					throw new InvalidProgramException("Illegal operand type for conv.ovf.* operation.");
+				}
+				break;
+			}
+			case Code.Conv_Ovf_I4: {
+				ref var valueSlot = ref methodContext.Peek();
+				switch (valueSlot.ElementType) {
+				case ElementType.I4:
+					break;
+				case ElementType.I8:
+					ConvertI4(ref valueSlot, checked((int)valueSlot.I8));
+					break;
+				case ElementType.I:
+				case ElementType.ByRef:
+				case ElementType.Class:
+					ConvertI4(ref valueSlot, checked((int)valueSlot.I));
+					break;
+				case ElementType.R4:
+					ConvertI4(ref valueSlot, checked((int)valueSlot.R4));
+					break;
+				case ElementType.R8:
+					ConvertI4(ref valueSlot, checked((int)valueSlot.R8));
+					break;
+				default:
+					throw new InvalidProgramException("Illegal operand type for conv.ovf.* operation.");
+				}
+				break;
+			}
+			case Code.Conv_Ovf_U4: {
+				ref var valueSlot = ref methodContext.Peek();
+				switch (valueSlot.ElementType) {
+				case ElementType.I4:
+					ConvertI4(ref valueSlot, (int)checked((uint)valueSlot.I4));
+					break;
+				case ElementType.I8:
+					ConvertI4(ref valueSlot, (int)checked((uint)valueSlot.I8));
+					break;
+				case ElementType.I:
+				case ElementType.ByRef:
+				case ElementType.Class:
+					ConvertI4(ref valueSlot, (int)checked((uint)valueSlot.I));
+					break;
+				case ElementType.R4:
+					ConvertI4(ref valueSlot, (int)checked((uint)valueSlot.R4));
+					break;
+				case ElementType.R8:
+					ConvertI4(ref valueSlot, (int)checked((uint)valueSlot.R8));
+					break;
+				default:
+					throw new InvalidProgramException("Illegal operand type for conv.ovf.* operation.");
+				}
+				break;
+			}
+			case Code.Conv_Ovf_I8: {
+				ref var valueSlot = ref methodContext.Peek();
+				switch (valueSlot.ElementType) {
+				case ElementType.I4:
+					ConvertI8(ref valueSlot, valueSlot.I4);
+					break;
+				case ElementType.I8:
+					break;
+				case ElementType.I:
+				case ElementType.ByRef:
+				case ElementType.Class:
+					ConvertI8(ref valueSlot, valueSlot.I);
+					break;
+				case ElementType.R4:
+					ConvertI8(ref valueSlot, (int)checked((long)valueSlot.R4));
+					break;
+				case ElementType.R8:
+					ConvertI8(ref valueSlot, (int)checked((long)valueSlot.R8));
+					break;
+				default:
+					throw new InvalidProgramException("Illegal operand type for conv.ovf.* operation.");
+				}
+				break;
+			}
+			case Code.Conv_Ovf_U8: {
+				ref var valueSlot = ref methodContext.Peek();
+				switch (valueSlot.ElementType) {
+				case ElementType.I4:
+					ConvertI8(ref valueSlot, (long)checked((ulong)valueSlot.I4));
+					break;
+				case ElementType.I8:
+					ConvertI8(ref valueSlot, (long)checked((ulong)valueSlot.I8));
+					break;
+				case ElementType.I:
+				case ElementType.ByRef:
+				case ElementType.Class:
+					ConvertI8(ref valueSlot, (long)checked((ulong)valueSlot.I));
+					break;
+				case ElementType.R4:
+					ConvertI8(ref valueSlot, (long)checked((ulong)valueSlot.R4));
+					break;
+				case ElementType.R8:
+					ConvertI8(ref valueSlot, (long)checked((ulong)valueSlot.R8));
+					break;
+				default:
+					throw new InvalidProgramException("Illegal operand type for conv.ovf.* operation.");
+				}
+				break;
+			}
+			case Code.Conv_I:
+			case Code.Conv_U: {
+				ref var valueSlot = ref methodContext.Peek();
+				switch (valueSlot.ElementType) {
+				case ElementType.I4:
+					ConvertI(ref valueSlot, valueSlot.I4);
+					break;
+				case ElementType.I8:
+					ConvertI(ref valueSlot, (nint)valueSlot.I8);
+					break;
+				case ElementType.I:
+					break;
+				case ElementType.ByRef:
+				case ElementType.Class:
+					ConvertI(ref valueSlot, valueSlot.I);
+					break;
+				case ElementType.R4:
+					ConvertI(ref valueSlot, (nint)valueSlot.R4);
+					break;
+				case ElementType.R8:
+					ConvertI(ref valueSlot, (nint)valueSlot.R8);
+					break;
+				default:
+					throw new InvalidProgramException("Illegal operand type for conv.* operation.");
+				}
+				break;
+			}
+			case Code.Conv_Ovf_I: {
+				ref var valueSlot = ref methodContext.Peek();
+				switch (valueSlot.ElementType) {
+				case ElementType.I4:
+					ConvertI(ref valueSlot, valueSlot.I4);
+					break;
+				case ElementType.I8:
+					ConvertI(ref valueSlot, checked((nint)valueSlot.I8));
+					break;
+				case ElementType.I:
+					break;
+				case ElementType.ByRef:
+				case ElementType.Class:
+					ConvertI(ref valueSlot, valueSlot.I);
+					break;
+				case ElementType.R4:
+					ConvertI(ref valueSlot, checked((nint)valueSlot.R4));
+					break;
+				case ElementType.R8:
+					ConvertI(ref valueSlot, checked((nint)valueSlot.R8));
+					break;
+				default:
+					throw new InvalidProgramException("Illegal operand type for conv.ovf.* operation.");
+				}
+				break;
+			}
+			case Code.Conv_Ovf_U: {
+				ref var valueSlot = ref methodContext.Peek();
+				switch (valueSlot.ElementType) {
+				case ElementType.I4:
+					ConvertI(ref valueSlot, (int)checked((nuint)valueSlot.I4));
+					break;
+				case ElementType.I8:
+					ConvertI(ref valueSlot, (int)checked((nuint)valueSlot.I8));
+					break;
+				case ElementType.I:
+				case ElementType.ByRef:
+				case ElementType.Class:
+					ConvertI(ref valueSlot, (int)checked((nuint)valueSlot.I));
+					break;
+				case ElementType.R4:
+					ConvertI(ref valueSlot, (int)checked((nuint)valueSlot.R4));
+					break;
+				case ElementType.R8:
+					ConvertI(ref valueSlot, (int)checked((nuint)valueSlot.R8));
+					break;
+				default:
+					throw new InvalidProgramException("Illegal operand type for conv.ovf.* operation.");
+				}
+				break;
+			}
 			#endregion
 
 			#region Assignment
-			case Code.Dup: {
-				ref var slot = ref methodContext.Peek();
-				methodContext.Push(slot);
-				break;
-			}
-			case Code.Pop: {
-				methodContext.Pop();
-				break;
-			}
-			case Code.Ldarg: {
-				int index = ResolveVariableIndex(instruction.Operand);
-				ref var valueSlot = ref methodContext.Arguments[index];
-				methodContext.Push(valueSlot);
-				break;
-			}
-			case Code.Ldarga: {
-				int index = ResolveVariableIndex(instruction.Operand);
-				ref var valueSlot = ref methodContext.Arguments[index];
-				var type = methodContext.ArgumentTypes[index];
-				if (IsValueTypeStackNormalized(type) && !IsSlotSatisfied(type)) // already pointer to value type
-					methodContext.PushI(valueSlot.I);
-				else // direct stored value type or reference type
-					methodContext.PushI((nint)Unsafe.AsPointer(ref valueSlot));
+			case Code.Ldnull: {
+				methodContext.Push(0, ElementType.Class);
 				break;
 			}
 			case Code.Ldc_I4: {
@@ -1703,34 +1687,13 @@ namespace Zexil.DotNet.Emulation.Emit {
 				methodContext.PushR8((double)instruction.Operand);
 				break;
 			}
-			case Code.Ldelem:
-			case Code.Ldelem_I:
-			case Code.Ldelem_I1:
-			case Code.Ldelem_I2:
-			case Code.Ldelem_I4:
-			case Code.Ldelem_I8:
-			case Code.Ldelem_R4:
-			case Code.Ldelem_R8:
-			case Code.Ldelem_Ref:
-			case Code.Ldelem_U1:
-			case Code.Ldelem_U2:
-			case Code.Ldelem_U4:
-			case Code.Ldelema:
-			case Code.Ldfld:
-			case Code.Ldflda:
-				throw new NotImplementedException();
-			case Code.Ldftn: {
-				var method = ResolveMethod(instruction.Operand, methodContext);
-				methodContext.PushI(method.GetMethodAddress());
+			case Code.Dup: {
+				ref var slot = ref methodContext.Peek();
+				methodContext.Push(slot);
 				break;
 			}
-			case Code.Ldind_I: {
-				ref var addressSlot = ref methodContext.Peek();
-#if DEBUG
-				System.Diagnostics.Debug.Assert(addressSlot.IsI || addressSlot.IsByRef);
-#endif
-				addressSlot.I = *(nint*)addressSlot.I;
-				addressSlot.ElementType = ElementType.I;
+			case Code.Pop: {
+				methodContext.Pop();
 				break;
 			}
 			case Code.Ldind_I1:
@@ -1772,6 +1735,15 @@ namespace Zexil.DotNet.Emulation.Emit {
 				addressSlot.ElementType = ElementType.I8;
 				break;
 			}
+			case Code.Ldind_I: {
+				ref var addressSlot = ref methodContext.Peek();
+#if DEBUG
+				System.Diagnostics.Debug.Assert(addressSlot.IsI || addressSlot.IsByRef);
+#endif
+				addressSlot.I = *(nint*)addressSlot.I;
+				addressSlot.ElementType = ElementType.I;
+				break;
+			}
 			case Code.Ldind_R4: {
 				ref var addressSlot = ref methodContext.Peek();
 #if DEBUG
@@ -1799,68 +1771,11 @@ namespace Zexil.DotNet.Emulation.Emit {
 				addressSlot.ElementType = ElementType.Class;
 				break;
 			}
-			case Code.Ldlen: {
-				ref var valueSlot = ref methodContext.Peek();
-#if DEBUG
-				System.Diagnostics.Debug.Assert(valueSlot.IsClass);
-#endif
-				valueSlot.I = *(nint*)(valueSlot.I + sizeof(nint));
-				valueSlot.ElementType = ElementType.I;
-				break;
-			}
-			case Code.Ldloc: {
-				int index = ResolveVariableIndex(instruction.Operand);
-				ref var valueSlot = ref methodContext.Locals[index];
-				methodContext.Push(valueSlot);
-				break;
-			}
-			case Code.Ldloca: {
-				int index = ResolveVariableIndex(instruction.Operand);
-				ref var valueSlot = ref methodContext.Locals[index];
-				var type = methodContext.LocalTypes[index];
-				if (IsValueTypeStackNormalized(type) && !IsSlotSatisfied(type)) // already pointer to value type
-					methodContext.PushI(valueSlot.I);
-				else // direct stored value type or reference type
-					methodContext.PushI((nint)Unsafe.AsPointer(ref valueSlot));
-				break;
-			}
-			case Code.Ldnull: {
-				methodContext.Push(0, ElementType.Class);
-				break;
-			}
-			case Code.Ldobj: {
-				ref var addressSlot = ref methodContext.Peek();
-				var type = ResolveType(instruction.Operand, methodContext);
-#if DEBUG
-				System.Diagnostics.Debug.Assert((addressSlot.IsI || addressSlot.IsByRef) && IsValueTypeStackNormalized(type));
-#endif
-				Ldobj(addressSlot.I, ref addressSlot, type, methodContext);
-				break;
-			}
-			case Code.Ldsfld:
-			case Code.Ldsflda:
-			case Code.Ldstr:
-			case Code.Ldtoken:
-			case Code.Ldvirtftn:
-			case Code.Newarr:
-			case Code.Newobj:
-			case Code.Starg:
-			case Code.Stelem:
-			case Code.Stelem_I:
-			case Code.Stelem_I1:
-			case Code.Stelem_I2:
-			case Code.Stelem_I4:
-			case Code.Stelem_I8:
-			case Code.Stelem_R4:
-			case Code.Stelem_R8:
-			case Code.Stelem_Ref:
-			case Code.Stfld:
-				throw new NotImplementedException();
-			case Code.Stind_I: {
+			case Code.Stind_Ref: {
 				ref var valueSlot = ref methodContext.Pop();
 				ref var addressSlot = ref methodContext.Pop();
 #if DEBUG
-				System.Diagnostics.Debug.Assert(valueSlot.IsI && (addressSlot.IsI || addressSlot.IsByRef));
+				System.Diagnostics.Debug.Assert(valueSlot.IsClass && (addressSlot.IsI || addressSlot.IsByRef));
 #endif
 				*(nint*)addressSlot.I = valueSlot.I;
 				break;
@@ -1919,21 +1834,31 @@ namespace Zexil.DotNet.Emulation.Emit {
 				*(double*)addressSlot.I = valueSlot.R8;
 				break;
 			}
-			case Code.Stind_Ref: {
-				ref var valueSlot = ref methodContext.Pop();
-				ref var addressSlot = ref methodContext.Pop();
+			case Code.Ldobj: {
+				ref var addressSlot = ref methodContext.Peek();
+				var type = ResolveType(instruction.Operand, methodContext);
 #if DEBUG
-				System.Diagnostics.Debug.Assert(valueSlot.IsClass && (addressSlot.IsI || addressSlot.IsByRef));
+				System.Diagnostics.Debug.Assert((addressSlot.IsI || addressSlot.IsByRef) && IsValueTypeStackNormalized(type));
 #endif
-				*(nint*)addressSlot.I = valueSlot.I;
+				Ldobj(addressSlot.I, ref addressSlot, type, methodContext);
 				break;
 			}
-			case Code.Stloc: {
-				ref var valueSlot = ref methodContext.Pop();
-				int index = ResolveVariableIndex(instruction.Operand);
-				methodContext.Locals[index] = valueSlot;
-				break;
-			}
+			case Code.Ldstr:
+				throw new NotImplementedException();
+			case Code.Newobj:
+				throw new NotImplementedException();
+			case Code.Ldfld:
+				throw new NotImplementedException();
+			case Code.Ldflda:
+				throw new NotImplementedException();
+			case Code.Stfld:
+				throw new NotImplementedException();
+			case Code.Ldsfld:
+				throw new NotImplementedException();
+			case Code.Ldsflda:
+				throw new NotImplementedException();
+			case Code.Stsfld:
+				throw new NotImplementedException();
 			case Code.Stobj: {
 				ref var valueSlot = ref methodContext.Pop();
 				ref var addressSlot = ref methodContext.Pop();
@@ -1945,28 +1870,122 @@ namespace Zexil.DotNet.Emulation.Emit {
 				CopyValueType(source, addressSlot.I, type);
 				break;
 			}
-			case Code.Stsfld:
+			case Code.Newarr:
 				throw new NotImplementedException();
+			case Code.Ldlen: {
+				ref var valueSlot = ref methodContext.Peek();
+#if DEBUG
+				System.Diagnostics.Debug.Assert(valueSlot.IsClass);
+#endif
+				valueSlot.I = *(nint*)(valueSlot.I + sizeof(nint));
+				valueSlot.ElementType = ElementType.I;
+				break;
+			}
+			case Code.Ldelema:
+				throw new NotImplementedException();
+			case Code.Ldelem_I1:
+				throw new NotImplementedException();
+			case Code.Ldelem_U1:
+				throw new NotImplementedException();
+			case Code.Ldelem_I2:
+				throw new NotImplementedException();
+			case Code.Ldelem_U2:
+				throw new NotImplementedException();
+			case Code.Ldelem_I4:
+				throw new NotImplementedException();
+			case Code.Ldelem_U4:
+				throw new NotImplementedException();
+			case Code.Ldelem_I8:
+				throw new NotImplementedException();
+			case Code.Ldelem_I:
+				throw new NotImplementedException();
+			case Code.Ldelem_R4:
+				throw new NotImplementedException();
+			case Code.Ldelem_R8:
+				throw new NotImplementedException();
+			case Code.Ldelem_Ref:
+				throw new NotImplementedException();
+			case Code.Stelem_I:
+				throw new NotImplementedException();
+			case Code.Stelem_I1:
+				throw new NotImplementedException();
+			case Code.Stelem_I2:
+				throw new NotImplementedException();
+			case Code.Stelem_I4:
+				throw new NotImplementedException();
+			case Code.Stelem_I8:
+				throw new NotImplementedException();
+			case Code.Stelem_R4:
+				throw new NotImplementedException();
+			case Code.Stelem_R8:
+				throw new NotImplementedException();
+			case Code.Stelem_Ref:
+				throw new NotImplementedException();
+			case Code.Ldelem:
+				throw new NotImplementedException();
+			case Code.Stelem:
+				throw new NotImplementedException();
+			case Code.Ldtoken:
+				throw new NotImplementedException();
+			case Code.Stind_I: {
+				ref var valueSlot = ref methodContext.Pop();
+				ref var addressSlot = ref methodContext.Pop();
+#if DEBUG
+				System.Diagnostics.Debug.Assert(valueSlot.IsI && (addressSlot.IsI || addressSlot.IsByRef));
+#endif
+				*(nint*)addressSlot.I = valueSlot.I;
+				break;
+			}
+			case Code.Ldftn: {
+				var method = ResolveMethod(instruction.Operand, methodContext);
+				methodContext.PushI(method.GetMethodAddress());
+				break;
+			}
+			case Code.Ldvirtftn:
+				throw new NotImplementedException();
+			case Code.Ldarg: {
+				int index = ResolveVariableIndex(instruction.Operand);
+				ref var valueSlot = ref methodContext.Arguments[index];
+				methodContext.Push(valueSlot);
+				break;
+			}
+			case Code.Ldarga: {
+				int index = ResolveVariableIndex(instruction.Operand);
+				ref var valueSlot = ref methodContext.Arguments[index];
+				var type = methodContext.ArgumentTypes[index];
+				if (IsValueTypeStackNormalized(type) && !IsSlotSatisfied(type)) // already pointer to value type
+					methodContext.PushI(valueSlot.I);
+				else // direct stored value type or reference type
+					methodContext.PushI((nint)Unsafe.AsPointer(ref valueSlot));
+				break;
+			}
+			case Code.Starg:
+				throw new NotImplementedException();
+			case Code.Ldloc: {
+				int index = ResolveVariableIndex(instruction.Operand);
+				ref var valueSlot = ref methodContext.Locals[index];
+				methodContext.Push(valueSlot);
+				break;
+			}
+			case Code.Ldloca: {
+				int index = ResolveVariableIndex(instruction.Operand);
+				ref var valueSlot = ref methodContext.Locals[index];
+				var type = methodContext.LocalTypes[index];
+				if (IsValueTypeStackNormalized(type) && !IsSlotSatisfied(type)) // already pointer to value type
+					methodContext.PushI(valueSlot.I);
+				else // direct stored value type or reference type
+					methodContext.PushI((nint)Unsafe.AsPointer(ref valueSlot));
+				break;
+			}
+			case Code.Stloc: {
+				ref var valueSlot = ref methodContext.Pop();
+				int index = ResolveVariableIndex(instruction.Operand);
+				methodContext.Locals[index] = valueSlot;
+				break;
+			}
 			#endregion
 
 			#region Branch
-			case Code.Beq:
-			case Code.Bge:
-			case Code.Bge_Un:
-			case Code.Bgt:
-			case Code.Bgt_Un:
-			case Code.Ble:
-			case Code.Ble_Un:
-			case Code.Blt:
-			case Code.Blt_Un:
-			case Code.Bne_Un:
-			case Code.Br:
-			case Code.Brfalse:
-			case Code.Brtrue:
-			case Code.Endfilter:
-			case Code.Endfinally:
-			case Code.Leave:
-				throw new NotImplementedException();
 			case Code.Ret: {
 				var method = methodContext.Method;
 				if (!method.HasReturnType)
@@ -1990,35 +2009,79 @@ namespace Zexil.DotNet.Emulation.Emit {
 				}
 				break;
 			}
-			case Code.Rethrow:
+			case Code.Br:
+				throw new NotImplementedException();
+			case Code.Brfalse:
+				throw new NotImplementedException();
+			case Code.Brtrue:
+				throw new NotImplementedException();
+			case Code.Beq:
+				throw new NotImplementedException();
+			case Code.Bge:
+				throw new NotImplementedException();
+			case Code.Bgt:
+				throw new NotImplementedException();
+			case Code.Ble:
+				throw new NotImplementedException();
+			case Code.Blt:
+				throw new NotImplementedException();
+			case Code.Bne_Un:
+				throw new NotImplementedException();
+			case Code.Bge_Un:
+				throw new NotImplementedException();
+			case Code.Bgt_Un:
+				throw new NotImplementedException();
+			case Code.Ble_Un:
+				throw new NotImplementedException();
+			case Code.Blt_Un:
+				throw new NotImplementedException();
 			case Code.Switch:
+				throw new NotImplementedException();
 			case Code.Throw:
+				throw new NotImplementedException();
+			case Code.Endfinally:
+				throw new NotImplementedException();
+			case Code.Leave:
+				throw new NotImplementedException();
+			case Code.Endfilter:
+				throw new NotImplementedException();
+			case Code.Rethrow:
 				throw new NotImplementedException();
 			#endregion
 
 			#region Calling
 			case Code.Call:
+				throw new NotImplementedException();
 			case Code.Calli:
+				throw new NotImplementedException();
 			case Code.Callvirt:
 				throw new NotImplementedException();
 			#endregion
 
 			#region Miscellaneous
-			case Code.Arglist:
-			case Code.Cpblk:
 			case Code.Cpobj:
-			case Code.Initblk:
-			case Code.Initobj:
-			case Code.Localloc:
-			case Code.Mkrefany:
-			case Code.Refanytype:
+				throw new NotImplementedException();
 			case Code.Refanyval:
+				throw new NotImplementedException();
+			case Code.Mkrefany:
+				throw new NotImplementedException();
+			case Code.Arglist:
+				throw new NotImplementedException();
+			case Code.Localloc:
+				throw new NotImplementedException();
+			case Code.Initobj:
+				throw new NotImplementedException();
+			case Code.Cpblk:
+				throw new NotImplementedException();
+			case Code.Initblk:
 				throw new NotImplementedException();
 			case Code.Sizeof: {
 				int size = ResolveType(instruction.Operand, methodContext).Size;
 				methodContext.PushI4(size);
 				break;
 			}
+			case Code.Refanytype:
+				throw new NotImplementedException();
 			#endregion
 
 			#region Skipped
