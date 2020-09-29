@@ -60,6 +60,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 		private InterpreterSlot* _stack;
 		private Stack<GCHandle> _handles;
 		private GCHandle _lastUsedHandle;
+		private bool _isConstrainedValueType;
 		private bool _isDisposed;
 
 		/// <summary>
@@ -127,8 +128,17 @@ namespace Zexil.DotNet.Emulation.Emit {
 		/// Last used object handle
 		/// </summary>
 		internal GCHandle LastUsedHandle {
+			[MethodImpl(MethodImplOptions.AggressiveInlining)]
 			get => _lastUsedHandle;
+			[MethodImpl(MethodImplOptions.AggressiveInlining)]
 			set => _lastUsedHandle = value;
+		}
+
+		internal bool IsConstrainedValueType {
+			[MethodImpl(MethodImplOptions.AggressiveInlining)]
+			get => _isConstrainedValueType;
+			[MethodImpl(MethodImplOptions.AggressiveInlining)]
+			set => _isConstrainedValueType = value;
 		}
 		#endregion
 
@@ -189,6 +199,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 			_context.ReleaseHandles(_handles);
 			_handles = null;
 			_lastUsedHandle = default;
+			_isConstrainedValueType = false;
 			_isDisposed = true;
 		}
 

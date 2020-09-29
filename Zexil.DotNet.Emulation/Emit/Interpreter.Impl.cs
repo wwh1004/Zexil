@@ -1008,9 +1008,14 @@ namespace Zexil.DotNet.Emulation.Emit {
 #if DEBUG
 				System.Diagnostics.Debug.Assert(addressSlot.IsI || addressSlot.IsByRef);
 #endif
-				// TODO
-				System.Diagnostics.Debug.Assert(false);
-				throw new NotImplementedException();
+				if (IsClassStackNormalized(type)) {
+					addressSlot.I = *(nint*)addressSlot.I;
+					SetAnnotatedElementType(ref addressSlot, type);
+				}
+				else {
+					methodContext.IsConstrainedValueType = true;
+				}
+				break;
 			}
 			#endregion
 
@@ -2401,7 +2406,6 @@ namespace Zexil.DotNet.Emulation.Emit {
 		#endregion
 
 		#region Miscellaneous
-		// TODO: Annotation is lost
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		private static nint PushObject(object value, InterpreterMethodContext methodContext) {
 			nint objectRef = PinObject(value, methodContext);
