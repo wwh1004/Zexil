@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using dnlib.DotNet;
@@ -2117,40 +2118,147 @@ namespace Zexil.DotNet.Emulation.Emit {
 				}
 				break;
 			}
-			case Code.Br:
-				throw new NotImplementedException();
-			case Code.Brfalse:
-				throw new NotImplementedException();
-			case Code.Brtrue:
-				throw new NotImplementedException();
-			case Code.Beq:
-				throw new NotImplementedException();
-			case Code.Bge:
-				throw new NotImplementedException();
-			case Code.Bgt:
-				throw new NotImplementedException();
-			case Code.Ble:
-				throw new NotImplementedException();
-			case Code.Blt:
-				throw new NotImplementedException();
-			case Code.Bne_Un:
-				throw new NotImplementedException();
-			case Code.Bge_Un:
-				throw new NotImplementedException();
-			case Code.Bgt_Un:
-				throw new NotImplementedException();
-			case Code.Ble_Un:
-				throw new NotImplementedException();
-			case Code.Blt_Un:
-				throw new NotImplementedException();
-			case Code.Switch:
-				throw new NotImplementedException();
-			case Code.Throw:
-				throw new NotImplementedException();
+			case Code.Br: {
+#if DEBUG
+				System.Diagnostics.Debug.Assert(methodContext.NextILOffset is null);
+#endif
+				methodContext.NextILOffset = ((Instruction)instruction.Operand).Offset;
+				break;
+			}
+			case Code.Brfalse: {
+#if DEBUG
+				System.Diagnostics.Debug.Assert(methodContext.NextILOffset is null);
+#endif
+				if ((byte)methodContext.Pop().I4 == 0)
+					methodContext.NextILOffset = ((Instruction)instruction.Operand).Offset;
+				break;
+			}
+			case Code.Brtrue: {
+#if DEBUG
+				System.Diagnostics.Debug.Assert(methodContext.NextILOffset is null);
+#endif
+				if ((byte)methodContext.Pop().I4 != 0)
+					methodContext.NextILOffset = ((Instruction)instruction.Operand).Offset;
+				break;
+			}
+			case Code.Beq: {
+				// The effect is the same as performing a ceq instruction followed by a brtrue branch to the specific target instruction.
+#if DEBUG
+				System.Diagnostics.Debug.Assert(methodContext.NextILOffset is null);
+#endif
+				if (Ceq(methodContext))
+					methodContext.NextILOffset = ((Instruction)instruction.Operand).Offset;
+				break;
+			}
+			case Code.Bge: {
+				// The effect is identical to performing a clt instruction (clt.un for floats) followed by a brfalse branch to the specific target instruction.
+#if DEBUG
+				System.Diagnostics.Debug.Assert(methodContext.NextILOffset is null);
+#endif
+				ref var v2 = ref methodContext.Peek();
+				if (!((!v2.IsR4 && !v2.IsR8) ? Clt(methodContext) : CltUn(methodContext)))
+					methodContext.NextILOffset = ((Instruction)instruction.Operand).Offset;
+				break;
+			}
+			case Code.Bgt: {
+				// The effect is identical to performing a cgt instruction followed by a brtrue branch to the specific target instruction.
+#if DEBUG
+				System.Diagnostics.Debug.Assert(methodContext.NextILOffset is null);
+#endif
+				if (Cgt(methodContext))
+					methodContext.NextILOffset = ((Instruction)instruction.Operand).Offset;
+				break;
+			}
+			case Code.Ble: {
+				// The effect is identical to performing a cgt instruction (cgt.un for floats) followed by a brfalse branch to the specific target instruction.
+#if DEBUG
+				System.Diagnostics.Debug.Assert(methodContext.NextILOffset is null);
+#endif
+				ref var v2 = ref methodContext.Peek();
+				if (!((!v2.IsR4 && !v2.IsR8) ? Cgt(methodContext) : CgtUn(methodContext)))
+					methodContext.NextILOffset = ((Instruction)instruction.Operand).Offset;
+				break;
+			}
+			case Code.Blt: {
+				// The effect is identical to performing a clt instruction followed by a brtrue branch to the specific target instruction.
+#if DEBUG
+				System.Diagnostics.Debug.Assert(methodContext.NextILOffset is null);
+#endif
+				if (Clt(methodContext))
+					methodContext.NextILOffset = ((Instruction)instruction.Operand).Offset;
+				break;
+			}
+			case Code.Bne_Un: {
+				// The effect is identical to performing a ceq instruction followed by a brfalse branch to the specific target instruction.
+#if DEBUG
+				System.Diagnostics.Debug.Assert(methodContext.NextILOffset is null);
+#endif
+				if (!Ceq(methodContext))
+					methodContext.NextILOffset = ((Instruction)instruction.Operand).Offset;
+				break;
+			}
+			case Code.Bge_Un: {
+				// The effect is identical to performing a clt.un instruction (clt for floats) followed by a brfalse branch to the specific target instruction.
+#if DEBUG
+				System.Diagnostics.Debug.Assert(methodContext.NextILOffset is null);
+#endif
+				ref var v2 = ref methodContext.Peek();
+				if (!((!v2.IsR4 && !v2.IsR8) ? CltUn(methodContext) : Clt(methodContext)))
+					methodContext.NextILOffset = ((Instruction)instruction.Operand).Offset;
+				break;
+			}
+			case Code.Bgt_Un: {
+				// The effect is identical to performing a cgt.un instruction followed by a brtrue branch to the specific target instruction.
+#if DEBUG
+				System.Diagnostics.Debug.Assert(methodContext.NextILOffset is null);
+#endif
+				ref var v2 = ref methodContext.Peek();
+				if (CgtUn(methodContext))
+					methodContext.NextILOffset = ((Instruction)instruction.Operand).Offset;
+				break;
+			}
+			case Code.Ble_Un: {
+				// The effect is identical to performing a cgt.un instruction (cgt for floats) followed by a brfalse branch to the specific target instruction.
+#if DEBUG
+				System.Diagnostics.Debug.Assert(methodContext.NextILOffset is null);
+#endif
+				ref var v2 = ref methodContext.Peek();
+				if (!((!v2.IsR4 && !v2.IsR8) ? CgtUn(methodContext) : Cgt(methodContext)))
+					methodContext.NextILOffset = ((Instruction)instruction.Operand).Offset;
+				break;
+			}
+			case Code.Blt_Un: {
+				// The effect is identical to performing a clt.un instruction followed by a brtrue branch to the specific target instruction.
+#if DEBUG
+				System.Diagnostics.Debug.Assert(methodContext.NextILOffset is null);
+#endif
+				ref var v2 = ref methodContext.Peek();
+				if (CltUn(methodContext))
+					methodContext.NextILOffset = ((Instruction)instruction.Operand).Offset;
+				break;
+			}
+			case Code.Switch: {
+				ref var valueSlot = ref methodContext.Pop();
+#if DEBUG
+				System.Diagnostics.Debug.Assert(valueSlot.IsI4 && methodContext.NextILOffset is null);
+#endif
+				int index = valueSlot.I4;
+				var targets = (IList<Instruction>)instruction.Operand;
+				if (index < 0 || index >= targets.Count)
+					break;
+				methodContext.NextILOffset = targets[index].Offset;
+				break;
+			}
+			case Code.Throw: {
+				object exception = PopObject(methodContext);
+				// Maybe not instance of System.Exception, do not cast it
+				throw Unsafe.As<object, Exception>(ref exception);
+			}
 			case Code.Endfinally:
 				throw new NotImplementedException();
 			case Code.Leave:
-				throw new NotImplementedException();
+				goto case Code.Br;
+			// TODO: implement exception handler
 			case Code.Endfilter:
 				throw new NotImplementedException();
 			case Code.Rethrow:

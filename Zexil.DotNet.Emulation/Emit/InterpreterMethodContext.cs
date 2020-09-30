@@ -61,6 +61,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 		private Stack<GCHandle> _handles;
 		private GCHandle _lastUsedHandle;
 		private bool _isConstrainedValueType;
+		private uint? _nextILOffset;
 		private bool _isDisposed;
 
 		/// <summary>
@@ -139,6 +140,14 @@ namespace Zexil.DotNet.Emulation.Emit {
 			get => _isConstrainedValueType;
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
 			set => _isConstrainedValueType = value;
+		}
+
+		/// <summary>
+		/// Instruction offset of explicit branch target if not null
+		/// </summary>
+		public uint? NextILOffset {
+			get => _nextILOffset;
+			set => _nextILOffset = value;
 		}
 		#endregion
 
