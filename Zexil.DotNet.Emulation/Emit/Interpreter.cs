@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using dnlib.DotNet;
 using dnlib.DotNet.Emit;
 
@@ -41,6 +43,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 		/// Creates method-irrelated context
 		/// </summary>
 		/// <returns></returns>
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public InterpreterMethodContext CreateMethodContext() {
 			var methodContext = new InterpreterMethodContext(_context);
 			methodContext.ResolveDynamicContext(null);
@@ -54,6 +57,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 		/// <param name="method"></param>
 		/// <param name="arguments"></param>
 		/// <returns></returns>
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public InterpreterMethodContext CreateMethodContext(ModuleDef moduleDef, MethodDesc method, params nint[] arguments) {
 			if (moduleDef is null)
 				throw new ArgumentNullException(nameof(moduleDef));
@@ -74,6 +78,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 		/// <param name="methodDef"></param>
 		/// <param name="arguments"></param>
 		/// <returns></returns>
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public InterpreterMethodContext CreateMethodContext(ModuleDef moduleDef, MethodDef methodDef, params nint[] arguments) {
 			if (moduleDef is null)
 				throw new ArgumentNullException(nameof(moduleDef));
@@ -102,6 +107,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 		/// <param name="methodDef"></param>
 		/// <param name="arguments"></param>
 		/// <returns></returns>
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public InterpreterMethodContext CreateMethodContext(ModuleDef moduleDef, MethodDesc method, MethodDef methodDef, params nint[] arguments) {
 			if (moduleDef is null)
 				throw new ArgumentNullException(nameof(moduleDef));
@@ -147,30 +153,38 @@ namespace Zexil.DotNet.Emulation.Emit {
 			var instructions = methodDef.Body.Instructions;
 			using var methodContext = CreateMethodContext(moduleDef, method, methodDef, arguments);
 			for (int i = 0; i < instructions.Count; i++) {
+			loop:
 				InterpretImpl(instructions[i], methodContext);
 				if (!(methodContext.NextILOffset is uint nextILOffset))
 					continue;
 
-				int nextIndex = -1;
-				uint currentILOffset = instructions[i].Offset;
-				int lo = 0;
-				int hi = 0 + instructions.Count - 1;
-				while (lo <= hi) {
-					int j = lo + ((hi - lo) >> 1);
-					int order = (int)instructions[j].Offset - (int)currentILOffset;
-					if (order == 0) {
-						nextIndex = j;
-						break;
-					}
-
-					if (order < 0)
-						lo = j + 1;
-					else
-						hi = j - 1;
-				}
-				if (nextIndex == -1)
-					throw new InvalidOperationException("Offsets of instructions are incorrect or branch target is not in instruction list");
+				i = FindNextIndex(instructions, nextILOffset);
+				methodContext.NextILOffset = null;
+				goto loop;
 			}
+		}
+
+		/// <summary>
+		/// Finds index of next instruction by <paramref name="nextILOffset"/>
+		/// </summary>
+		/// <param name="instructions"></param>
+		/// <param name="nextILOffset"></param>
+		/// <returns></returns>
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static int FindNextIndex(IList<Instruction> instructions, uint nextILOffset) {
+			int lo = 0;
+			int hi = 0 + instructions.Count - 1;
+			while (lo <= hi) {
+				int i = lo + ((hi - lo) >> 1);
+				int order = (int)instructions[i].Offset - (int)nextILOffset;
+				if (order == 0)
+					return i;
+				if (order < 0)
+					lo = i + 1;
+				else
+					hi = i - 1;
+			}
+			throw new InvalidOperationException("Offsets of instructions are incorrect or branch target is not in instruction list");
 		}
 
 		/// <inheritdoc />

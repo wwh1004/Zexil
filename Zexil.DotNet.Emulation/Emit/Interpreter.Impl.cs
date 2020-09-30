@@ -1145,7 +1145,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 					ConvertR8(ref valueSlot, valueSlot.I);
 					break;
 				case ElementType.R4:
-					ConvertR8(ref valueSlot, (float)valueSlot.R8);
+					ConvertR8(ref valueSlot, (float)valueSlot.R4);
 					break;
 				case ElementType.R8:
 					break;
@@ -2311,7 +2311,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 			#endregion
 
 			default:
-				throw new NotSupportedException($"{instruction} is not supported");
+				throw new NotSupportedException($"{instruction} is not supported, please call {nameof(CilBody.SimplifyMacros)}.");
 			}
 		}
 
