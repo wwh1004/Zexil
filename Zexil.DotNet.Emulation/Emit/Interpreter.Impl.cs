@@ -931,18 +931,50 @@ namespace Zexil.DotNet.Emulation.Emit {
 			#endregion
 
 			#region Comparison
-			case Code.Ckfinite:
-				throw new NotImplementedException();
-			case Code.Ceq:
-				throw new NotImplementedException();
-			case Code.Cgt:
-				throw new NotImplementedException();
-			case Code.Cgt_Un:
-				throw new NotImplementedException();
-			case Code.Clt:
-				throw new NotImplementedException();
-			case Code.Clt_Un:
-				throw new NotImplementedException();
+			case Code.Ckfinite: {
+				ref var valueSlot = ref methodContext.Peek();
+				switch (valueSlot.ElementType) {
+				case ElementType.R4:
+					if ((valueSlot.I4 & 0x7FFFFFFF) > 0x7F800000)
+						throw new OverflowException();
+					break;
+				case ElementType.R8:
+					if ((valueSlot.I8 & 0x7FFFFFFFFFFFFFFF) >= 0x7FF0000000000000)
+						throw new OverflowException();
+					break;
+				default:
+					throw new InvalidProgramException("CkFinite requires a floating-point value on the stack.");
+				}
+				// From CoreCLR:
+				// According to the ECMA spec, this should be an ArithmeticException; however,
+				// the JITs throw an OverflowException and consistency is top priority...
+				break;
+			}
+			case Code.Ceq: {
+				bool result = Ceq(methodContext);
+				methodContext.PushI4(result ? 1 : 0);
+				break;
+			}
+			case Code.Cgt: {
+				bool result = Cgt(methodContext);
+				methodContext.PushI4(result ? 1 : 0);
+				break;
+			}
+			case Code.Cgt_Un: {
+				bool result = CgtUn(methodContext);
+				methodContext.PushI4(result ? 1 : 0);
+				break;
+			}
+			case Code.Clt: {
+				bool result = Clt(methodContext);
+				methodContext.PushI4(result ? 1 : 0);
+				break;
+			}
+			case Code.Clt_Un: {
+				bool result = CltUn(methodContext);
+				methodContext.PushI4(result ? 1 : 0);
+				break;
+			}
 			#endregion
 
 			#region Casting
@@ -2326,6 +2358,301 @@ namespace Zexil.DotNet.Emulation.Emit {
 
 			default:
 				throw new InvalidProgramException();
+			}
+		}
+		#endregion
+
+		#region Comparison
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		private static bool Ceq(InterpreterMethodContext methodContext) {
+			ref var v2 = ref methodContext.Pop();
+			ref var v1 = ref methodContext.Pop();
+			switch (v1.ElementType) {
+			case ElementType.I4:
+				if (v2.IsI4)
+					return v1.I4 == v2.I4;
+				else if (v2.IsI8)
+					return v1.I4 == v2.I8;
+				else if (v2.IsI)
+					return v1.I4 == v2.I;
+				else if (v2.IsByRef)
+					return v1.I4 == v2.I;
+				else
+					throw new InvalidProgramException("Binary comparision operation: type mismatch.");
+			case ElementType.I8:
+				if (v2.IsI8)
+					return v1.I8 == v2.I8;
+				else if (v2.IsI4)
+					return v1.I8 == v2.I4;
+				else if (v2.IsI)
+					return v1.I8 == v2.I;
+				else if (v2.IsByRef)
+					return v1.I8 == v2.I;
+				else
+					throw new InvalidProgramException("Binary comparision operation: type mismatch.");
+			case ElementType.I:
+			case ElementType.ByRef:
+			case ElementType.Class:
+				if (v2.IsI)
+					return v1.I == v2.I;
+				else if (v2.IsByRef)
+					return v1.I == v2.I;
+				else if (v2.IsI4)
+					return v1.I == v2.I4;
+				else if (v2.IsI8)
+					return v1.I == v2.I8;
+				else
+					throw new InvalidProgramException("Binary comparision operation: type mismatch.");
+			case ElementType.R4:
+				if (v2.IsR4)
+					return v1.R4 == v2.R4;
+				else if (v2.IsR8)
+					return v1.R4 == v2.R8;
+				else
+					throw new InvalidProgramException("Binary comparision operation: type mismatch.");
+			case ElementType.R8:
+				if (v2.IsR8)
+					return v1.R8 == v2.R8;
+				else if (v2.IsR4)
+					return v1.R8 == v2.R4;
+				else
+					throw new InvalidProgramException("Binary comparision operation: type mismatch.");
+			default:
+				throw new InvalidProgramException("Binary comparision operation: type mismatch.");
+			}
+		}
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		private static bool Cgt(InterpreterMethodContext methodContext) {
+			ref var v2 = ref methodContext.Pop();
+			ref var v1 = ref methodContext.Pop();
+			switch (v1.ElementType) {
+			case ElementType.I4:
+				if (v2.IsI4)
+					return v1.I4 > v2.I4;
+				else if (v2.IsI8)
+					return v1.I4 > v2.I8;
+				else if (v2.IsI)
+					return v1.I4 > v2.I;
+				else if (v2.IsByRef)
+					return v1.I4 > v2.I;
+				else
+					throw new InvalidProgramException("Binary comparision operation: type mismatch.");
+			case ElementType.I8:
+				if (v2.IsI8)
+					return v1.I8 > v2.I8;
+				else if (v2.IsI4)
+					return v1.I8 > v2.I4;
+				else if (v2.IsI)
+					return v1.I8 > v2.I;
+				else if (v2.IsByRef)
+					return v1.I8 > v2.I;
+				else
+					throw new InvalidProgramException("Binary comparision operation: type mismatch.");
+			case ElementType.I:
+			case ElementType.ByRef:
+				if (v2.IsI)
+					return v1.I > v2.I;
+				else if (v2.IsByRef)
+					return v1.I > v2.I;
+				else if (v2.IsI4)
+					return v1.I > v2.I4;
+				else if (v2.IsI8)
+					return v1.I > v2.I8;
+				else
+					throw new InvalidProgramException("Binary comparision operation: type mismatch.");
+			case ElementType.R4:
+				if (v2.IsR4)
+					return v1.R4 > v2.R4;
+				else if (v2.IsR8)
+					return v1.R4 > v2.R8;
+				else
+					throw new InvalidProgramException("Binary comparision operation: type mismatch.");
+			case ElementType.R8:
+				if (v2.IsR8)
+					return v1.R8 > v2.R8;
+				else if (v2.IsR4)
+					return v1.R8 > v2.R4;
+				else
+					throw new InvalidProgramException("Binary comparision operation: type mismatch.");
+			default:
+				throw new InvalidProgramException("Binary comparision operation: type mismatch.");
+			}
+		}
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		private static bool CgtUn(InterpreterMethodContext methodContext) {
+			ref var v2 = ref methodContext.Pop();
+			ref var v1 = ref methodContext.Pop();
+			switch (v1.ElementType) {
+			case ElementType.I4:
+				if (v2.IsI4)
+					return v1.U4 > v2.U4;
+				else if (v2.IsI8)
+					return v1.U4 > v2.U8;
+				else if (v2.IsI)
+					return v1.U4 > v2.U;
+				else if (v2.IsByRef)
+					return v1.U4 > v2.U;
+				else
+					throw new InvalidProgramException("Binary comparision operation: type mismatch.");
+			case ElementType.I8:
+				if (v2.IsI8)
+					return v1.U8 > v2.U8;
+				else if (v2.IsI4)
+					return v1.U8 > v2.U4;
+				else if (v2.IsI)
+					return v1.U8 > v2.U;
+				else if (v2.IsByRef)
+					return v1.U8 > v2.U;
+				else
+					throw new InvalidProgramException("Binary comparision operation: type mismatch.");
+			case ElementType.I:
+			case ElementType.ByRef:
+			case ElementType.Class:
+				// see coreclr interpreter implementation or https://stackoverflow.com/questions/28781839/why-does-the-c-sharp-compiler-translate-this-comparison-as-if-it-were-a-com
+				if (v2.IsI)
+					return v1.U > v2.U;
+				else if (v2.IsByRef)
+					return v1.U > v2.U;
+				else if (v2.IsI4)
+					return v1.U > v2.U4;
+				else if (v2.IsI8)
+					return v1.U > v2.U8;
+				else
+					throw new InvalidProgramException("Binary comparision operation: type mismatch.");
+			case ElementType.R4:
+				if (v2.IsR4)
+					return !(v1.R4 <= v2.R4);
+				else if (v2.IsR8)
+					return !(v1.R4 <= v2.R8);
+				else
+					throw new InvalidProgramException("Binary comparision operation: type mismatch.");
+			case ElementType.R8:
+				if (v2.IsR8)
+					return !(v1.R8 <= v2.R8);
+				else if (v2.IsR4)
+					return !(v1.R8 <= v2.R4);
+				else
+					throw new InvalidProgramException("Binary comparision operation: type mismatch.");
+			default:
+				throw new InvalidProgramException("Binary comparision operation: type mismatch.");
+			}
+		}
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		private static bool Clt(InterpreterMethodContext methodContext) {
+			ref var v2 = ref methodContext.Pop();
+			ref var v1 = ref methodContext.Pop();
+			switch (v1.ElementType) {
+			case ElementType.I4:
+				if (v2.IsI4)
+					return v1.I4 < v2.I4;
+				else if (v2.IsI8)
+					return v1.I4 < v2.I8;
+				else if (v2.IsI)
+					return v1.I4 < v2.I;
+				else if (v2.IsByRef)
+					return v1.I4 < v2.I;
+				else
+					throw new InvalidProgramException("Binary comparision operation: type mismatch.");
+			case ElementType.I8:
+				if (v2.IsI8)
+					return v1.I8 < v2.I8;
+				else if (v2.IsI4)
+					return v1.I8 < v2.I4;
+				else if (v2.IsI)
+					return v1.I8 < v2.I;
+				else if (v2.IsByRef)
+					return v1.I8 < v2.I;
+				else
+					throw new InvalidProgramException("Binary comparision operation: type mismatch.");
+			case ElementType.I:
+			case ElementType.ByRef:
+				if (v2.IsI)
+					return v1.I < v2.I;
+				else if (v2.IsByRef)
+					return v1.I < v2.I;
+				else if (v2.IsI4)
+					return v1.I < v2.I4;
+				else if (v2.IsI8)
+					return v1.I < v2.I8;
+				else
+					throw new InvalidProgramException("Binary comparision operation: type mismatch.");
+			case ElementType.R4:
+				if (v2.IsR4)
+					return v1.R4 < v2.R4;
+				else if (v2.IsR8)
+					return v1.R4 < v2.R8;
+				else
+					throw new InvalidProgramException("Binary comparision operation: type mismatch.");
+			case ElementType.R8:
+				if (v2.IsR8)
+					return v1.R8 < v2.R8;
+				else if (v2.IsR4)
+					return v1.R8 < v2.R4;
+				else
+					throw new InvalidProgramException("Binary comparision operation: type mismatch.");
+			default:
+				throw new InvalidProgramException("Binary comparision operation: type mismatch.");
+			}
+		}
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		private static bool CltUn(InterpreterMethodContext methodContext) {
+			ref var v2 = ref methodContext.Pop();
+			ref var v1 = ref methodContext.Pop();
+			switch (v1.ElementType) {
+			case ElementType.I4:
+				if (v2.IsI4)
+					return v1.U4 < v2.U4;
+				else if (v2.IsI8)
+					return v1.U4 < v2.U8;
+				else if (v2.IsI)
+					return v1.U4 < v2.U;
+				else if (v2.IsByRef)
+					return v1.U4 < v2.U;
+				else
+					throw new InvalidProgramException("Binary comparision operation: type mismatch.");
+			case ElementType.I8:
+				if (v2.IsI8)
+					return v1.U8 < v2.U8;
+				else if (v2.IsI4)
+					return v1.U8 < v2.U4;
+				else if (v2.IsI)
+					return v1.U8 < v2.U;
+				else if (v2.IsByRef)
+					return v1.U8 < v2.U;
+				else
+					throw new InvalidProgramException("Binary comparision operation: type mismatch.");
+			case ElementType.I:
+			case ElementType.ByRef:
+				if (v2.IsI)
+					return v1.U < v2.U;
+				else if (v2.IsByRef)
+					return v1.U < v2.U;
+				else if (v2.IsI4)
+					return v1.U < v2.U4;
+				else if (v2.IsI8)
+					return v1.U < v2.U8;
+				else
+					throw new InvalidProgramException("Binary comparision operation: type mismatch.");
+			case ElementType.R4:
+				if (v2.IsR4)
+					return !(v1.R4 >= v2.R4);
+				else if (v2.IsR8)
+					return !(v1.R4 >= v2.R8);
+				else
+					throw new InvalidProgramException("Binary comparision operation: type mismatch.");
+			case ElementType.R8:
+				if (v2.IsR8)
+					return !(v1.R8 >= v2.R8);
+				else if (v2.IsR4)
+					return !(v1.R8 >= v2.R4);
+				else
+					throw new InvalidProgramException("Binary comparision operation: type mismatch.");
+			default:
+				throw new InvalidProgramException("Binary comparision operation: type mismatch.");
 			}
 		}
 		#endregion
