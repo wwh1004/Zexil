@@ -1,3 +1,4 @@
+using System;
 using System.Runtime.CompilerServices;
 
 namespace Zexil.DotNet.Emulation.Emit {
@@ -189,6 +190,20 @@ namespace Zexil.DotNet.Emulation.Emit {
 		public bool IsTypedRef {
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
 			get => ElementType == ElementType.TypedByRef;
+		}
+
+		/// <inheritdoc />
+		public override string ToString() {
+			return ElementType switch
+			{
+				ElementType.I4 => $"{ElementType}, {Annotation}, 0x{I4:X4}, {I4}",
+				ElementType.I8 or ElementType.ValueArray => $"{ElementType}, {Annotation}, 0x{I8:X8}, {I8}",
+				ElementType.I or ElementType.ByRef or ElementType.Class => $"{ElementType}, {Annotation}, 0x{(sizeof(nint) == 4 ? I4.ToString("X4") : I8.ToString("X16"))}, {I}",
+				ElementType.R4 => $"{ElementType}, {Annotation}, {R4}",
+				ElementType.R8 => $"{ElementType}, {Annotation}, {R8}",
+				_ => throw new InvalidOperationException(),
+			};
+			// TODO: supports typedref
 		}
 	}
 }

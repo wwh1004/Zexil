@@ -165,6 +165,8 @@ namespace Zexil.DotNet.Emulation.Emit {
 			for (int i = 0; i < instructions.Count; i++) {
 			loop:
 				InterpretImpl(instructions[i], methodContext);
+				if (methodContext.IsReturned)
+					break;
 				if (!(methodContext.NextILOffset is uint nextILOffset))
 					continue;
 

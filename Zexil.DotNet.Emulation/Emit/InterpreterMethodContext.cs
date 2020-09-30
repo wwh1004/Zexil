@@ -63,6 +63,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 		private List<nint> _stackAlloceds;
 		private bool _isConstrainedValueType;
 		private uint? _nextILOffset;
+		private bool _isReturned;
 		private bool _isDisposed;
 
 		/// <summary>
@@ -157,6 +158,16 @@ namespace Zexil.DotNet.Emulation.Emit {
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
 			set => _nextILOffset = value;
 		}
+
+		/// <summary>
+		/// Whether ret instruction was executed
+		/// </summary>
+		public bool IsReturned {
+			[MethodImpl(MethodImplOptions.AggressiveInlining)]
+			get => _isReturned;
+			[MethodImpl(MethodImplOptions.AggressiveInlining)]
+			internal set => _isReturned = value;
+		}
 		#endregion
 
 		/// <summary>
@@ -222,6 +233,8 @@ namespace Zexil.DotNet.Emulation.Emit {
 			_context.ReleaseStackAlloceds(_stackAlloceds);
 			_stackAlloceds = null;
 			_isConstrainedValueType = false;
+			_nextILOffset = null;
+			_isReturned = false;
 			_isDisposed = true;
 		}
 
@@ -349,7 +362,13 @@ namespace Zexil.DotNet.Emulation.Emit {
 		/// <returns></returns>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public ref InterpreterSlot Peek() {
+#if DEBUG
+			if (_stack < _stackBase || _stack >= _stackBase + InterpreterContext.StackSize)
+				throw new OutOfMemoryException();
 			return ref *_stack;
+#else
+			return ref *_stack;
+#endif
 		}
 
 		/// <summary>
@@ -367,6 +386,32 @@ namespace Zexil.DotNet.Emulation.Emit {
 #else
 			return ref _stack[index];
 #endif
+		}
+
+		/// <summary>
+		/// Peeks all value on stack from stack top to bottom
+		/// </summary>
+		/// <returns></returns>
+		public IEnumerable<InterpreterSlot> PeekAll() {
+			int stackSize = (int)InterpreterContext.StackSize * Unsafe.SizeOf<InterpreterSlot>();
+			nint stackTop = GetStackBase() + stackSize;
+			nint stack = GetStack();
+			nint bytesLeft = stackTop - stack;
+			int length = (int)bytesLeft / Unsafe.SizeOf<InterpreterSlot>();
+			for (int i = 0; i < length; i++)
+				yield return GetSlot(i);
+
+			nint GetStackBase() {
+				return (nint)_stackBase;
+			}
+
+			nint GetStack() {
+				return (nint)_stack;
+			}
+
+			InterpreterSlot GetSlot(int index) {
+				return _stack[index];
+			}
 		}
 		#endregion
 

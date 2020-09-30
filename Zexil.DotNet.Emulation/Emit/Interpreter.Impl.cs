@@ -1917,8 +1917,8 @@ namespace Zexil.DotNet.Emulation.Emit {
 #if DEBUG
 				System.Diagnostics.Debug.Assert(valueSlot.IsClass);
 #endif
-				valueSlot.I = *(nint*)(valueSlot.I + sizeof(nint));
-				valueSlot.ElementType = ElementType.I;
+				nint length = *(nint*)(valueSlot.I + sizeof(nint));
+				ConvertI(ref valueSlot, length);
 				break;
 			}
 			case Code.Ldelema: {
@@ -2143,6 +2143,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 #endif
 					*(nint*)returnBuffer = slot.I;
 				}
+				methodContext.IsReturned = true;
 				break;
 			}
 			case Code.Br: {
@@ -3030,7 +3031,8 @@ namespace Zexil.DotNet.Emulation.Emit {
 			var handle = GCHandle.Alloc(value, GCHandleType.Pinned);
 			methodContext.Handles.Push(handle);
 			methodContext.LastUsedHandle = handle;
-			return handle.AddrOfPinnedObject();
+			// do NOT use GCHandle.AddrOfPinnedObject, it may not return object reference (e.g. for array type it will skip some bytes)
+			return Unsafe.As<object, nint>(ref value);
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
