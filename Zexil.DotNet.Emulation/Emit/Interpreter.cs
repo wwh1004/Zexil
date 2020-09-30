@@ -12,6 +12,9 @@ namespace Zexil.DotNet.Emulation.Emit {
 	/// </summary>
 	public sealed partial class Interpreter : IInterpreter, IDisposable {
 		private readonly InterpreterContext _context;
+		private readonly TypeDesc _typeDescOfRuntimeTypeHandle;
+		private readonly TypeDesc _typeDescOfRuntimeMethodHandle;
+		private readonly TypeDesc _typeDescOfRuntimeFieldHandle;
 		private Func<ModuleDesc, ModuleDef> _resolveModuleDef;
 		private InterpretFromStubHandler _interpretFromStubUser;
 		private bool _isDisposed;
@@ -20,6 +23,11 @@ namespace Zexil.DotNet.Emulation.Emit {
 		/// Interpreter context
 		/// </summary>
 		public InterpreterContext Context => _context;
+
+		/// <summary>
+		/// Bound execution engine
+		/// </summary>
+		public ExecutionEngine ExecutionEngine => _context.ExecutionEngine;
 
 		/// <summary>
 		/// Resolves a <see cref="ModuleDef"/> instance by <see cref="ModuleDesc"/>
@@ -37,6 +45,9 @@ namespace Zexil.DotNet.Emulation.Emit {
 
 		internal Interpreter(ExecutionEngine executionEngine) {
 			_context = new InterpreterContext(executionEngine);
+			_typeDescOfRuntimeTypeHandle = executionEngine.ResolveType(typeof(RuntimeTypeHandle));
+			_typeDescOfRuntimeMethodHandle = executionEngine.ResolveType(typeof(RuntimeMethodHandle));
+			_typeDescOfRuntimeFieldHandle = executionEngine.ResolveType(typeof(RuntimeFieldHandle));
 		}
 
 		/// <summary>
@@ -89,8 +100,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 			if (arguments is null)
 				throw new ArgumentNullException(nameof(arguments));
 
-			var eeContext = _context.ExecutionEngine.Context;
-			var module = eeContext.Modules.FirstOrDefault(t => t.ScopeName == moduleDef.ScopeName && t.Assembly.FullName == moduleDef.Assembly.FullName);
+			var module = ExecutionEngine.Context.Modules.FirstOrDefault(t => t.ScopeName == moduleDef.ScopeName && t.Assembly.FullName == moduleDef.Assembly.FullName);
 			if (module is null)
 				throw new InvalidOperationException("Specified module isn't loaded.");
 			var method = module.ResolveMethod(methodDef.MDToken.ToInt32());

@@ -1880,10 +1880,10 @@ namespace Zexil.DotNet.Emulation.Emit {
 				Ldobj(addressSlot.I, ref addressSlot, type, methodContext);
 				break;
 			}
-			case Code.Ldstr:
-				throw new NotImplementedException();
-			case Code.Newobj:
-				throw new NotImplementedException();
+			case Code.Ldstr: {
+				PushObject(instruction.Operand, methodContext);
+				break;
+			}
 			case Code.Ldfld:
 				throw new NotImplementedException();
 			case Code.Ldflda:
@@ -1906,8 +1906,12 @@ namespace Zexil.DotNet.Emulation.Emit {
 				Stobj(ref valueSlot, addressSlot.I, type);
 				break;
 			}
-			case Code.Newarr:
-				throw new NotImplementedException();
+			case Code.Newarr: {
+				ref var valueSlot = ref methodContext.Pop();
+				object array = Array.CreateInstance(ResolveType(instruction.Operand, methodContext).ReflType, valueSlot.I4);
+				PushObject(array, methodContext);
+				break;
+			}
 			case Code.Ldlen: {
 				ref var valueSlot = ref methodContext.Peek();
 #if DEBUG
@@ -2031,8 +2035,31 @@ namespace Zexil.DotNet.Emulation.Emit {
 				SetAny(ref valueSlot, address, type);
 				break;
 			}
-			case Code.Ldtoken:
-				throw new NotImplementedException();
+			case Code.Ldtoken: {
+				var memberRef = (IMemberRef)instruction.Operand;
+				if (memberRef.IsType) {
+					var type = ResolveType(instruction.Operand, methodContext);
+					var typeHandle = type.ReflType.TypeHandle;
+					nint pTypeHandle = (nint)Unsafe.AsPointer(ref typeHandle);
+					Ldobj(pTypeHandle, ref methodContext.Push(), _typeDescOfRuntimeTypeHandle, methodContext);
+				}
+				else if (memberRef.IsMethod) {
+					var method = ResolveMethod(instruction.Operand, methodContext);
+					var methodHandle = method.ReflMethod.MethodHandle;
+					nint pMethodHandle = (nint)Unsafe.AsPointer(ref methodHandle);
+					Ldobj(pMethodHandle, ref methodContext.Push(), _typeDescOfRuntimeMethodHandle, methodContext);
+				}
+				else {
+#if DEBUG
+					System.Diagnostics.Debug.Assert(memberRef.IsField);
+#endif
+					var field = ResolveField(instruction.Operand, methodContext);
+					var fieldHandle = field.ReflField.FieldHandle;
+					nint pFieldHandle = (nint)Unsafe.AsPointer(ref fieldHandle);
+					Ldobj(pFieldHandle, ref methodContext.Push(), _typeDescOfRuntimeFieldHandle, methodContext);
+				}
+				break;
+			}
 			case Code.Stind_I: {
 				ref var valueSlot = ref methodContext.Pop();
 				ref var addressSlot = ref methodContext.Pop();
@@ -2272,25 +2299,63 @@ namespace Zexil.DotNet.Emulation.Emit {
 				throw new NotImplementedException();
 			case Code.Callvirt:
 				throw new NotImplementedException();
+			case Code.Newobj:
+				throw new NotImplementedException();
 			#endregion
 
 			#region Miscellaneous
-			case Code.Cpobj:
-				throw new NotImplementedException();
+			case Code.Cpobj: {
+				ref var sourceSlot = ref methodContext.Pop();
+				ref var destinationSlot = ref methodContext.Pop();
+				var type = ResolveType(instruction.Operand, methodContext);
+				if (IsClassStackNormalized(type))
+					*(nint*)destinationSlot.I = *(nint*)sourceSlot.I;
+				else
+					CopyValueType(sourceSlot.I, destinationSlot.I, type);
+				break;
+			}
 			case Code.Refanyval:
 				throw new NotImplementedException();
 			case Code.Mkrefany:
 				throw new NotImplementedException();
 			case Code.Arglist:
 				throw new NotImplementedException();
-			case Code.Localloc:
-				throw new NotImplementedException();
-			case Code.Initobj:
-				throw new NotImplementedException();
-			case Code.Cpblk:
-				throw new NotImplementedException();
-			case Code.Initblk:
-				throw new NotImplementedException();
+			case Code.Localloc: {
+				ref var valueSlot = ref methodContext.Peek();
+				nint allocated = Marshal.AllocHGlobal(valueSlot.I4);
+				methodContext.StackAlloceds.Add(allocated);
+				ConvertI(ref valueSlot, allocated);
+				break;
+			}
+			case Code.Initobj: {
+				ref var addressSlot = ref methodContext.Pop();
+				var type = ResolveType(instruction.Operand, methodContext);
+				if (IsClassStackNormalized(type))
+					*(nint*)addressSlot.I = 0;
+				else
+					Memset(addressSlot.I, 0, type.Size);
+				break;
+			}
+			case Code.Cpblk: {
+				ref var numberSlot = ref methodContext.Pop();
+				ref var sourceSlot = ref methodContext.Pop();
+				ref var destinationSlot = ref methodContext.Pop();
+#if DEBUG
+				System.Diagnostics.Debug.Assert(sourceSlot.IsI && destinationSlot.IsI);
+#endif
+				Memcpy(sourceSlot.I, destinationSlot.I, numberSlot.I4);
+				break;
+			}
+			case Code.Initblk: {
+				ref var numberSlot = ref methodContext.Pop();
+				ref var valueSlot = ref methodContext.Pop();
+				ref var addressSlot = ref methodContext.Pop();
+#if DEBUG
+				System.Diagnostics.Debug.Assert(addressSlot.IsI && valueSlot.IsI4);
+#endif
+				Memset(addressSlot.I, valueSlot.I4, numberSlot.I4);
+				break;
+			}
 			case Code.Sizeof: {
 				int size = ResolveType(instruction.Operand, methodContext).Size;
 				methodContext.PushI4(size);
@@ -2885,17 +2950,22 @@ namespace Zexil.DotNet.Emulation.Emit {
 		#region Dnlib
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		private static TypeDesc ResolveType(object operand, InterpreterMethodContext methodContext) {
-			return methodContext.Module.ResolveType(((IMDTokenProvider)operand).MDToken.ToInt32(), methodContext.TypeInstantiation, methodContext.MethodInstantiation);
+			return methodContext.Module.ResolveType(ResolveToken(operand), methodContext.TypeInstantiation, methodContext.MethodInstantiation);
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		private static MethodDesc ResolveMethod(object operand, InterpreterMethodContext methodContext) {
-			return methodContext.Module.ResolveMethod(((IMDTokenProvider)operand).MDToken.ToInt32(), methodContext.TypeInstantiation, methodContext.MethodInstantiation);
+			return methodContext.Module.ResolveMethod(ResolveToken(operand), methodContext.TypeInstantiation, methodContext.MethodInstantiation);
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		private static FieldDesc ResolveField(object operand, InterpreterMethodContext methodContext) {
-			return methodContext.Module.ResolveField(((IMDTokenProvider)operand).MDToken.ToInt32(), methodContext.TypeInstantiation, methodContext.MethodInstantiation);
+			return methodContext.Module.ResolveField(ResolveToken(operand), methodContext.TypeInstantiation, methodContext.MethodInstantiation);
+		}
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		private static int ResolveToken(object operand) {
+			return ((IMDTokenProvider)operand).MDToken.ToInt32();
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -3001,15 +3071,37 @@ namespace Zexil.DotNet.Emulation.Emit {
 		}
 
 		[MethodImpl(512 /*MethodImplOptions.AggressiveOptimization*/)]
-		private static void Memset(nint source/*,int value*/, int length) {
-			int offset = 0;
-			while (length >= sizeof(nint)) {
-				*(nint*)(source + offset) = 0;
-				length -= sizeof(nint);
-				offset += sizeof(nint);
+		private static void Memset(nint source, int value, int length) {
+			if (value == 0) {
+				int offset = 0;
+				while (length >= sizeof(nint)) {
+					*(nint*)(source + offset) = 0;
+					length -= sizeof(nint);
+					offset += sizeof(nint);
+				}
+				for (; offset < length; offset++)
+					*(byte*)(source + offset) = 0;
 			}
-			for (; offset < length; offset++)
-				*(byte*)(source + offset) = 0;
+			else if (length > sizeof(nint)) {
+				nint template = 0;
+				((byte*)&template)[0] = (byte)value;
+				((byte*)&template)[1] = (byte)value;
+				((ushort*)&template)[1] = ((ushort*)&template)[0];
+				if (sizeof(nint) == 8)
+					((uint*)&template)[1] = ((uint*)&template)[0];
+				int offset = 0;
+				while (length >= sizeof(nint)) {
+					*(nint*)(source + offset) = template;
+					length -= sizeof(nint);
+					offset += sizeof(nint);
+				}
+				for (; offset < length; offset++)
+					*(byte*)(source + offset) = (byte)value;
+			}
+			else {
+				for (int offset = 0; offset < length; offset++)
+					*(byte*)(source + offset) = (byte)value;
+			}
 		}
 		#endregion
 	}

@@ -19,6 +19,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 		private readonly Dictionary<MethodDesc, Cache<InterpreterMethodContext>> _methodContexts = new Dictionary<MethodDesc, Cache<InterpreterMethodContext>>();
 		private readonly Cache<nint> _stacks = Cache<nint>.Create();
 		private readonly Cache<Stack<GCHandle>> _handleLists = Cache<Stack<GCHandle>>.Create();
+		private readonly Cache<List<nint>> _stackAllocedLists = Cache<List<nint>>.Create();
 		private bool _isDisposed;
 
 		/// <summary>
@@ -65,6 +66,19 @@ namespace Zexil.DotNet.Emulation.Emit {
 				handle.Free();
 			handles.Clear();
 			_handleLists.Release(handles);
+		}
+
+		internal List<nint> AcquireStackAlloceds() {
+			if (!_stackAllocedLists.TryAcquire(out var stackAlloceds))
+				return stackAlloceds;
+			return new List<nint>();
+		}
+
+		internal void ReleaseStackAlloceds(List<nint> stackAlloceds) {
+			foreach (nint stackAlloced in stackAlloceds)
+				Marshal.FreeHGlobal(stackAlloced);
+			stackAlloceds.Clear();
+			_stackAllocedLists.Release(stackAlloceds);
 		}
 
 		/// <inheritdoc />

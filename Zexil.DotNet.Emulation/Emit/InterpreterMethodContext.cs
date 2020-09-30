@@ -60,6 +60,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 		private InterpreterSlot* _stack;
 		private Stack<GCHandle> _handles;
 		private GCHandle _lastUsedHandle;
+		private List<nint> _stackAlloceds;
 		private bool _isConstrainedValueType;
 		private uint? _nextILOffset;
 		private bool _isDisposed;
@@ -135,6 +136,11 @@ namespace Zexil.DotNet.Emulation.Emit {
 			set => _lastUsedHandle = value;
 		}
 
+		internal List<nint> StackAlloceds {
+			[MethodImpl(MethodImplOptions.AggressiveInlining)]
+			get => _stackAlloceds;
+		}
+
 		internal bool IsConstrainedValueType {
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
 			get => _isConstrainedValueType;
@@ -146,7 +152,9 @@ namespace Zexil.DotNet.Emulation.Emit {
 		/// Instruction offset of explicit branch target if not null
 		/// </summary>
 		public uint? NextILOffset {
+			[MethodImpl(MethodImplOptions.AggressiveInlining)]
 			get => _nextILOffset;
+			[MethodImpl(MethodImplOptions.AggressiveInlining)]
 			set => _nextILOffset = value;
 		}
 		#endregion
@@ -184,6 +192,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 			_stackBase = _context.AcquireStack();
 			_stack = _stackBase + InterpreterContext.StackSize;
 			_handles = _context.AcquireHandles();
+			_stackAlloceds = _context.AcquireStackAlloceds();
 			if (!(_method is null)) {
 				_arguments = Interpreter.ConvertArguments(arguments, this);
 				_locals = new InterpreterSlot[_localTypes.Length];
@@ -198,7 +207,9 @@ namespace Zexil.DotNet.Emulation.Emit {
 				throw new InvalidOperationException();
 
 			if (!(_method is null)) {
+				Array.Clear(_arguments, 0, _arguments.Length);
 				_arguments = null;
+				Array.Clear(_locals, 0, _locals.Length);
 				_locals = null;
 				_context.ReleaseMethodContext(this);
 			}
@@ -208,6 +219,8 @@ namespace Zexil.DotNet.Emulation.Emit {
 			_context.ReleaseHandles(_handles);
 			_handles = null;
 			_lastUsedHandle = default;
+			_context.ReleaseStackAlloceds(_stackAlloceds);
+			_stackAlloceds = null;
 			_isConstrainedValueType = false;
 			_isDisposed = true;
 		}
