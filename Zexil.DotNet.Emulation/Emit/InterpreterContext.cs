@@ -69,7 +69,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 		}
 
 		internal List<nint> AcquireStackAlloceds() {
-			if (!_stackAllocedLists.TryAcquire(out var stackAlloceds))
+			if (_stackAllocedLists.TryAcquire(out var stackAlloceds))
 				return stackAlloceds;
 			return new List<nint>();
 		}
