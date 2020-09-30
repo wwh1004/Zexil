@@ -1014,8 +1014,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 #if DEBUG
 				System.Diagnostics.Debug.Assert(valueSlot.IsValueType && IsValueTypeStackNormalized(type));
 #endif
-				nint source = GetValueTypeAddress(ref valueSlot);
-				valueSlot.I = Box(source, type, methodContext);
+				valueSlot.I = Box(ref valueSlot, type, methodContext);
 				valueSlot.ElementType = ElementType.Class;
 				break;
 			}
@@ -1823,7 +1822,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 #if DEBUG
 				System.Diagnostics.Debug.Assert(valueSlot.IsI4 && (addressSlot.IsI || addressSlot.IsByRef));
 #endif
-				*(int*)addressSlot.I = valueSlot.I4;
+				*(sbyte*)addressSlot.I = (sbyte)valueSlot.I4;
 				break;
 			}
 			case Code.Stind_I2: {
@@ -1832,7 +1831,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 #if DEBUG
 				System.Diagnostics.Debug.Assert(valueSlot.IsI4 && (addressSlot.IsI || addressSlot.IsByRef));
 #endif
-				*(int*)addressSlot.I = valueSlot.I4;
+				*(short*)addressSlot.I = (short)valueSlot.I4;
 				break;
 			}
 			case Code.Stind_I4: {
@@ -1903,8 +1902,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 #if DEBUG
 				System.Diagnostics.Debug.Assert(valueSlot.IsValueType && (addressSlot.IsI || addressSlot.IsByRef) && IsValueTypeStackNormalized(type));
 #endif
-				nint source = GetValueTypeAddress(ref valueSlot);
-				CopyValueType(source, addressSlot.I, type);
+				Stobj(ref valueSlot, addressSlot.I, type);
 				break;
 			}
 			case Code.Newarr:
@@ -1918,50 +1916,120 @@ namespace Zexil.DotNet.Emulation.Emit {
 				valueSlot.ElementType = ElementType.I;
 				break;
 			}
-			case Code.Ldelema:
-				throw new NotImplementedException();
+			case Code.Ldelema: {
+				var type = ResolveType(instruction.Operand, methodContext);
+				nint address = Ldelema(type.Size, methodContext);
+				methodContext.PushByRef(address);
+				break;
+			}
 			case Code.Ldelem_I1:
-				throw new NotImplementedException();
-			case Code.Ldelem_U1:
-				throw new NotImplementedException();
+			case Code.Ldelem_U1: {
+				nint address = Ldelema(1, methodContext);
+				methodContext.PushI4(*(sbyte*)address);
+				break;
+			}
 			case Code.Ldelem_I2:
-				throw new NotImplementedException();
-			case Code.Ldelem_U2:
-				throw new NotImplementedException();
+			case Code.Ldelem_U2: {
+				nint address = Ldelema(2, methodContext);
+				methodContext.PushI4(*(short*)address);
+				break;
+			}
 			case Code.Ldelem_I4:
-				throw new NotImplementedException();
-			case Code.Ldelem_U4:
-				throw new NotImplementedException();
-			case Code.Ldelem_I8:
-				throw new NotImplementedException();
-			case Code.Ldelem_I:
-				throw new NotImplementedException();
-			case Code.Ldelem_R4:
-				throw new NotImplementedException();
-			case Code.Ldelem_R8:
-				throw new NotImplementedException();
-			case Code.Ldelem_Ref:
-				throw new NotImplementedException();
-			case Code.Stelem_I:
-				throw new NotImplementedException();
-			case Code.Stelem_I1:
-				throw new NotImplementedException();
-			case Code.Stelem_I2:
-				throw new NotImplementedException();
-			case Code.Stelem_I4:
-				throw new NotImplementedException();
-			case Code.Stelem_I8:
-				throw new NotImplementedException();
-			case Code.Stelem_R4:
-				throw new NotImplementedException();
-			case Code.Stelem_R8:
-				throw new NotImplementedException();
-			case Code.Stelem_Ref:
-				throw new NotImplementedException();
-			case Code.Ldelem:
-				throw new NotImplementedException();
-			case Code.Stelem:
-				throw new NotImplementedException();
+			case Code.Ldelem_U4: {
+				nint address = Ldelema(4, methodContext);
+				methodContext.PushI4(*(int*)address);
+				break;
+			}
+			case Code.Ldelem_I8: {
+				nint address = Ldelema(8, methodContext);
+				methodContext.PushI8(*(long*)address);
+				break;
+			}
+			case Code.Ldelem_I: {
+				nint address = Ldelema(sizeof(nint), methodContext);
+				methodContext.PushI(*(nint*)address);
+				break;
+			}
+			case Code.Ldelem_R4: {
+				nint address = Ldelema(4, methodContext);
+				methodContext.PushR4(*(float*)address);
+				break;
+			}
+			case Code.Ldelem_R8: {
+				nint address = Ldelema(8, methodContext);
+				methodContext.PushR8(*(double*)address);
+				break;
+			}
+			case Code.Ldelem_Ref: {
+				nint address = Ldelema(sizeof(nint), methodContext);
+				nint objectRef = *(nint*)address;
+				PushObject(objectRef, methodContext);
+				// TODO: when reference type has annotation, we should use PushObject with 3 arguments
+				break;
+			}
+			case Code.Stelem_I: {
+				ref var valueSlot = ref methodContext.Pop();
+				nint address = Ldelema(8, methodContext);
+				*(nint*)address = valueSlot.I;
+				break;
+			}
+			case Code.Stelem_I1: {
+				ref var valueSlot = ref methodContext.Pop();
+				nint address = Ldelema(1, methodContext);
+				*(sbyte*)address = (sbyte)valueSlot.I4;
+				break;
+			}
+			case Code.Stelem_I2: {
+				ref var valueSlot = ref methodContext.Pop();
+				nint address = Ldelema(2, methodContext);
+				*(short*)address = (short)valueSlot.I4;
+				break;
+			}
+			case Code.Stelem_I4: {
+				ref var valueSlot = ref methodContext.Pop();
+				nint address = Ldelema(4, methodContext);
+				*(int*)address = valueSlot.I4;
+				break;
+			}
+			case Code.Stelem_I8: {
+				ref var valueSlot = ref methodContext.Pop();
+				nint address = Ldelema(8, methodContext);
+				*(long*)address = valueSlot.I8;
+				break;
+			}
+			case Code.Stelem_R4: {
+				ref var valueSlot = ref methodContext.Pop();
+				nint address = Ldelema(4, methodContext);
+				*(float*)address = valueSlot.R4;
+				break;
+			}
+			case Code.Stelem_R8: {
+				ref var valueSlot = ref methodContext.Pop();
+				nint address = Ldelema(8, methodContext);
+				*(double*)address = valueSlot.R8;
+				break;
+			}
+			case Code.Stelem_Ref: {
+				ref var valueSlot = ref methodContext.Pop();
+				nint address = Ldelema(sizeof(nint), methodContext);
+				*(nint*)address = valueSlot.I;
+				TryUnpinObject(methodContext);
+				break;
+			}
+			case Code.Ldelem: {
+				var type = ResolveType(instruction.Operand, methodContext);
+				nint address = Ldelema(type.Size, methodContext);
+				ref var valueSlot = ref methodContext.Push();
+				LoadAny(address, ref valueSlot, type, methodContext);
+				break;
+			}
+			case Code.Stelem: {
+				ref var valueSlot = ref methodContext.Pop();
+				var type = ResolveType(instruction.Operand, methodContext);
+				nint address = Ldelema(type.Size, methodContext);
+				SetAny(ref valueSlot, address, type);
+				break;
+			}
 			case Code.Ldtoken:
 				throw new NotImplementedException();
 			case Code.Stind_I: {
@@ -1996,8 +2064,12 @@ namespace Zexil.DotNet.Emulation.Emit {
 					methodContext.PushI((nint)Unsafe.AsPointer(ref valueSlot));
 				break;
 			}
-			case Code.Starg:
-				throw new NotImplementedException();
+			case Code.Starg: {
+				ref var valueSlot = ref methodContext.Pop();
+				int index = ResolveVariableIndex(instruction.Operand);
+				methodContext.Arguments[index] = valueSlot;
+				break;
+			}
 			case Code.Ldloc: {
 				int index = ResolveVariableIndex(instruction.Operand);
 				ref var valueSlot = ref methodContext.Locals[index];
@@ -2035,8 +2107,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 #if DEBUG
 					System.Diagnostics.Debug.Assert(IsValueTypeStackNormalized(returnType));
 #endif
-					nint source = GetValueTypeAddress(ref slot);
-					CopyValueType(source, returnBuffer, returnType);
+					Stobj(ref slot, returnBuffer, returnType);
 				}
 				else {
 #if DEBUG
@@ -2136,7 +2207,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 			}
 		}
 
-		#region Value Type Methods
+		#region Value Type
 		/*   **********************
 		 *        Introduction
 		 *   **********************
@@ -2145,7 +2216,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 		 *             ↓
 		 *       StoreValueType -> IsSlotSatisfied -> CopyValueTypeNoGC
 		 *             ↓
-		 *            Box
+		 *          BoxImpl
 		 *             ↓
 		 * PushObject and CopyValueType -> CopyValueTypeNoGC
 		 *
@@ -2183,36 +2254,16 @@ namespace Zexil.DotNet.Emulation.Emit {
 		/// Ldobj
 		/// </summary>
 		/// <param name="source"></param>
-		/// <param name="slot"></param>
+		/// <param name="destination"></param>
 		/// <param name="type"></param>
 		/// <param name="methodContext"></param>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		private static void Ldobj(nint source, ref InterpreterSlot slot, TypeDesc type, InterpreterMethodContext methodContext) {
-			StoreValueType(source, (nint)Unsafe.AsPointer(ref slot), type, methodContext);
-			SetAnnotatedElementType(ref slot, type);
-		}
-
-		/// <summary>
-		/// Store a value type in "long" type
-		/// </summary>
-		/// <param name="source">Value type address</param>
-		/// <param name="destination"><see cref="InterpreterSlot"/> address</param>
-		/// <param name="type"></param>
-		/// <param name="methodContext"></param>
-		[MethodImpl(512 /*MethodImplOptions.AggressiveOptimization*/)]
-		private static void StoreValueType(nint source, nint destination, TypeDesc type, InterpreterMethodContext methodContext) {
+		private static void Ldobj(nint source, ref InterpreterSlot destination, TypeDesc type, InterpreterMethodContext methodContext) {
 			if (IsSlotSatisfied(type))
-				CopyValueTypeNoGC(source, destination, type.Size);
+				CopyValueTypeNoGC(source, (nint)Unsafe.AsPointer(ref destination), type.Size);
 			else
-				*(nint*)destination = Box(source, type, methodContext) + sizeof(nint);
-		}
-
-		[MethodImpl(512 /*MethodImplOptions.AggressiveOptimization*/)]
-		private static void StoreValueTypeAligned(nint source, nint destination, TypeDesc type, InterpreterMethodContext methodContext) {
-			if (IsSlotSatisfied(type))
-				CopyValueTypeNoGCAligned(source, destination, type.AlignedSize);
-			else
-				*(nint*)destination = Box(source, type, methodContext) + sizeof(nint);
+				*(nint*)Unsafe.AsPointer(ref destination) = BoxImpl(source, type, methodContext) + sizeof(nint);
+			SetAnnotatedElementType(ref destination, type);
 		}
 
 		/// <summary>
@@ -2223,11 +2274,34 @@ namespace Zexil.DotNet.Emulation.Emit {
 		/// <param name="methodContext"></param>
 		/// <returns></returns>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		private static nint Box(nint source, TypeDesc type, InterpreterMethodContext methodContext) {
+		private static nint Box(ref InterpreterSlot source, TypeDesc type, InterpreterMethodContext methodContext) {
+			return BoxImpl(GetValueTypeAddress(ref source), type, methodContext);
+		}
+
+		/// <summary>
+		/// Box implementation
+		/// </summary>
+		/// <param name="source">Value type address</param>
+		/// <param name="type"></param>
+		/// <param name="methodContext"></param>
+		/// <returns></returns>
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		private static nint BoxImpl(nint source, TypeDesc type, InterpreterMethodContext methodContext) {
 			object boxedValue = GCHelpers.AllocateObject(type.TypeHandle);
 			nint objectRef = PushObject(boxedValue, methodContext);
 			CopyValueType(source, objectRef + sizeof(nint), type);
 			return objectRef;
+		}
+
+		/// <summary>
+		/// Stobj
+		/// </summary>
+		/// <param name="source"></param>
+		/// <param name="destination"></param>
+		/// <param name="type"></param>
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		private static void Stobj(ref InterpreterSlot source, nint destination, TypeDesc type) {
+			CopyValueType(GetValueTypeAddress(ref source), destination, type);
 		}
 
 		/// <summary>
@@ -2236,23 +2310,11 @@ namespace Zexil.DotNet.Emulation.Emit {
 		/// <param name="source">Source address</param>
 		/// <param name="destination">Destination address</param>
 		/// <param name="type"></param>
-		[MethodImpl(512 /*MethodImplOptions.AggressiveOptimization*/)]
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		private static void CopyValueType(nint source, nint destination, TypeDesc type) {
 			int size = type.Size;
 		loop:
 			CopyValueTypeNoGC(source, destination, size);
-			if (!type.IsUnmanaged && !Memcmp(source, destination, size)) {
-				System.Diagnostics.Debug.Assert(false, "GC moves field(s) when coping value type");
-				goto loop;
-			}
-			// We should verify whether GC moves managed fields
-		}
-
-		[MethodImpl(512 /*MethodImplOptions.AggressiveOptimization*/)]
-		private static void CopyValueTypeAligned(nint source, nint destination, TypeDesc type) {
-			int size = type.AlignedSize;
-		loop:
-			CopyValueTypeNoGCAligned(source, destination, size);
 			if (!type.IsUnmanaged && !Memcmp(source, destination, size)) {
 				System.Diagnostics.Debug.Assert(false, "GC moves field(s) when coping value type");
 				goto loop;
@@ -2278,21 +2340,6 @@ namespace Zexil.DotNet.Emulation.Emit {
 				*(byte*)destination = *(byte*)source;
 			else
 				Memcpy(source, destination, size);
-		}
-
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		private static void CopyValueTypeNoGCAligned(nint source, nint destination, int size) {
-			if (size == 8) {
-				*(ulong*)destination = *(ulong*)source;
-			}
-			else if (size == 4) {
-				*(uint*)destination = *(uint*)source;
-			}
-			else {
-				System.Diagnostics.Debug.Assert(size > 8);
-				// we use aligned size so size shouldn't be sizeof(byte), sizeof(short) and other values
-				Memcmp(source, destination, size);
-			}
 		}
 		#endregion
 
@@ -2689,7 +2736,24 @@ namespace Zexil.DotNet.Emulation.Emit {
 		}
 		#endregion
 
-		#region Variable Helpers
+		#region Array
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		private static nint Ldelema(int elementSize, InterpreterMethodContext methodContext) {
+			ref var indexSlot = ref methodContext.Pop();
+			ref var arraySlot = ref methodContext.Pop();
+			nint arrayPtr = arraySlot.I;
+			if (arrayPtr == 0)
+				throw new NullReferenceException();
+			arrayPtr += sizeof(nint);
+			int length = (int)*(nint*)arrayPtr;
+			int index = indexSlot.I4;
+			if (index < 0 || index >= length)
+				throw new IndexOutOfRangeException();
+			return arrayPtr + (elementSize * (index + 1));
+		}
+		#endregion
+
+		#region Variable
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		internal static InterpreterSlot[] ConvertArguments(nint[] stubArguments, InterpreterMethodContext methodContext) {
 			var arguments = new InterpreterSlot[stubArguments.Length];
@@ -2710,7 +2774,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 		}
 		#endregion
 
-		#region Dnlib Helpers
+		#region Dnlib
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		private static TypeDesc ResolveType(object operand, InterpreterMethodContext methodContext) {
 			return methodContext.Module.ResolveType(((IMDTokenProvider)operand).MDToken.ToInt32(), methodContext.TypeInstantiation, methodContext.MethodInstantiation);
@@ -2734,9 +2798,37 @@ namespace Zexil.DotNet.Emulation.Emit {
 
 		#region Miscellaneous
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		private static void LoadAny(nint source, ref InterpreterSlot destination, TypeDesc type, InterpreterMethodContext methodContext) {
+			if (IsClassStackNormalized(type)) {
+				destination.I = source;
+				SetAnnotatedElementType(ref destination, type);
+			}
+			else {
+				Ldobj(source, ref destination, type, methodContext);
+			}
+		}
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		private static void SetAny(ref InterpreterSlot source, nint destination, TypeDesc type) {
+			if (IsClassStackNormalized(type))
+				*(nint*)destination = source.I;
+			else
+				Stobj(ref source, destination, type);
+		}
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		private static nint PushObject(object value, InterpreterMethodContext methodContext) {
 			nint objectRef = PinObject(value, methodContext);
 			methodContext.Push(objectRef, ElementType.Class);
+			return objectRef;
+		}
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		private static nint PushObject(object value, TypeDesc type, InterpreterMethodContext methodContext) {
+			nint objectRef = PinObject(value, methodContext);
+			ref var slot = ref methodContext.Push();
+			slot.I = objectRef;
+			SetAnnotatedElementType(ref slot, type);
 			return objectRef;
 		}
 
