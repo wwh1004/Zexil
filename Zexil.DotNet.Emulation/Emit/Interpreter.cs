@@ -170,25 +170,25 @@ namespace Zexil.DotNet.Emulation.Emit {
 				if (!(methodContext.NextILOffset is uint nextILOffset))
 					continue;
 
-				i = FindNextIndex(instructions, nextILOffset);
+				i = FindInstructionIndex(instructions, nextILOffset);
 				methodContext.NextILOffset = null;
 				goto loop;
 			}
 		}
 
 		/// <summary>
-		/// Finds index of next instruction by <paramref name="nextILOffset"/>
+		/// Finds index of instruction by <paramref name="offset"/>
 		/// </summary>
 		/// <param name="instructions"></param>
-		/// <param name="nextILOffset"></param>
+		/// <param name="offset"></param>
 		/// <returns></returns>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static int FindNextIndex(IList<Instruction> instructions, uint nextILOffset) {
+		public static int FindInstructionIndex(IList<Instruction> instructions, uint offset) {
 			int lo = 0;
 			int hi = 0 + instructions.Count - 1;
 			while (lo <= hi) {
 				int i = lo + ((hi - lo) >> 1);
-				int order = (int)instructions[i].Offset - (int)nextILOffset;
+				int order = (int)instructions[i].Offset - (int)offset;
 				if (order == 0)
 					return i;
 				if (order < 0)
