@@ -5,16 +5,19 @@
 		<Copyright>Copyright © 2020 Wwh</Copyright>
 	</PropertyGroup>
 	<PropertyGroup>
-		<TargetFramework>netstandard2.1</TargetFramework>
+		<TargetFrameworks>netstandard2.0;netstandard2.1</TargetFrameworks>
 		<LangVersion>8.0</LangVersion>
 		<Nullable>enable</Nullable>
 		<OutputPath>..\bin\$(Configuration)</OutputPath>
 		<GenerateDocumentationFile>true</GenerateDocumentationFile>
 	</PropertyGroup>
+	<PropertyGroup>
+		<DefineConstants Condition=" '$(TargetFramework)' == 'netstandard2.0' ">$(DefineConstants);NETSTANDARD2_0</DefineConstants>
+	</PropertyGroup>
 	<ItemGroup>
 		<PackageReference Include="dnlib" Version="3.3.2" />
 	</ItemGroup>
 	<ItemGroup>
-	  <ProjectReference Include="..\Zexil.DotNet.Ast\Zexil.DotNet.Ast.csproj" />
+		<ProjectReference Include="..\Zexil.DotNet.Ast\Zexil.DotNet.Ast.csproj" />
 	</ItemGroup>
 </Project>
