@@ -162,18 +162,15 @@ namespace Zexil.DotNet.Emulation.Emit {
 			var methodDef = (MethodDef)moduleDef.ResolveToken(method.MetadataToken);
 			var instructions = methodDef.Body.Instructions;
 			using var methodContext = CreateMethodContext(moduleDef, method, methodDef, arguments);
-			for (int i = 0; i < instructions.Count; i++) {
-			loop:
-				InterpretImpl(instructions[i], methodContext);
-				if (methodContext.IsReturned)
-					break;
+			int index = 0;
+			do {
+				InterpretImpl(instructions[index], methodContext);
 				if (!(methodContext.NextILOffset is uint nextILOffset))
 					continue;
 
-				i = FindInstructionIndex(instructions, nextILOffset);
+				index = FindInstructionIndex(instructions, nextILOffset);
 				methodContext.NextILOffset = null;
-				goto loop;
-			}
+			} while (!methodContext.IsReturned);
 		}
 
 		/// <summary>
