@@ -64,9 +64,7 @@ namespace Zexil.DotNet.Emulation {
 
 			if (_interpreters.TryGetValue(interpreterType, out var interpreter))
 				return interpreter.Value;
-			interpreter = new ThreadLocal<IInterpreter>(true) {
-				Value = (IInterpreter)Activator.CreateInstance(interpreterType, BINDING_FLAGS, null, new object[] { _executionEngine }, null)
-			};
+			interpreter = new ThreadLocal<IInterpreter>(() => (IInterpreter)Activator.CreateInstance(interpreterType, BINDING_FLAGS, null, new object[] { _executionEngine }, null), true);
 			_interpreters.Add(interpreterType, interpreter);
 			return interpreter.Value;
 		}
