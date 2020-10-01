@@ -3013,16 +3013,14 @@ namespace Zexil.DotNet.Emulation.Emit {
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		private static object PopObject(InterpreterMethodContext methodContext) {
-			nint objectRef = methodContext.Pop().I;
-			object value = Unsafe.AsRef<object>(&objectRef);
+			object value = Unsafe.As<InterpreterSlot, object>(ref methodContext.Pop());
 			TryUnpinObject(methodContext);
 			return value;
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		private static object PeekObject(InterpreterMethodContext methodContext) {
-			nint objectRef = methodContext.Pop().I;
-			object value = Unsafe.AsRef<object>(&objectRef);
+			object value = Unsafe.As<InterpreterSlot, object>(ref methodContext.Peek());
 			return value;
 		}
 
