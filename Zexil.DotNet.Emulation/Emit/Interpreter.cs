@@ -1,7 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.CompilerServices;
 using dnlib.DotNet;
 using dnlib.DotNet.Emit;
 
@@ -54,7 +52,6 @@ namespace Zexil.DotNet.Emulation.Emit {
 		/// Creates method-irrelated context
 		/// </summary>
 		/// <returns></returns>
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public InterpreterMethodContext CreateMethodContext() {
 			var methodContext = new InterpreterMethodContext(_context);
 			methodContext.ResolveDynamicContext(null);
@@ -66,7 +63,6 @@ namespace Zexil.DotNet.Emulation.Emit {
 		/// </summary>
 		/// <param name="methodDef"></param>
 		/// <returns></returns>
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public InterpreterMethodContext CreateMethodContext(MethodDef methodDef) {
 			return CreateMethodContext(methodDef, null, null);
 		}
@@ -77,7 +73,6 @@ namespace Zexil.DotNet.Emulation.Emit {
 		/// <param name="methodDef"></param>
 		/// <param name="method"></param>
 		/// <returns></returns>
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public InterpreterMethodContext CreateMethodContext(MethodDef methodDef, MethodDesc method) {
 			return CreateMethodContext(methodDef, method, null);
 		}
@@ -89,7 +84,6 @@ namespace Zexil.DotNet.Emulation.Emit {
 		/// <param name="method"></param>
 		/// <param name="arguments"></param>
 		/// <returns></returns>
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public InterpreterMethodContext CreateMethodContext(MethodDef methodDef, MethodDesc method, nint[] arguments) {
 			if (methodDef is null)
 				throw new ArgumentNullException(nameof(methodDef));
@@ -144,7 +138,6 @@ namespace Zexil.DotNet.Emulation.Emit {
 		/// <param name="instructions"></param>
 		/// <param name="offset"></param>
 		/// <returns></returns>
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static int FindInstructionIndex(IList<Instruction> instructions, uint offset) {
 			int lo = 0;
 			int hi = 0 + instructions.Count - 1;

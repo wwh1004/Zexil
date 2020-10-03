@@ -62,7 +62,6 @@ namespace Zexil.DotNet.FlowAnalysis.Shared {
 			}
 			return count;
 
-			//[MethodImpl(MethodImplOptions.AggressiveInlining)]
 			static bool IsDirectBranch(IBasicBlock bb) {
 				return bb.FlowType == FlowControl.Branch && (bb.FlowAnnotation & (FlowControl.Leave | FlowControl.Indirect)) == 0;
 			}

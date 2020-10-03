@@ -8,7 +8,6 @@ using Zexil.DotNet.Emulation.Internal;
 
 namespace Zexil.DotNet.Emulation.Emit {
 	unsafe partial class Interpreter {
-		[MethodImpl(512 /*MethodImplOptions.AggressiveOptimization*/)]
 		private void InterpretImpl(Instruction instruction, InterpreterMethodContext methodContext) {
 			switch (instruction.OpCode.Code) {
 			#region Arithmetic
@@ -2338,7 +2337,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 				if (IsClassStackNormalized(type))
 					*(nint*)addressSlot.I = 0;
 				else
-					Memset(addressSlot.I, 0, type.Size);
+					Unsafe.InitBlockUnaligned((void*)addressSlot.I, 0, (uint)type.Size);
 				break;
 			}
 			case Code.Cpblk: {
@@ -2348,7 +2347,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 #if DEBUG
 				System.Diagnostics.Debug.Assert(sourceSlot.IsI && destinationSlot.IsI);
 #endif
-				Memcpy(sourceSlot.I, destinationSlot.I, numberSlot.I4);
+				Unsafe.CopyBlockUnaligned((void*)destinationSlot.I, (void*)sourceSlot.I, (uint)numberSlot.I4);
 				break;
 			}
 			case Code.Initblk: {
@@ -2358,7 +2357,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 #if DEBUG
 				System.Diagnostics.Debug.Assert(addressSlot.IsI && valueSlot.IsI4);
 #endif
-				Memset(addressSlot.I, valueSlot.I4, numberSlot.I4);
+				Unsafe.InitBlockUnaligned((void*)addressSlot.I, (byte)valueSlot.I4, (uint)numberSlot.I4);
 				break;
 			}
 			case Code.Sizeof: {
@@ -2403,7 +2402,6 @@ namespace Zexil.DotNet.Emulation.Emit {
 		 *   **********************
 		 */
 
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		private static nint GetValueTypeAddress(ref InterpreterSlot slot) {
 			return IsSlotSatisfied(slot) ? (nint)Unsafe.AsPointer(ref slot) : slot.I;
 		}
@@ -2413,7 +2411,6 @@ namespace Zexil.DotNet.Emulation.Emit {
 		/// </summary>
 		/// <param name="type"></param>
 		/// <returns></returns>
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		private static bool IsSlotSatisfied(TypeDesc type) {
 			return !type.IsLargeValueType && type.IsUnmanaged;
 		}
@@ -2423,7 +2420,6 @@ namespace Zexil.DotNet.Emulation.Emit {
 		/// </summary>
 		/// <param name="slot"></param>
 		/// <returns></returns>
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		private static bool IsSlotSatisfied(in InterpreterSlot slot) {
 			return !slot.AnnotatedElementType.IsLargeValueType() && slot.AnnotatedElementType.IsUnmanaged();
 		}
@@ -2435,7 +2431,6 @@ namespace Zexil.DotNet.Emulation.Emit {
 		/// <param name="destination"></param>
 		/// <param name="type"></param>
 		/// <param name="methodContext"></param>
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		private static void Ldobj(nint source, ref InterpreterSlot destination, TypeDesc type, InterpreterMethodContext methodContext) {
 			if (IsSlotSatisfied(type))
 				CopyValueTypeNoGC(source, (nint)Unsafe.AsPointer(ref destination), type.Size);
@@ -2451,7 +2446,6 @@ namespace Zexil.DotNet.Emulation.Emit {
 		/// <param name="type"></param>
 		/// <param name="methodContext"></param>
 		/// <returns></returns>
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		private static nint Box(ref InterpreterSlot source, TypeDesc type, InterpreterMethodContext methodContext) {
 			return BoxImpl(GetValueTypeAddress(ref source), type, methodContext);
 		}
@@ -2463,7 +2457,6 @@ namespace Zexil.DotNet.Emulation.Emit {
 		/// <param name="type"></param>
 		/// <param name="methodContext"></param>
 		/// <returns></returns>
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		private static nint BoxImpl(nint source, TypeDesc type, InterpreterMethodContext methodContext) {
 			object boxedValue = GCHelpers.AllocateObject(type.TypeHandle);
 			nint objectRef = PushObject(boxedValue, methodContext);
@@ -2477,7 +2470,6 @@ namespace Zexil.DotNet.Emulation.Emit {
 		/// <param name="source"></param>
 		/// <param name="destination"></param>
 		/// <param name="type"></param>
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		private static void Stobj(ref InterpreterSlot source, nint destination, TypeDesc type) {
 			CopyValueType(GetValueTypeAddress(ref source), destination, type);
 		}
@@ -2488,7 +2480,6 @@ namespace Zexil.DotNet.Emulation.Emit {
 		/// <param name="source">Source address</param>
 		/// <param name="destination">Destination address</param>
 		/// <param name="type"></param>
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		private static void CopyValueType(nint source, nint destination, TypeDesc type) {
 			int size = type.Size;
 		loop:
@@ -2506,7 +2497,6 @@ namespace Zexil.DotNet.Emulation.Emit {
 		/// <param name="source"></param>
 		/// <param name="destination"></param>
 		/// <param name="size"></param>
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		private static void CopyValueTypeNoGC(nint source, nint destination, int size) {
 			if (size == 8)
 				*(ulong*)destination = *(ulong*)source;
@@ -2517,12 +2507,11 @@ namespace Zexil.DotNet.Emulation.Emit {
 			else if (size == 1)
 				*(byte*)destination = *(byte*)source;
 			else
-				Memcpy(source, destination, size);
+				Unsafe.CopyBlockUnaligned((void*)destination, (void*)source, (uint)size);
 		}
 		#endregion
 
 		#region Stack Normalizing
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		private static bool IsClassStackNormalized(TypeDesc type) {
 #if DEBUG
 			System.Diagnostics.Debug.Assert(StackNormalize(type.ElementType) == ElementType.Class == (!type.IsValueType && !type.IsPointer && !type.IsByRef));
@@ -2530,7 +2519,6 @@ namespace Zexil.DotNet.Emulation.Emit {
 			return StackNormalize(type.ElementType) == ElementType.Class;
 		}
 
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		private static bool IsValueTypeStackNormalized(TypeDesc type) {
 #if DEBUG
 			System.Diagnostics.Debug.Assert(StackNormalize(type.ElementType) != ElementType.Class == (type.IsValueType || type.IsPointer || type.IsByRef));
@@ -2538,12 +2526,10 @@ namespace Zexil.DotNet.Emulation.Emit {
 			return StackNormalize(type.ElementType) != ElementType.Class;
 		}
 
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		private static void SetAnnotatedElementType(ref InterpreterSlot slot, TypeDesc type) {
 			slot.AnnotatedElementType = (AnnotatedElementType)StackNormalize(type.ElementType) | type.Annotation;
 		}
 
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		[System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE0066:Convert switch statement to expression", Justification = "<Pending>")]
 		private static ElementType StackNormalize(ElementType elementType) {
 			switch (elementType) {
@@ -2588,7 +2574,6 @@ namespace Zexil.DotNet.Emulation.Emit {
 		#endregion
 
 		#region Comparison
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		private static bool Ceq(InterpreterMethodContext methodContext) {
 			ref var v2 = ref methodContext.Pop();
 			ref var v1 = ref methodContext.Pop();
@@ -2647,7 +2632,6 @@ namespace Zexil.DotNet.Emulation.Emit {
 			}
 		}
 
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		private static bool Cgt(InterpreterMethodContext methodContext) {
 			ref var v2 = ref methodContext.Pop();
 			ref var v1 = ref methodContext.Pop();
@@ -2705,7 +2689,6 @@ namespace Zexil.DotNet.Emulation.Emit {
 			}
 		}
 
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		private static bool CgtUn(InterpreterMethodContext methodContext) {
 			ref var v2 = ref methodContext.Pop();
 			ref var v1 = ref methodContext.Pop();
@@ -2765,7 +2748,6 @@ namespace Zexil.DotNet.Emulation.Emit {
 			}
 		}
 
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		private static bool Clt(InterpreterMethodContext methodContext) {
 			ref var v2 = ref methodContext.Pop();
 			ref var v1 = ref methodContext.Pop();
@@ -2823,7 +2805,6 @@ namespace Zexil.DotNet.Emulation.Emit {
 			}
 		}
 
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		private static bool CltUn(InterpreterMethodContext methodContext) {
 			ref var v2 = ref methodContext.Pop();
 			ref var v1 = ref methodContext.Pop();
@@ -2883,31 +2864,26 @@ namespace Zexil.DotNet.Emulation.Emit {
 		#endregion
 
 		#region Conversion
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		private static void ConvertI4(ref InterpreterSlot slot, int value) {
 			slot.I4 = value;
 			slot.AnnotatedElementType = (AnnotatedElementType)ElementType.I4 | AnnotatedElementType.Unmanaged;
 		}
 
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		private static void ConvertI8(ref InterpreterSlot slot, long value) {
 			slot.I8 = value;
 			slot.AnnotatedElementType = (AnnotatedElementType)ElementType.I8 | AnnotatedElementType.Unmanaged;
 		}
 
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		private static void ConvertI(ref InterpreterSlot slot, nint value) {
 			slot.I = value;
 			slot.AnnotatedElementType = (AnnotatedElementType)ElementType.I | AnnotatedElementType.Unmanaged;
 		}
 
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		private static void ConvertR4(ref InterpreterSlot slot, float value) {
 			slot.R4 = value;
 			slot.AnnotatedElementType = (AnnotatedElementType)ElementType.R4 | AnnotatedElementType.Unmanaged;
 		}
 
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		private static void ConvertR8(ref InterpreterSlot slot, double value) {
 			slot.R8 = value;
 			slot.AnnotatedElementType = (AnnotatedElementType)ElementType.R8 | AnnotatedElementType.Unmanaged;
@@ -2915,7 +2891,6 @@ namespace Zexil.DotNet.Emulation.Emit {
 		#endregion
 
 		#region Array
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		private static nint Ldelema(int elementSize, InterpreterMethodContext methodContext) {
 			ref var indexSlot = ref methodContext.Pop();
 			ref var arraySlot = ref methodContext.Pop();
@@ -2932,7 +2907,6 @@ namespace Zexil.DotNet.Emulation.Emit {
 		#endregion
 
 		#region Variable
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		internal static InterpreterSlot[] ConvertArguments(nint[] stubArguments, InterpreterMethodContext methodContext) {
 			var arguments = new InterpreterSlot[stubArguments.Length];
 			for (int i = 0; i < methodContext.Method.Parameters.Length; i++) {
@@ -2956,34 +2930,28 @@ namespace Zexil.DotNet.Emulation.Emit {
 		#endregion
 
 		#region Dnlib
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		private static TypeDesc ResolveType(object operand, InterpreterMethodContext methodContext) {
 			return methodContext.Module.ResolveType(ResolveToken(operand), methodContext.TypeInstantiation, methodContext.MethodInstantiation);
 		}
 
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		private static MethodDesc ResolveMethod(object operand, InterpreterMethodContext methodContext) {
 			return methodContext.Module.ResolveMethod(ResolveToken(operand), methodContext.TypeInstantiation, methodContext.MethodInstantiation);
 		}
 
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		private static FieldDesc ResolveField(object operand, InterpreterMethodContext methodContext) {
 			return methodContext.Module.ResolveField(ResolveToken(operand), methodContext.TypeInstantiation, methodContext.MethodInstantiation);
 		}
 
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		private static int ResolveToken(object operand) {
 			return ((IMDTokenProvider)operand).MDToken.ToInt32();
 		}
 
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		private static int ResolveVariableIndex(object operand) {
 			return ((IVariable)operand).Index;
 		}
 		#endregion
 
 		#region Miscellaneous
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		private static void LoadAny(nint source, ref InterpreterSlot destination, TypeDesc type, InterpreterMethodContext methodContext) {
 			if (IsClassStackNormalized(type)) {
 				destination.I = source;
@@ -2994,7 +2962,6 @@ namespace Zexil.DotNet.Emulation.Emit {
 			}
 		}
 
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		private static void SetAny(ref InterpreterSlot source, nint destination, TypeDesc type) {
 			if (IsClassStackNormalized(type))
 				*(nint*)destination = source.I;
@@ -3002,14 +2969,12 @@ namespace Zexil.DotNet.Emulation.Emit {
 				Stobj(ref source, destination, type);
 		}
 
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		private static nint PushObject(object value, InterpreterMethodContext methodContext) {
 			nint objectRef = PinObject(value, methodContext);
 			methodContext.Push(objectRef, ElementType.Class);
 			return objectRef;
 		}
 
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		private static nint PushObject(object value, TypeDesc type, InterpreterMethodContext methodContext) {
 			nint objectRef = PinObject(value, methodContext);
 			ref var slot = ref methodContext.Push();
@@ -3018,20 +2983,17 @@ namespace Zexil.DotNet.Emulation.Emit {
 			return objectRef;
 		}
 
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		private static object PopObject(InterpreterMethodContext methodContext) {
 			object value = Unsafe.As<InterpreterSlot, object>(ref methodContext.Pop());
 			TryUnpinObject(methodContext);
 			return value;
 		}
 
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		private static object PeekObject(InterpreterMethodContext methodContext) {
 			object value = Unsafe.As<InterpreterSlot, object>(ref methodContext.Peek());
 			return value;
 		}
 
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		private static nint PinObject(object value, InterpreterMethodContext methodContext) {
 			var handle = GCHandle.Alloc(value, GCHandleType.Pinned);
 			methodContext.Handles.Push(handle);
@@ -3040,7 +3002,6 @@ namespace Zexil.DotNet.Emulation.Emit {
 			return Unsafe.As<object, nint>(ref value);
 		}
 
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		private static void TryUnpinObject(InterpreterMethodContext methodContext) {
 			if (methodContext.LastUsedHandle == methodContext.Handles.Peek()) {
 				methodContext.LastUsedHandle = default;
@@ -3049,19 +3010,6 @@ namespace Zexil.DotNet.Emulation.Emit {
 			}
 		}
 
-		[MethodImpl(512 /*MethodImplOptions.AggressiveOptimization*/)]
-		private static void Memcpy(nint source, nint destination, int length) {
-			int offset = 0;
-			while (length >= sizeof(nint)) {
-				*(nint*)(destination + offset) = *(nint*)(source + offset);
-				length -= sizeof(nint);
-				offset += sizeof(nint);
-			}
-			for (; offset < length; offset++)
-				*(byte*)(destination + offset) = *(byte*)(source + offset);
-		}
-
-		[MethodImpl(512 /*MethodImplOptions.AggressiveOptimization*/)]
 		private static bool Memcmp(nint source, nint destination, int length) {
 			int offset = 0;
 			while (length >= sizeof(nint)) {
@@ -3075,40 +3023,6 @@ namespace Zexil.DotNet.Emulation.Emit {
 					return false;
 			}
 			return true;
-		}
-
-		[MethodImpl(512 /*MethodImplOptions.AggressiveOptimization*/)]
-		private static void Memset(nint source, int value, int length) {
-			if (value == 0) {
-				int offset = 0;
-				while (length >= sizeof(nint)) {
-					*(nint*)(source + offset) = 0;
-					length -= sizeof(nint);
-					offset += sizeof(nint);
-				}
-				for (; offset < length; offset++)
-					*(byte*)(source + offset) = 0;
-			}
-			else if (length > sizeof(nint)) {
-				nint template = 0;
-				((byte*)&template)[0] = (byte)value;
-				((byte*)&template)[1] = (byte)value;
-				((ushort*)&template)[1] = ((ushort*)&template)[0];
-				if (sizeof(nint) == 8)
-					((uint*)&template)[1] = ((uint*)&template)[0];
-				int offset = 0;
-				while (length >= sizeof(nint)) {
-					*(nint*)(source + offset) = template;
-					length -= sizeof(nint);
-					offset += sizeof(nint);
-				}
-				for (; offset < length; offset++)
-					*(byte*)(source + offset) = (byte)value;
-			}
-			else {
-				for (int offset = 0; offset < length; offset++)
-					*(byte*)(source + offset) = (byte)value;
-			}
 		}
 		#endregion
 	}

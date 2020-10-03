@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using dnlib.DotNet;
 using Zexil.DotNet.Emulation.Internal;
@@ -21,66 +20,42 @@ namespace Zexil.DotNet.Emulation.Emit {
 		/// <summary>
 		/// Interpreter context
 		/// </summary>
-		public InterpreterContext Context {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => _context;
-		}
+		public InterpreterContext Context => _context;
 
 		/// <summary>
 		/// Related <see cref="dnlib.DotNet.MethodDef"/>
 		/// </summary>
-		public MethodDef MethodDef {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => _methodDef;
-		}
+		public MethodDef MethodDef => _methodDef;
 
 		/// <summary>
 		/// Interpreted method
 		/// </summary>
-		public MethodDesc Method {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => _method;
-		}
+		public MethodDesc Method => _method;
 
 		/// <summary>
 		/// Interpreted module (has no value if <see cref="Method"/> is <see langword="null"/>)
 		/// </summary>
-		public ModuleDesc Module {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => _method?.Module;
-		}
+		public ModuleDesc Module => _method?.Module;
 
 		/// <summary>
 		/// Type generic arguments (has no value if <see cref="Method"/> is <see langword="null"/>)
 		/// </summary>
-		public TypeDesc[] TypeInstantiation {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => _method?.DeclaringType.Instantiation;
-		}
+		public TypeDesc[] TypeInstantiation => _method?.DeclaringType.Instantiation;
 
 		/// <summary>
 		/// Method generic arguments (has no value if <see cref="Method"/> is <see langword="null"/>)
 		/// </summary>
-		public TypeDesc[] MethodInstantiation {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => _method?.Instantiation;
-		}
+		public TypeDesc[] MethodInstantiation => _method?.Instantiation;
 
 		/// <summary>
 		/// Argument types (element in array might be null if <see cref="Method"/> is <see langword="null"/>)
 		/// </summary>
-		public TypeDesc[] ArgumentTypes {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => _argumentTypes;
-		}
+		public TypeDesc[] ArgumentTypes => _argumentTypes;
 
 		/// <summary>
 		/// Local variable types (element in array might be null if <see cref="Method"/> is <see langword="null"/>)
 		/// </summary>
-		public TypeDesc[] LocalTypes {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => _localTypes;
-		}
+		public TypeDesc[] LocalTypes => _localTypes;
 		#endregion
 
 		#region Dynamic Context
@@ -99,24 +74,17 @@ namespace Zexil.DotNet.Emulation.Emit {
 		/// <summary>
 		/// Arguments (includes return buffer)
 		/// </summary>
-		public InterpreterSlot[] Arguments {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => _arguments;
-		}
+		public InterpreterSlot[] Arguments => _arguments;
 
 		/// <summary>
 		/// Local variables
 		/// </summary>
-		public InterpreterSlot[] Locals {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => _locals;
-		}
+		public InterpreterSlot[] Locals => _locals;
 
 		/// <summary>
 		/// Return buffer (pointer to return value)
 		/// </summary>
 		public ref InterpreterSlot ReturnBuffer {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
 			get {
 				if (!_method.HasReturnType)
 					throw new InvalidOperationException();
@@ -128,18 +96,13 @@ namespace Zexil.DotNet.Emulation.Emit {
 		/// <summary>
 		/// Stack base
 		/// </summary>
-		public InterpreterSlot* StackBase {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => _stackBase;
-		}
+		public InterpreterSlot* StackBase => _stackBase;
 
 		/// <summary>
 		/// Stack top
 		/// </summary>
 		public InterpreterSlot* Stack {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
 			get => _stack;
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
 			set {
 #if DEBUG
 				if (value < _stackBase || value > _stackBase + InterpreterContext.MaximumStackSize)
@@ -152,38 +115,25 @@ namespace Zexil.DotNet.Emulation.Emit {
 		/// <summary>
 		/// Stack size
 		/// </summary>
-		public int StackSize {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => (int)(_stackBase + InterpreterContext.MaximumStackSize - _stack);
-		}
+		public int StackSize => (int)(_stackBase + InterpreterContext.MaximumStackSize - _stack);
 
 		/// <summary>
 		/// Handles of objects
 		/// </summary>
-		internal Stack<GCHandle> Handles {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => _handles;
-		}
+		internal Stack<GCHandle> Handles => _handles;
 
 		/// <summary>
 		/// Last used object handle
 		/// </summary>
 		internal GCHandle LastUsedHandle {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
 			get => _lastUsedHandle;
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
 			set => _lastUsedHandle = value;
 		}
 
-		internal List<nint> StackAlloceds {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => _stackAlloceds;
-		}
+		internal List<nint> StackAlloceds => _stackAlloceds;
 
 		internal bool IsConstrainedValueType {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
 			get => _isConstrainedValueType;
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
 			set => _isConstrainedValueType = value;
 		}
 
@@ -191,9 +141,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 		/// Instruction offset of explicit branch target if not null
 		/// </summary>
 		public uint? NextILOffset {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
 			get => _nextILOffset;
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
 			set => _nextILOffset = value;
 		}
 
@@ -201,9 +149,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 		/// Whether ret instruction was executed
 		/// </summary>
 		public bool IsReturned {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
 			get => _isReturned;
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
 			internal set => _isReturned = value;
 		}
 		#endregion
@@ -287,7 +233,6 @@ namespace Zexil.DotNet.Emulation.Emit {
 		/// Pushes value onto stack top
 		/// </summary>
 		/// <returns></returns>
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public void PushI4(int value) {
 			ref var slot = ref *--Stack;
 			slot.I4 = value;
@@ -298,7 +243,6 @@ namespace Zexil.DotNet.Emulation.Emit {
 		/// Pushes value onto stack top
 		/// </summary>
 		/// <returns></returns>
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public void PushI8(long value) {
 			ref var slot = ref *--Stack;
 			slot.I8 = value;
@@ -309,7 +253,6 @@ namespace Zexil.DotNet.Emulation.Emit {
 		/// Pushes value onto stack top
 		/// </summary>
 		/// <returns></returns>
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public void PushI(nint value) {
 			ref var slot = ref *--Stack;
 			slot.I = value;
@@ -320,7 +263,6 @@ namespace Zexil.DotNet.Emulation.Emit {
 		/// Pushes value onto stack top
 		/// </summary>
 		/// <returns></returns>
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public void PushByRef(nint value) {
 			ref var slot = ref *--Stack;
 			slot.I = value;
@@ -331,7 +273,6 @@ namespace Zexil.DotNet.Emulation.Emit {
 		/// Pushes value onto stack top
 		/// </summary>
 		/// <returns></returns>
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public void PushR4(float value) {
 			ref var slot = ref *--Stack;
 			slot.R4 = value;
@@ -342,7 +283,6 @@ namespace Zexil.DotNet.Emulation.Emit {
 		/// Pushes value onto stack top
 		/// </summary>
 		/// <returns></returns>
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public void PushR8(double value) {
 			ref var slot = ref *--Stack;
 			slot.R8 = value;
@@ -353,7 +293,6 @@ namespace Zexil.DotNet.Emulation.Emit {
 		/// Pushes value onto stack top
 		/// </summary>
 		/// <returns></returns>
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public void Push(nint value, AnnotatedElementType annotatedElementType) {
 			ref var slot = ref *--Stack;
 			slot.I = value;
@@ -364,7 +303,6 @@ namespace Zexil.DotNet.Emulation.Emit {
 		/// Pushes empty slot onto stack top
 		/// </summary>
 		/// <returns></returns>
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public ref InterpreterSlot Push() {
 			ref var slot = ref *--Stack;
 			slot = default;
@@ -375,7 +313,6 @@ namespace Zexil.DotNet.Emulation.Emit {
 		/// Pushes value onto stack top
 		/// </summary>
 		/// <returns></returns>
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public void Push(nint value, ElementType elementType) {
 			ref var slot = ref *--Stack;
 			slot.I = value;
@@ -386,7 +323,6 @@ namespace Zexil.DotNet.Emulation.Emit {
 		/// Pushes value onto stack top
 		/// </summary>
 		/// <returns></returns>
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public void Push(in InterpreterSlot value) {
 			*--Stack = value;
 		}
@@ -395,7 +331,6 @@ namespace Zexil.DotNet.Emulation.Emit {
 		/// Pops value from stack top
 		/// </summary>
 		/// <returns></returns>
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public ref InterpreterSlot Pop() {
 			return ref *Stack++;
 		}
@@ -404,7 +339,6 @@ namespace Zexil.DotNet.Emulation.Emit {
 		/// Peeks value on stack top
 		/// </summary>
 		/// <returns></returns>
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public ref InterpreterSlot Peek() {
 #if DEBUG
 			if (_stack < _stackBase || _stack >= _stackBase + InterpreterContext.MaximumStackSize)
@@ -420,7 +354,6 @@ namespace Zexil.DotNet.Emulation.Emit {
 		/// </summary>
 		/// <param name="index"></param>
 		/// <returns></returns>
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public ref InterpreterSlot Peek(int index) {
 #if DEBUG
 			var stack = _stack + index;

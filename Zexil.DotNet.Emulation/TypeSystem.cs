@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
-using System.Runtime.CompilerServices;
 using Zexil.DotNet.Emulation.Internal;
 
 namespace Zexil.DotNet.Emulation {
@@ -139,50 +138,32 @@ namespace Zexil.DotNet.Emulation {
 		/// <summary>
 		/// Bound execution engine
 		/// </summary>
-		public ExecutionEngine ExecutionEngine {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => _executionEngine;
-		}
+		public ExecutionEngine ExecutionEngine => _executionEngine;
 
 		/// <summary>
 		/// Reflection assembly
 		/// </summary>
-		public Assembly ReflAssembly {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => _reflAssembly;
-		}
+		public Assembly ReflAssembly => _reflAssembly;
 
 		/// <summary>
 		/// Assembly full name
 		/// </summary>
-		public string FullName {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => _fullName;
-		}
+		public string FullName => _fullName;
 
 		/// <summary>
 		/// Original assembly data
 		/// </summary>
-		public nint RawAssembly {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => _rawAssembly;
-		}
+		public nint RawAssembly => _rawAssembly;
 
 		/// <summary>
 		/// Loaded modules
 		/// </summary>
-		public IEnumerable<ModuleDesc> Modules {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => _modules;
-		}
+		public IEnumerable<ModuleDesc> Modules => _modules;
 
 		/// <summary>
 		/// Manifest module (the first module in <see cref="Modules"/>)
 		/// </summary>
-		public ModuleDesc ManifestModule {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => _modules[0];
-		}
+		public ModuleDesc ManifestModule => _modules[0];
 
 		internal AssemblyDesc(ExecutionEngine executionEngine, Assembly reflAssembly, nint rawAssembly) {
 			executionEngine.Context._assemblies.Add(reflAssembly, this);
@@ -212,49 +193,33 @@ namespace Zexil.DotNet.Emulation {
 		/// <summary>
 		/// Bound execution engine
 		/// </summary>
-		public ExecutionEngine ExecutionEngine {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => _executionEngine;
-		}
+		public ExecutionEngine ExecutionEngine => _executionEngine;
 
 		/// <summary>
 		/// Reflection module
 		/// </summary>
-		public Module ReflModule {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => _reflModule;
-		}
+		public Module ReflModule => _reflModule;
 
 		/// <summary>
 		/// Declaring assembly
 		/// </summary>
-		public AssemblyDesc Assembly {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => _assembly;
-		}
+		public AssemblyDesc Assembly => _assembly;
 
 		/// <summary>
 		/// Scope name
 		/// </summary>
-		public string ScopeName {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => _scopeName;
-		}
+		public string ScopeName => _scopeName;
 
 		/// <summary>
 		/// Loaded types
 		/// </summary>
-		public IEnumerable<TypeDesc> Types {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => _types;
-		}
+		public IEnumerable<TypeDesc> Types => _types;
 
 		/// <summary>
 		/// Resolves a type and return runtime type
 		/// </summary>
 		/// <param name="metadataToken"></param>
 		/// <returns></returns>
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public TypeDesc ResolveType(int metadataToken) {
 			var type = _reflModule.ResolveType(metadataToken);
 			return _executionEngine.ResolveType(type);
@@ -267,7 +232,6 @@ namespace Zexil.DotNet.Emulation {
 		/// <param name="typeInstantiation"></param>
 		/// <param name="methodInstantiation"></param>
 		/// <returns></returns>
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public TypeDesc ResolveType(int metadataToken, TypeDesc[] typeInstantiation, TypeDesc[] methodInstantiation) {
 			Type[] genericTypeArguments = null;
 			if (!(typeInstantiation is null) && typeInstantiation.Length > 0) {
@@ -290,7 +254,6 @@ namespace Zexil.DotNet.Emulation {
 		/// </summary>
 		/// <param name="metadataToken"></param>
 		/// <returns></returns>
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public FieldDesc ResolveField(int metadataToken) {
 			var field = _reflModule.ResolveField(metadataToken);
 			return _executionEngine.ResolveField(field);
@@ -303,7 +266,6 @@ namespace Zexil.DotNet.Emulation {
 		/// <param name="typeInstantiation"></param>
 		/// <param name="methodInstantiation"></param>
 		/// <returns></returns>
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public FieldDesc ResolveField(int metadataToken, TypeDesc[] typeInstantiation, TypeDesc[] methodInstantiation) {
 			Type[] genericTypeArguments = null;
 			if (!(typeInstantiation is null) && typeInstantiation.Length > 0) {
@@ -326,7 +288,6 @@ namespace Zexil.DotNet.Emulation {
 		/// </summary>
 		/// <param name="metadataToken"></param>
 		/// <returns></returns>
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public MethodDesc ResolveMethod(int metadataToken) {
 			var method = _reflModule.ResolveMethod(metadataToken);
 			return _executionEngine.ResolveMethod(method);
@@ -339,7 +300,6 @@ namespace Zexil.DotNet.Emulation {
 		/// <param name="typeInstantiation"></param>
 		/// <param name="methodInstantiation"></param>
 		/// <returns></returns>
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public MethodDesc ResolveMethod(int metadataToken, TypeDesc[] typeInstantiation, TypeDesc[] methodInstantiation) {
 			Type[] genericTypeArguments = null;
 			if (!(typeInstantiation is null) && typeInstantiation.Length > 0) {
@@ -397,18 +357,12 @@ namespace Zexil.DotNet.Emulation {
 		/// <summary>
 		/// Bound execution engine
 		/// </summary>
-		public ExecutionEngine ExecutionEngine {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => _executionEngine;
-		}
+		public ExecutionEngine ExecutionEngine => _executionEngine;
 
 		/// <summary>
 		/// Reflection type
 		/// </summary>
-		public Type ReflType {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => _reflType;
-		}
+		public Type ReflType => _reflType;
 
 		/// <summary>
 		/// Type handle
@@ -418,34 +372,22 @@ namespace Zexil.DotNet.Emulation {
 		/// <summary>
 		/// Declaring module
 		/// </summary>
-		public ModuleDesc Module {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => _module;
-		}
+		public ModuleDesc Module => _module;
 
 		/// <summary>
 		/// Metadata token
 		/// </summary>
-		public int MetadataToken {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => _metadataToken;
-		}
+		public int MetadataToken => _metadataToken;
 
 		/// <summary>
 		/// Type generic arguments (null if it is not a generic type)
 		/// </summary>
-		public TypeDesc[] Instantiation {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => _instantiation;
-		}
+		public TypeDesc[] Instantiation => _instantiation;
 
 		/// <summary>
 		/// Type size (equals to sizeof(T))
 		/// </summary>
-		public int Size {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => _size;
-		}
+		public int Size => _size;
 
 		/// <summary>
 		/// Aligned type size
@@ -460,164 +402,103 @@ namespace Zexil.DotNet.Emulation {
 		/// <summary>
 		/// ElementType
 		/// </summary>
-		public ElementType ElementType {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => (ElementType)_annotatedElementType;
-		}
+		public ElementType ElementType => (ElementType)_annotatedElementType;
 
 		/// <summary>
 		/// AnnotatedElementType
 		/// </summary>
-		public AnnotatedElementType AnnotatedElementType {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => _annotatedElementType;
-		}
+		public AnnotatedElementType AnnotatedElementType => _annotatedElementType;
 
 		/// <summary>
 		/// Annotation
 		/// </summary>
-		public AnnotatedElementType Annotation {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => _annotatedElementType & (AnnotatedElementType)0xFFFFFF00;
-		}
+		public AnnotatedElementType Annotation => _annotatedElementType & (AnnotatedElementType)0xFFFFFF00;
 
 		/// <summary>
 		/// Is ByRef type
 		/// </summary>
-		public bool IsByRef {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => ElementType == ElementType.ByRef;
-		}
+		public bool IsByRef => ElementType == ElementType.ByRef;
 
 		/// <summary>
 		/// Is pointer type
 		/// </summary>
-		public bool IsPointer {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => ElementType == ElementType.Ptr;
-		}
+		public bool IsPointer => ElementType == ElementType.Ptr;
 
 		/// <summary>
 		/// Is primitive type
 		/// </summary>
-		public bool IsPrimitive {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => (ElementType >= ElementType.Boolean && ElementType <= ElementType.R8) || ElementType == ElementType.I || ElementType == ElementType.U;
-		}
+		public bool IsPrimitive => (ElementType >= ElementType.Boolean && ElementType <= ElementType.R8) || ElementType == ElementType.I || ElementType == ElementType.U;
 
 		/// <summary>
 		/// Gets a value indicating whether the <see cref="TypeDesc"/> is a class or a delegate; that is, not a value type or interface.
 		/// NOTE: This behavior obeys <see cref="Type.IsClass"/>, in fact, pointer and byref type is not a class. I think this is history's legacy.
 		/// </summary>
-		public bool IsClass {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => !IsInterface && !IsValueType;
-		}
+		public bool IsClass => !IsInterface && !IsValueType;
 
 		/// <summary>
 		/// Is interface type
 		/// </summary>
-		public bool IsInterface {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => (_attributes & TypeAttributes.Interface) != 0;
-		}
+		public bool IsInterface => (_attributes & TypeAttributes.Interface) != 0;
 
 		/// <summary>
 		/// Is value type
 		/// </summary>
-		public bool IsValueType {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => (ElementType >= ElementType.Void && ElementType <= ElementType.R8) || ElementType == ElementType.I || ElementType == ElementType.U || ElementType == ElementType.ValueType;
-			// typeof(void).IsValueType returns true, so we regard ElementType.Void as value type
-		}
+		public bool IsValueType => (ElementType >= ElementType.Void && ElementType <= ElementType.R8) || ElementType == ElementType.I || ElementType == ElementType.U || ElementType == ElementType.ValueType;
 
 		/// <summary>
 		/// Is array
 		/// </summary>
-		public bool IsArray {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => ElementType == ElementType.Array || ElementType == ElementType.SZArray;
-		}
+		public bool IsArray => ElementType == ElementType.Array || ElementType == ElementType.SZArray;
 
 		/// <summary>
 		/// Is single-dimension, zero lower bound array
 		/// </summary>
-		public bool IsSZArray {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => ElementType == ElementType.SZArray;
-		}
+		public bool IsSZArray => ElementType == ElementType.SZArray;
 
 		/// <summary>
 		/// Is generic parameter
 		/// </summary>
-		public bool IsGenericParameter {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => ElementType == ElementType.Var || ElementType == ElementType.MVar;
-		}
+		public bool IsGenericParameter => ElementType == ElementType.Var || ElementType == ElementType.MVar;
 
 		/// <summary>
 		/// Is generic type parameter
 		/// </summary>
-		public bool IsGenericTypeParameter {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => ElementType == ElementType.Var;
-		}
+		public bool IsGenericTypeParameter => ElementType == ElementType.Var;
 
 		/// <summary>
 		/// Is generic method parameter
 		/// </summary>
-		public bool IsGenericMethodParameter {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => ElementType == ElementType.MVar;
-		}
+		public bool IsGenericMethodParameter => ElementType == ElementType.MVar;
 
 		/// <summary>
 		/// Is a COM object
 		/// </summary>
-		public bool IsCOMObject {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => _isCOMObject;
-		}
+		public bool IsCOMObject => _isCOMObject;
 
 		/// <summary>
 		/// Generic parameter index
 		/// </summary>
-		public int GenericParameterIndex {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => _genericParameterIndex;
-		}
+		public int GenericParameterIndex => _genericParameterIndex;
 
 		/// <summary>
 		/// Is a large structure
 		/// </summary>
-		public bool IsLargeValueType {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => (_annotatedElementType & AnnotatedElementType.LargeValueType) != 0;
-		}
+		public bool IsLargeValueType => (_annotatedElementType & AnnotatedElementType.LargeValueType) != 0;
 
 		/// <summary>
 		/// Is unmanaged
 		/// </summary>
-		public bool IsUnmanaged {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => (_annotatedElementType & AnnotatedElementType.Unmanaged) != 0;
-		}
+		public bool IsUnmanaged => (_annotatedElementType & AnnotatedElementType.Unmanaged) != 0;
 
 		/// <summary>
 		/// Loaded fields
 		/// </summary>
-		public IEnumerable<FieldDesc> Fields {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => _fields;
-		}
+		public IEnumerable<FieldDesc> Fields => _fields;
 
 		/// <summary>
 		/// Loaded methods
 		/// </summary>
-		public IEnumerable<MethodDesc> Methods {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => _methods;
-		}
+		public IEnumerable<MethodDesc> Methods => _methods;
 
 		internal TypeDesc(ExecutionEngine executionEngine, Type reflType) {
 			executionEngine.Context._types.Add(reflType, this);
@@ -644,7 +525,6 @@ namespace Zexil.DotNet.Emulation {
 		/// </summary>
 		/// <param name="typeInstantiation"></param>
 		/// <returns></returns>
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public TypeDesc Instantiate(params Type[] typeInstantiation) {
 			if (typeInstantiation is null)
 				throw new ArgumentNullException(nameof(typeInstantiation));
@@ -740,7 +620,6 @@ namespace Zexil.DotNet.Emulation {
 		/// <param name="typeInstantiation"></param>
 		/// <param name="methodInstantiation"></param>
 		/// <returns></returns>
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public TypeDesc ResolveInstantiation(TypeDesc[] typeInstantiation, TypeDesc[] methodInstantiation) {
 			if (IsGenericTypeParameter && typeInstantiation is null)
 				throw new ArgumentNullException(nameof(typeInstantiation));
@@ -759,7 +638,6 @@ namespace Zexil.DotNet.Emulation {
 		/// Returns a <see cref="TypeDesc"/> object that represents a pointer to the current type.
 		/// </summary>
 		/// <returns></returns>
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public TypeDesc MakePointerType() {
 			return _executionEngine.ResolveType(_reflType.MakePointerType());
 		}
@@ -768,7 +646,6 @@ namespace Zexil.DotNet.Emulation {
 		/// Returns a <see cref="TypeDesc"/> object that represents the current type when passed as a ref parameter (ByRef parameter in Visual Basic).
 		/// </summary>
 		/// <returns></returns>
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public TypeDesc MakeByRefType() {
 			return _executionEngine.ResolveType(_reflType.MakeByRefType());
 		}
@@ -777,7 +654,6 @@ namespace Zexil.DotNet.Emulation {
 		/// Returns a <see cref="TypeDesc"/> object representing a one-dimensional array of the current type, with a lower bound of zero.
 		/// </summary>
 		/// <returns></returns>
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public TypeDesc MakeArrayType() {
 			return _executionEngine.ResolveType(_reflType.MakeArrayType());
 		}
@@ -787,7 +663,6 @@ namespace Zexil.DotNet.Emulation {
 		/// </summary>
 		/// <param name="rank">The number of dimensions for the array. This number must be less than or equal to 32.</param>
 		/// <returns></returns>
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public TypeDesc MakeArrayType(int rank) {
 			return _executionEngine.ResolveType(_reflType.MakeArrayType(rank));
 		}
@@ -797,7 +672,6 @@ namespace Zexil.DotNet.Emulation {
 		/// </summary>
 		/// <param name="value"></param>
 		/// <returns></returns>
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public bool IsInstanceOfType(object value) {
 			return _reflType.IsInstanceOfType(value);
 		}
@@ -907,66 +781,42 @@ namespace Zexil.DotNet.Emulation {
 		/// <summary>
 		/// Bound execution engine
 		/// </summary>
-		public ExecutionEngine ExecutionEngine {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => _executionEngine;
-		}
+		public ExecutionEngine ExecutionEngine => _executionEngine;
 
 		/// <summary>
 		/// Reflection field
 		/// </summary>
-		public FieldInfo ReflField {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => _reflField;
-		}
+		public FieldInfo ReflField => _reflField;
 
 		/// <summary>
 		/// Declaring module
 		/// </summary>
-		public ModuleDesc Module {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => _declaringType.Module;
-		}
+		public ModuleDesc Module => _declaringType.Module;
 
 		/// <summary>
 		/// Metadata token
 		/// </summary>
-		public int MetadataToken {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => _metadataToken;
-		}
+		public int MetadataToken => _metadataToken;
 
 		/// <summary>
 		/// Declaring type
 		/// </summary>
-		public TypeDesc DeclaringType {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => _declaringType;
-		}
+		public TypeDesc DeclaringType => _declaringType;
 
 		/// <summary>
 		/// Is a static field
 		/// </summary>
-		public bool IsStatic {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => _isStatic;
-		}
+		public bool IsStatic => _isStatic;
 
 		/// <summary>
 		/// Field offset
 		/// </summary>
-		public uint Offset {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => _offset;
-		}
+		public uint Offset => _offset;
 
 		/// <summary>
 		/// Has <see cref="ThreadStaticAttribute"/>
 		/// </summary>
-		public bool IsThreadStatic {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => _isThreadStatic;
-		}
+		public bool IsThreadStatic => _isThreadStatic;
 
 		internal FieldDesc(ExecutionEngine executionEngine, FieldInfo reflField) {
 			executionEngine.Context._fields.Add(reflField, this);
@@ -1014,112 +864,72 @@ namespace Zexil.DotNet.Emulation {
 		/// <summary>
 		/// Bound execution engine
 		/// </summary>
-		public ExecutionEngine ExecutionEngine {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => _executionEngine;
-		}
+		public ExecutionEngine ExecutionEngine => _executionEngine;
 
 		/// <summary>
 		/// Reflection method
 		/// </summary>
-		public MethodBase ReflMethod {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => _reflMethod;
-		}
+		public MethodBase ReflMethod => _reflMethod;
 
 		/// <summary>
 		/// Declaring module
 		/// </summary>
-		public ModuleDesc Module {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => _declaringType.Module;
-		}
+		public ModuleDesc Module => _declaringType.Module;
 
 		/// <summary>
 		/// Metadata token
 		/// </summary>
-		public int MetadataToken {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => _metadataToken;
-		}
+		public int MetadataToken => _metadataToken;
 
 		/// <summary>
 		/// Declaring type
 		/// </summary>
-		public TypeDesc DeclaringType {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => _declaringType;
-		}
+		public TypeDesc DeclaringType => _declaringType;
 
 		/// <summary>
 		/// Method generic arguments (null if it is not a generic method)
 		/// </summary>
-		public TypeDesc[] Instantiation {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => _instantiation;
-		}
+		public TypeDesc[] Instantiation => _instantiation;
 
 		/// <summary>
 		/// Method attributes
 		/// </summary>
-		public MethodAttributes Attributes {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => _attributes;
-		}
+		public MethodAttributes Attributes => _attributes;
 
 		/// <summary>
 		/// Has <see cref="MethodAttributes.Static"/>
 		/// </summary>
-		public bool IsStatic {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => (_attributes & MethodAttributes.Static) != 0;
-		}
+		public bool IsStatic => (_attributes & MethodAttributes.Static) != 0;
 
 		/// <summary>
 		/// Has <see cref="MethodAttributes.SpecialName"/>
 		/// </summary>
-		public bool IsSpecialName {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => (_attributes & MethodAttributes.SpecialName) != 0;
-		}
+		public bool IsSpecialName => (_attributes & MethodAttributes.SpecialName) != 0;
 
 		/// <summary>
 		/// Has <see cref="MethodAttributes.RTSpecialName"/>
 		/// </summary>
-		public bool IsRuntimeSpecialName {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => (_attributes & MethodAttributes.RTSpecialName) != 0;
-		}
+		public bool IsRuntimeSpecialName => (_attributes & MethodAttributes.RTSpecialName) != 0;
 
 		/// <summary>
 		/// Is static constructor (.cctor)
 		/// </summary>
-		public bool IsStaticConstructor {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => (_flags & MethodFlags.StaticConstructor) != 0;
-		}
+		public bool IsStaticConstructor => (_flags & MethodFlags.StaticConstructor) != 0;
 
 		/// <summary>
 		/// Is instance constructor (.ctor)
 		/// </summary>
-		public bool IsInstanceConstructor {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => (_flags & MethodFlags.InstanceConstructor) != 0;
-		}
+		public bool IsInstanceConstructor => (_flags & MethodFlags.InstanceConstructor) != 0;
 
 		/// <summary>
 		/// Is constructor (.cctor or .ctor)
 		/// </summary>
-		public bool IsConstructor {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => (_flags & (MethodFlags.StaticConstructor | MethodFlags.InstanceConstructor)) != 0;
-		}
+		public bool IsConstructor => (_flags & (MethodFlags.StaticConstructor | MethodFlags.InstanceConstructor)) != 0;
 
 		/// <summary>
 		/// Method parameters including "this" pointer
 		/// </summary>
 		public TypeDesc[] Parameters {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
 			get {
 				if (_parameters is null)
 					_parameters = GetParameters();
@@ -1130,18 +940,12 @@ namespace Zexil.DotNet.Emulation {
 		/// <summary>
 		/// Method return type
 		/// </summary>
-		public TypeDesc ReturnType {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => _returnType;
-		}
+		public TypeDesc ReturnType => _returnType;
 
 		/// <summary>
 		/// Does method have return type
 		/// </summary>
-		public bool HasReturnType {
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => _returnType.ElementType != ElementType.Void;
-		}
+		public bool HasReturnType => _returnType.ElementType != ElementType.Void;
 
 		internal MethodDesc(ExecutionEngine executionEngine, MethodBase reflMethod) {
 			executionEngine.Context._methods.Add(reflMethod, this);
@@ -1182,7 +986,6 @@ namespace Zexil.DotNet.Emulation {
 		/// </summary>
 		/// <param name="methodInstantiation"></param>
 		/// <returns></returns>
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public MethodDesc Instantiate(params Type[] methodInstantiation) {
 			if (methodInstantiation is null)
 				throw new ArgumentNullException(nameof(methodInstantiation));
@@ -1199,7 +1002,6 @@ namespace Zexil.DotNet.Emulation {
 		/// <param name="typeInstantiation"></param>
 		/// <param name="methodInstantiation"></param>
 		/// <returns></returns>
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public MethodDesc Instantiate(Type[] typeInstantiation, Type[] methodInstantiation) {
 			var type = _declaringType;
 			var method = this;
@@ -1216,7 +1018,6 @@ namespace Zexil.DotNet.Emulation {
 		/// Obtains a pointer to the method represented by this instance
 		/// </summary>
 		/// <returns></returns>
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public nint GetMethodAddress() {
 			return _reflMethod.MethodHandle.GetFunctionPointer();
 		}

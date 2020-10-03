@@ -15,7 +15,6 @@ namespace Zexil.DotNet.Emulation.Internal {
 				throw new NotSupportedException($"{nameof(GCHandlePatcher)} should be updated");
 		}
 
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static void SetGCBit(object obj) {
 			ref uint m_SyncBlock = ref Unsafe.As<byte, uint>(ref Unsafe.Subtract(ref Unsafe.As<RawData>(obj).Data, sizeof(nint) * 2));
 			m_SyncBlock |= BIT_SBLK_GC_RESERVE;
@@ -27,7 +26,6 @@ namespace Zexil.DotNet.Emulation.Internal {
 		/// </summary>
 		/// <param name="typeHandle"></param>
 		/// <returns></returns>
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static object AllocateObject(nint typeHandle) {
 			return _allocateObject(typeHandle);
 		}
