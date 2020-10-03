@@ -11,12 +11,12 @@ namespace Zexil.DotNet.Emulation.Emit {
 	/// </summary>
 	public sealed unsafe class InterpreterContext : IDisposable {
 		/// <summary>
-		/// Stack size
+		/// Maximum stack size
 		/// </summary>
-		public const uint StackSize = 100;
+		public const int MaximumStackSize = 100;
 
 		private readonly ExecutionEngine _executionEngine;
-		private readonly Dictionary<MethodDesc, Cache<InterpreterMethodContext>> _methodContexts = new Dictionary<MethodDesc, Cache<InterpreterMethodContext>>();
+		private readonly Dictionary<(MethodDef MethodDef, MethodDesc Method), Cache<InterpreterMethodContext>> _methodContexts = new Dictionary<(MethodDef MethodDef, MethodDesc Method), Cache<InterpreterMethodContext>>();
 		private readonly Cache<nint> _stacks = Cache<nint>.Create();
 		private readonly Cache<Stack<GCHandle>> _handleLists = Cache<Stack<GCHandle>>.Create();
 		private readonly Cache<List<nint>> _stackAllocedLists = Cache<List<nint>>.Create();
@@ -31,24 +31,24 @@ namespace Zexil.DotNet.Emulation.Emit {
 			_executionEngine = executionEngine;
 		}
 
-		internal InterpreterMethodContext AcquireMethodContext(MethodDesc method, ModuleDef moduleDef) {
-			if (!_methodContexts.TryGetValue(method, out var cache)) {
+		internal InterpreterMethodContext AcquireMethodContext(MethodDef methodDef, MethodDesc method) {
+			if (!_methodContexts.TryGetValue((methodDef, method), out var cache)) {
 				cache = Cache<InterpreterMethodContext>.Create();
-				_methodContexts.Add(method, cache);
+				_methodContexts.Add((methodDef, method), cache);
 			}
 			if (cache.TryAcquire(out var methodContext))
 				return methodContext;
-			return new InterpreterMethodContext(this, method, moduleDef);
+			return new InterpreterMethodContext(this, methodDef, method);
 		}
 
 		internal void ReleaseMethodContext(InterpreterMethodContext methodContext) {
-			_methodContexts[methodContext.Method].Release(methodContext);
+			_methodContexts[(methodContext.MethodDef, methodContext.Method)].Release(methodContext);
 		}
 
 		internal InterpreterSlot* AcquireStack() {
 			if (_stacks.TryAcquire(out nint stack))
 				return (InterpreterSlot*)stack;
-			return (InterpreterSlot*)Pal.AllocMemory((uint)sizeof(InterpreterSlot) * StackSize, false);
+			return (InterpreterSlot*)Pal.AllocMemory((uint)sizeof(InterpreterSlot) * MaximumStackSize, false);
 		}
 
 		internal void ReleaseStack(InterpreterSlot* stack) {

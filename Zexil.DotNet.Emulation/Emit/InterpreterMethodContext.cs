@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using dnlib.DotNet;
@@ -12,45 +13,74 @@ namespace Zexil.DotNet.Emulation.Emit {
 	public sealed unsafe class InterpreterMethodContext : IDisposable {
 		#region Static Context
 		private readonly InterpreterContext _context;
-		private readonly MethodDesc _method;
 		private readonly MethodDef _methodDef;
+		private readonly MethodDesc _method;
 		private readonly TypeDesc[] _argumentTypes;
 		private readonly TypeDesc[] _localTypes;
 
 		/// <summary>
-		/// Interpreted method
+		/// Interpreter context
 		/// </summary>
-		public MethodDesc Method => _method;
-
-		/// <summary>
-		/// Interpreted module
-		/// </summary>
-		public ModuleDesc Module => _method.Module;
-
-		/// <summary>
-		/// Type generic arguments
-		/// </summary>
-		public TypeDesc[] TypeInstantiation => _method.DeclaringType.Instantiation;
-
-		/// <summary>
-		/// Method generic arguments
-		/// </summary>
-		public TypeDesc[] MethodInstantiation => _method.Instantiation;
+		public InterpreterContext Context {
+			[MethodImpl(MethodImplOptions.AggressiveInlining)]
+			get => _context;
+		}
 
 		/// <summary>
 		/// Related <see cref="dnlib.DotNet.MethodDef"/>
 		/// </summary>
-		public MethodDef MethodDef => _methodDef;
+		public MethodDef MethodDef {
+			[MethodImpl(MethodImplOptions.AggressiveInlining)]
+			get => _methodDef;
+		}
 
 		/// <summary>
-		/// Argument types
+		/// Interpreted method
 		/// </summary>
-		public TypeDesc[] ArgumentTypes => _argumentTypes;
+		public MethodDesc Method {
+			[MethodImpl(MethodImplOptions.AggressiveInlining)]
+			get => _method;
+		}
 
 		/// <summary>
-		/// Local variable types
+		/// Interpreted module (has no value if <see cref="Method"/> is <see langword="null"/>)
 		/// </summary>
-		public TypeDesc[] LocalTypes => _localTypes;
+		public ModuleDesc Module {
+			[MethodImpl(MethodImplOptions.AggressiveInlining)]
+			get => _method?.Module;
+		}
+
+		/// <summary>
+		/// Type generic arguments (has no value if <see cref="Method"/> is <see langword="null"/>)
+		/// </summary>
+		public TypeDesc[] TypeInstantiation {
+			[MethodImpl(MethodImplOptions.AggressiveInlining)]
+			get => _method?.DeclaringType.Instantiation;
+		}
+
+		/// <summary>
+		/// Method generic arguments (has no value if <see cref="Method"/> is <see langword="null"/>)
+		/// </summary>
+		public TypeDesc[] MethodInstantiation {
+			[MethodImpl(MethodImplOptions.AggressiveInlining)]
+			get => _method?.Instantiation;
+		}
+
+		/// <summary>
+		/// Argument types (element in array might be null if <see cref="Method"/> is <see langword="null"/>)
+		/// </summary>
+		public TypeDesc[] ArgumentTypes {
+			[MethodImpl(MethodImplOptions.AggressiveInlining)]
+			get => _argumentTypes;
+		}
+
+		/// <summary>
+		/// Local variable types (element in array might be null if <see cref="Method"/> is <see langword="null"/>)
+		/// </summary>
+		public TypeDesc[] LocalTypes {
+			[MethodImpl(MethodImplOptions.AggressiveInlining)]
+			get => _localTypes;
+		}
 		#endregion
 
 		#region Dynamic Context
@@ -112,11 +142,19 @@ namespace Zexil.DotNet.Emulation.Emit {
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
 			set {
 #if DEBUG
-				if (value < _stackBase || value > _stackBase + InterpreterContext.StackSize)
+				if (value < _stackBase || value > _stackBase + InterpreterContext.MaximumStackSize)
 					throw new OutOfMemoryException();
 #endif
 				_stack = value;
 			}
+		}
+
+		/// <summary>
+		/// Stack size
+		/// </summary>
+		public int StackSize {
+			[MethodImpl(MethodImplOptions.AggressiveInlining)]
+			get => (int)(_stackBase + InterpreterContext.MaximumStackSize - _stack);
 		}
 
 		/// <summary>
@@ -178,38 +216,43 @@ namespace Zexil.DotNet.Emulation.Emit {
 			_context = context;
 		}
 
-		internal InterpreterMethodContext(InterpreterContext context, MethodDesc method, ModuleDef moduleDef) {
-			_context = context;
-			_method = method;
-			_methodDef = (MethodDef)moduleDef.ResolveToken(method.MetadataToken);
-			_argumentTypes = method.Parameters;
-			if (_methodDef.HasBody) {
-				var localDefs = _methodDef.Body.Variables;
+		/// <summary>
+		/// Constructor
+		/// </summary>
+		/// <param name="context"></param>
+		/// <param name="methodDef"></param>
+		/// <param name="method">Optional parameter</param>
+		internal InterpreterMethodContext(InterpreterContext context, MethodDef methodDef, MethodDesc method) {
 #if DEBUG
-				for (int i = 0; i < localDefs.Count; i++)
-					System.Diagnostics.Debug.Assert(localDefs[i].Index == i);
+			System.Diagnostics.Debug.Assert(!(methodDef is null));
 #endif
-
-				_localTypes = new TypeDesc[localDefs.Count];
-				for (int i = 0; i < _localTypes.Length; i++)
-					_localTypes[i] = DnlibHelpers.ResolveTypeSig(_method, localDefs[i].Type);
+			_context = context;
+			_methodDef = methodDef;
+			_method = method;
+			if (method is null) {
+				_argumentTypes = methodDef.Parameters.Select(t => DnlibHelpers.TryResolveTypeSig(context.ExecutionEngine, method, t.Type)).ToArray();
 			}
 			else {
-				_localTypes = Array.Empty<TypeDesc>();
+				_argumentTypes = method.Parameters;
 			}
+#if DEBUG
+			for (int i = 0; i < methodDef.Body.Variables.Count; i++)
+				System.Diagnostics.Debug.Assert(methodDef.Body.Variables[i].Index == i);
+#endif
+			_localTypes = methodDef.Body.Variables.Select(t => DnlibHelpers.TryResolveTypeSig(context.ExecutionEngine, method, t.Type)).ToArray();
 		}
 
 		internal void ResolveDynamicContext(nint[] arguments) {
 			_stackBase = _context.AcquireStack();
-			_stack = _stackBase + InterpreterContext.StackSize;
+			_stack = _stackBase + InterpreterContext.MaximumStackSize;
 			_handles = _context.AcquireHandles();
 			_stackAlloceds = _context.AcquireStackAlloceds();
-			if (!(_method is null)) {
+			if (!(_argumentTypes is null) && !(arguments is null)) {
 				_arguments = Interpreter.ConvertArguments(arguments, this);
-				_locals = new InterpreterSlot[_localTypes.Length];
 				_handles.Push(GCHandle.Alloc(_arguments, GCHandleType.Pinned));
-				_handles.Push(GCHandle.Alloc(_locals, GCHandleType.Pinned));
 			}
+			_locals = new InterpreterSlot[_localTypes.Length];
+			_handles.Push(GCHandle.Alloc(_locals, GCHandleType.Pinned));
 			_isDisposed = false;
 		}
 
@@ -217,13 +260,12 @@ namespace Zexil.DotNet.Emulation.Emit {
 			if (_isDisposed)
 				throw new InvalidOperationException();
 
-			if (!(_method is null)) {
+			if (!(_arguments is null)) {
 				Array.Clear(_arguments, 0, _arguments.Length);
 				_arguments = null;
-				Array.Clear(_locals, 0, _locals.Length);
-				_locals = null;
-				_context.ReleaseMethodContext(this);
 			}
+			Array.Clear(_locals, 0, _locals.Length);
+			_locals = null;
 			_context.ReleaseStack(_stackBase);
 			_stackBase = null;
 			_stack = null;
@@ -236,6 +278,8 @@ namespace Zexil.DotNet.Emulation.Emit {
 			_nextILOffset = null;
 			_isReturned = false;
 			_isDisposed = true;
+			if (!(_method is null))
+				_context.ReleaseMethodContext(this);
 		}
 
 		#region public stack apis
@@ -363,7 +407,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public ref InterpreterSlot Peek() {
 #if DEBUG
-			if (_stack < _stackBase || _stack >= _stackBase + InterpreterContext.StackSize)
+			if (_stack < _stackBase || _stack >= _stackBase + InterpreterContext.MaximumStackSize)
 				throw new OutOfMemoryException();
 			return ref *_stack;
 #else
@@ -380,7 +424,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 		public ref InterpreterSlot Peek(int index) {
 #if DEBUG
 			var stack = _stack + index;
-			if (stack < _stackBase || stack >= _stackBase + InterpreterContext.StackSize)
+			if (stack < _stackBase || stack >= _stackBase + InterpreterContext.MaximumStackSize)
 				throw new OutOfMemoryException();
 			return ref *stack;
 #else
@@ -393,21 +437,9 @@ namespace Zexil.DotNet.Emulation.Emit {
 		/// </summary>
 		/// <returns></returns>
 		public IEnumerable<InterpreterSlot> PeekAll() {
-			int stackSize = (int)InterpreterContext.StackSize * Unsafe.SizeOf<InterpreterSlot>();
-			nint stackTop = GetStackBase() + stackSize;
-			nint stack = GetStack();
-			nint bytesLeft = stackTop - stack;
-			int length = (int)bytesLeft / Unsafe.SizeOf<InterpreterSlot>();
+			int length = StackSize;
 			for (int i = 0; i < length; i++)
 				yield return GetSlot(i);
-
-			nint GetStackBase() {
-				return (nint)_stackBase;
-			}
-
-			nint GetStack() {
-				return (nint)_stack;
-			}
 
 			InterpreterSlot GetSlot(int index) {
 				return _stack[index];

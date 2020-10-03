@@ -2086,6 +2086,8 @@ namespace Zexil.DotNet.Emulation.Emit {
 				int index = ResolveVariableIndex(instruction.Operand);
 				ref var valueSlot = ref methodContext.Arguments[index];
 				var type = methodContext.ArgumentTypes[index];
+				if (type is null)
+					throw new InvalidOperationException();
 				if (IsValueTypeStackNormalized(type) && !IsSlotSatisfied(type)) // already pointer to value type
 					methodContext.PushI(valueSlot.I);
 				else // direct stored value type or reference type
@@ -2108,6 +2110,8 @@ namespace Zexil.DotNet.Emulation.Emit {
 				int index = ResolveVariableIndex(instruction.Operand);
 				ref var valueSlot = ref methodContext.Locals[index];
 				var type = methodContext.LocalTypes[index];
+				if (type is null)
+					throw new InvalidOperationException();
 				if (IsValueTypeStackNormalized(type) && !IsSlotSatisfied(type)) // already pointer to value type
 					methodContext.PushI(valueSlot.I);
 				else // direct stored value type or reference type
@@ -2933,6 +2937,9 @@ namespace Zexil.DotNet.Emulation.Emit {
 			var arguments = new InterpreterSlot[stubArguments.Length];
 			for (int i = 0; i < methodContext.Method.Parameters.Length; i++) {
 				var type = methodContext.ArgumentTypes[i];
+				if (type is null)
+					continue;
+
 				if (type.IsValueType) {
 					// do not use stack-normalized api, interpreter stub doesn't regard pointer and byref as value type
 					Ldobj(stubArguments[i], ref arguments[i], type, methodContext);

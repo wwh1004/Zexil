@@ -15,7 +15,7 @@ namespace Zexil.DotNet.Emulation.Emit {
 		private readonly TypeDesc _typeDescOfRuntimeTypeHandle;
 		private readonly TypeDesc _typeDescOfRuntimeMethodHandle;
 		private readonly TypeDesc _typeDescOfRuntimeFieldHandle;
-		private Func<ModuleDesc, ModuleDef> _resolveModuleDef;
+		private Func<MethodDesc, MethodDef> _resolveMethodDef;
 		private InterpretFromStubHandler _interpretFromStubUser;
 		private bool _isDisposed;
 
@@ -30,11 +30,11 @@ namespace Zexil.DotNet.Emulation.Emit {
 		public ExecutionEngine ExecutionEngine => _context.ExecutionEngine;
 
 		/// <summary>
-		/// Resolves a <see cref="ModuleDef"/> instance by <see cref="ModuleDesc"/>
+		/// Resolves a <see cref="MethodDef"/> instance by <see cref="MethodDesc"/>
 		/// </summary>
-		public Func<ModuleDesc, ModuleDef> ResolveModuleDef {
-			get => _resolveModuleDef;
-			set => _resolveModuleDef = value;
+		public Func<MethodDesc, MethodDef> ResolveMethodDef {
+			get => _resolveMethodDef;
+			set => _resolveMethodDef = value;
 		}
 
 		/// <inheritdoc />
@@ -62,75 +62,39 @@ namespace Zexil.DotNet.Emulation.Emit {
 		}
 
 		/// <summary>
-		/// Create method context with specified <see cref="MethodDesc"/>
+		/// Create method context with specified <see cref="MethodDef"/>
 		/// </summary>
-		/// <param name="moduleDef"></param>
+		/// <param name="methodDef"></param>
+		/// <returns></returns>
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public InterpreterMethodContext CreateMethodContext(MethodDef methodDef) {
+			return CreateMethodContext(methodDef, null, null);
+		}
+
+		/// <summary>
+		/// Create method context with specified <see cref="MethodDef"/> and <see cref="MethodDesc"/>
+		/// </summary>
+		/// <param name="methodDef"></param>
+		/// <param name="method"></param>
+		/// <returns></returns>
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public InterpreterMethodContext CreateMethodContext(MethodDef methodDef, MethodDesc method) {
+			return CreateMethodContext(methodDef, method, null);
+		}
+
+		/// <summary>
+		/// Create method context with specified <see cref="MethodDef"/>, <see cref="MethodDesc"/> and <paramref name="arguments"/>
+		/// </summary>
+		/// <param name="methodDef"></param>
 		/// <param name="method"></param>
 		/// <param name="arguments"></param>
 		/// <returns></returns>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public InterpreterMethodContext CreateMethodContext(ModuleDef moduleDef, MethodDesc method, params nint[] arguments) {
-			if (moduleDef is null)
-				throw new ArgumentNullException(nameof(moduleDef));
-			if (method is null)
-				throw new ArgumentNullException(nameof(method));
-			if (arguments is null)
-				throw new ArgumentNullException(nameof(arguments));
-
-			var methodContext = _context.AcquireMethodContext(method, moduleDef);
-			methodContext.ResolveDynamicContext(arguments);
-			return methodContext;
-		}
-
-		/// <summary>
-		/// Create method context with specified <see cref="MethodDesc"/>
-		/// </summary>
-		/// <param name="moduleDef"></param>
-		/// <param name="methodDef"></param>
-		/// <param name="arguments"></param>
-		/// <returns></returns>
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public InterpreterMethodContext CreateMethodContext(ModuleDef moduleDef, MethodDef methodDef, params nint[] arguments) {
-			if (moduleDef is null)
-				throw new ArgumentNullException(nameof(moduleDef));
+		public InterpreterMethodContext CreateMethodContext(MethodDef methodDef, MethodDesc method, nint[] arguments) {
 			if (methodDef is null)
 				throw new ArgumentNullException(nameof(methodDef));
-			if (methodDef.HasGenericParameters || methodDef.DeclaringType.HasGenericParameters)
-				throw new NotSupportedException($"Creating method context by {nameof(MethodDef)} does NOT support generic method or method in generic type.");
-			if (arguments is null)
-				throw new ArgumentNullException(nameof(arguments));
 
-			var module = ExecutionEngine.Context.Modules.FirstOrDefault(t => t.ScopeName == moduleDef.ScopeName && t.Assembly.FullName == moduleDef.Assembly.FullName);
-			if (module is null)
-				throw new InvalidOperationException("Specified module isn't loaded.");
-			var method = module.ResolveMethod(methodDef.MDToken.ToInt32());
-			var methodContext = _context.AcquireMethodContext(method, moduleDef);
-			methodContext.ResolveDynamicContext(arguments);
-			return methodContext;
-		}
-
-		/// <summary>
-		/// Create method context with specified <see cref="MethodDesc"/>
-		/// </summary>
-		/// <param name="moduleDef"></param>
-		/// <param name="method"></param>
-		/// <param name="methodDef"></param>
-		/// <param name="arguments"></param>
-		/// <returns></returns>
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public InterpreterMethodContext CreateMethodContext(ModuleDef moduleDef, MethodDesc method, MethodDef methodDef, params nint[] arguments) {
-			if (moduleDef is null)
-				throw new ArgumentNullException(nameof(moduleDef));
-			if (method is null)
-				throw new ArgumentNullException(nameof(method));
-			if (methodDef is null)
-				throw new ArgumentNullException(nameof(methodDef));
-			if (methodDef.HasGenericParameters || methodDef.DeclaringType.HasGenericParameters)
-				throw new NotSupportedException($"Creating method context by {nameof(MethodDef)} does NOT support generic method or method in generic type.");
-			if (arguments is null)
-				throw new ArgumentNullException(nameof(arguments));
-
-			var methodContext = _context.AcquireMethodContext(method, moduleDef);
+			var methodContext = _context.AcquireMethodContext(methodDef, method);
 			methodContext.ResolveDynamicContext(arguments);
 			return methodContext;
 		}
@@ -151,25 +115,26 @@ namespace Zexil.DotNet.Emulation.Emit {
 
 		/// <inheritdoc />
 		public void InterpretFromStub(MethodDesc method, nint[] arguments) {
-			var resolveModuleDef = _resolveModuleDef;
-			if (resolveModuleDef is null)
-				throw new InvalidOperationException($"{nameof(ResolveModuleDef)} is null");
+			var resolveMethodDef = _resolveMethodDef;
+			if (resolveMethodDef is null)
+				throw new InvalidOperationException($"{nameof(ResolveMethodDef)} is null");
 
-			var moduleDef = resolveModuleDef(method.Module);
-			if (moduleDef is null)
-				throw new InvalidOperationException($"Resolving {nameof(ModuleDef)} fails");
+			var methodDef = resolveMethodDef(method);
+			if (methodDef is null)
+				throw new InvalidOperationException($"Resolving {nameof(MethodDef)} fails");
 
-			var methodDef = (MethodDef)moduleDef.ResolveToken(method.MetadataToken);
 			var instructions = methodDef.Body.Instructions;
-			using var methodContext = CreateMethodContext(moduleDef, method, methodDef, arguments);
+			using var methodContext = CreateMethodContext(methodDef, method, arguments);
 			int index = 0;
 			do {
 				InterpretImpl(instructions[index], methodContext);
-				if (!(methodContext.NextILOffset is uint nextILOffset))
-					continue;
-
-				index = FindInstructionIndex(instructions, nextILOffset);
-				methodContext.NextILOffset = null;
+				if (methodContext.NextILOffset is uint nextILOffset) {
+					index = FindInstructionIndex(instructions, nextILOffset);
+					methodContext.NextILOffset = null;
+				}
+				else {
+					index++;
+				}
 			} while (!methodContext.IsReturned);
 		}
 
